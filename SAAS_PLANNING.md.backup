@@ -1,0 +1,1999 @@
+# CalFix SaaS Transformation Plan
+## User Management & Persistent Storage Strategy
+
+**Document Version:** 1.0
+**Last Updated:** October 2025
+**Author:** CalFix Development Team
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Current vs. Proposed Architecture](#architecture)
+3. [Technology Stack](#technology-stack)
+4. [Data Model](#data-model)
+5. [Privacy & Security](#privacy-security)
+6. [Cost Analysis](#cost-analysis)
+7. [Implementation Plan](#implementation-plan)
+8. [Deployment Strategy](#deployment-strategy)
+9. [Risk Mitigation](#risk-mitigation)
+10. [Privacy Policy Updates](#privacy-policy)
+11. [Timeline & Next Steps](#timeline)
+
+---
+
+## Executive Summary
+
+### Problem Statement
+
+CalFix currently operates as a client-only application using localStorage for:
+- Google OAuth tokens
+- User action history (event IDs + metadata)
+- User preferences
+
+**Limitations:**
+- ❌ Data lost when browser cache is cleared
+- ❌ No cross-device sync
+- ❌ Cannot implement user accounts or billing
+- ❌ Cannot sell as SaaS product
+- ❌ Limited to 100 test users in Google OAuth (Testing mode)
+
+### Proposed Solution
+
+Add **Clerk (authentication)** and **Supabase (database)** while maintaining privacy-first architecture:
+
+- ✅ Persistent user accounts with billing
+- ✅ Cross-device data sync
+- ✅ User action history preserved
+- ✅ SaaS-ready with subscription tiers
+- ✅ Google OAuth verification (production mode)
+- ✅ **Privacy maintained:** Calendar data NEVER stored in database
+
+### Key Principles
+
+1. **Privacy-First:** Only event IDs stored, never calendar content
+2. **Client-Side Processing:** Calendar data processed in browser only
+3. **Zero Trust:** Row-Level Security (RLS) prevents cross-user access
+4. **User Control:** Users can export/delete all data anytime
+
+---
+
+## Architecture
+
+### Current Architecture (Client-Only)
+
+```
+┌─────────────────────────────────────────┐
+│          User's Browser                 │
+│                                         │
+│  ┌───────────────────────────────────┐ │
+│  │  CalFix React App (Vite)          │ │
+│  │  ├── Google OAuth (PKCE)          │ │
+│  │  ├── localStorage                 │ │
+│  │  │   ├── OAuth tokens             │ │
+│  │  │   ├── User actions (event IDs) │ │
+│  │  │   └── User preferences         │ │
+│  │  └── Direct API calls              │ │
+│  └───────────────────────────────────┘ │
+│              │                          │
+└──────────────┼──────────────────────────┘
+               │
+               ▼
+    ┌──────────────────────┐
+    │  Google Calendar API │
+    └──────────────────────┘
+```
+
+**Characteristics:**
+- 100% client-side
+- Maximum privacy
+- No user accounts
+- Data lost on cache clear
+- Cannot monetize
+
+### Proposed Architecture (Client + Backend Services)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    User's Browser                       │
+│                                                         │
+│  ┌───────────────────────────────────────────────────┐ │
+│  │  CalFix React App (Vite + TypeScript)             │ │
+│  │  ├── Clerk Auth Provider                          │ │
+│  │  ├── Supabase Client                              │ │
+│  │  ├── localStorage (OAuth tokens only)             │ │
+│  │  └── Direct Google Calendar API calls             │ │
+│  └───────────────────────────────────────────────────┘ │
+│         │              │              │                 │
+└─────────┼──────────────┼──────────────┼─────────────────┘
+          │              │              │
+          │              │              └──────────────────┐
+          │              │                                 │
+          ▼              ▼                                 ▼
+    ┌─────────┐   ┌──────────────┐         ┌──────────────────────┐
+    │  Clerk  │   │  Supabase    │         │  Google Calendar API │
+    │  Auth   │   │  Database    │         │                      │
+    │         │   │              │         │  (Calendar data      │
+    │ • Users │   │ • Actions    │         │   never stored)      │
+    │ • JWT   │   │ • Prefs      │         │                      │
+    │ • Stripe│   │ • Stats      │         └──────────────────────┘
+    └─────────┘   └──────────────┘
+```
+
+**Characteristics:**
+- User accounts with authentication
+- Persistent data storage (event IDs only)
+- Cross-device sync
+- Billing & subscriptions
+- **Privacy maintained:** Calendar data still processed client-side only
+
+---
+
+## Technology Stack
+
+### Authentication: Clerk
+
+**Why Clerk?**
+
+| Feature | Benefit |
+|---------|---------|
+| Pre-built React components | Sign-in, sign-up, user profile UI ready to use |
+| Session management | Automatic JWT refresh, secure sessions |
+| Multiple auth providers | Email, Google, GitHub, etc. |
+| Billing integration | Stripe built-in (critical for SaaS) |
+| User management UI | Admin dashboard included |
+| Webhooks | User lifecycle events (created, updated, deleted) |
+| Great DX | Minimal code, well-documented |
+
+**Pricing:**
+- Free: 10,000 MAU (Monthly Active Users)
+- Paid: $25/month + $0.02/user after 10,000
+
+**Alternatives Considered:**
+- **Supabase Auth** - Free but less polished, no Stripe integration
+- **Auth0** - More expensive ($23/mo + $0.05/user)
+- **Firebase Auth** - Good but locks into Google ecosystem
+- **NextAuth.js** - Free but more code to maintain
+
+**Decision:** Clerk is worth the cost for rapid development and Stripe integration.
+
+### Database: Supabase
+
+**Why Supabase?**
+
+| Feature | Benefit |
+|---------|---------|
+| PostgreSQL-based | Reliable, standard SQL, complex queries |
+| Real-time subscriptions | Live updates across devices |
+| Row-Level Security (RLS) | Built-in data isolation |
+| TypeScript client | Excellent autocomplete & type safety |
+| Generous free tier | 500MB DB, 1GB file storage |
+| REST + GraphQL APIs | Flexible data access |
+| Self-hostable | Escape hatch if needed |
+
+**Pricing:**
+- Free: 500MB database, 1GB file storage, 2GB bandwidth
+- Pro: $25/month (8GB DB, 100GB storage, 250GB bandwidth)
+
+**Alternatives Considered:**
+- **Firestore** - Good real-time but NoSQL (harder queries)
+- **PlanetScale** - MySQL, great DX, more expensive
+- **MongoDB Atlas** - NoSQL, overkill for this use case
+- **Upstash** - Redis-based, not ideal for relational data
+
+**Decision:** Supabase is the best fit for relational data with real-time sync.
+
+### Hosting: Vercel (Current)
+
+**Why Keep Vercel?**
+- Already set up and working
+- Automatic HTTPS, global CDN
+- Git integration (deploy on push)
+- Excellent for Vite/React apps
+- Free tier sufficient to start
+
+---
+
+## Data Model
+
+### Critical Privacy Principle
+
+**What Gets Stored in Supabase:**
+- ✅ Event IDs (Google Calendar event identifiers)
+- ✅ Action types (e.g., "buffer_added", "alert_dismissed")
+- ✅ Timestamps (when action was taken)
+- ✅ Metadata (minutes saved, alert types)
+- ✅ User preferences (timezone, business hours)
+
+**What NEVER Gets Stored:**
+- ❌ Calendar event titles
+- ❌ Calendar event descriptions
+- ❌ Attendee names or emails
+- ❌ Meeting content or notes
+- ❌ Event locations
+- ❌ Any PII from calendar events
+
+**Why This Is Safe:**
+Event IDs like `"3qtd8t1b6u3j2gj77a3v9abc12"` are meaningless without Google Calendar access. Even if Supabase is breached, attackers cannot see meeting content.
+
+### Database Schema
+
+#### Table 1: `users`
+
+Synced from Clerk via webhooks.
+
+```sql
+CREATE TABLE users (
+  id UUID PRIMARY KEY,                    -- Clerk user ID
+  email TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  subscription_tier TEXT DEFAULT 'free',  -- 'free', 'pro', 'team'
+  subscription_status TEXT,               -- 'active', 'cancelled', 'past_due'
+  google_calendar_connected BOOLEAN DEFAULT false,
+
+  -- Indexes
+  INDEX idx_users_email (email),
+  INDEX idx_users_subscription (subscription_tier, subscription_status)
+);
+```
+
+**Purpose:** Track user accounts and subscription status.
+
+#### Table 2: `user_actions`
+
+Stores privacy-safe action history.
+
+```sql
+CREATE TABLE user_actions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL,                 -- Google Calendar event ID
+  action_type TEXT NOT NULL,              -- See action types below
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  metadata JSONB,                         -- Flexible JSON for action-specific data
+
+  -- Indexes for performance
+  INDEX idx_user_actions_user_id (user_id),
+  INDEX idx_user_actions_event_id (event_id),
+  INDEX idx_user_actions_timestamp (timestamp DESC),
+  INDEX idx_user_actions_type (action_type)
+);
+
+-- Action types enum (enforced at application level)
+-- 'buffer_added'
+-- 'meet_link_added'
+-- 'travel_block_added'
+-- 'alert_dismissed'
+-- 'alert_snoozed'
+-- 'focus_time_added'
+-- 'double_booking_resolved'
+-- 'event_moved'
+```
+
+**Example Row:**
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "user_id": "user_2abc123xyz",
+  "event_id": "3qtd8t1b6u3j2gj77a3v9abc12",
+  "action_type": "buffer_added",
+  "timestamp": "2025-10-16T14:30:00Z",
+  "metadata": {
+    "timeSaved": 15,
+    "bufferDuration": 10,
+    "beforeEventTitle": null  // Never stored
+  }
+}
+```
+
+**Purpose:** Track user actions for time savings and alert snoozing.
+
+#### Table 3: `user_preferences`
+
+User settings and preferences.
+
+```sql
+CREATE TABLE user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+
+  -- Location & timezone
+  home_timezone TEXT DEFAULT 'America/Los_Angeles',
+  home_location JSONB,                    -- { city: 'London', country: 'UK', timezone: 'Europe/London' }
+
+  -- Business hours
+  business_hours JSONB,                   -- { start: '09:00', end: '17:00' }
+
+  -- Notification settings
+  notification_settings JSONB,            -- { email: true, snoozeDuration: 86400000 }
+
+  -- UI preferences
+  theme TEXT DEFAULT 'light',             -- 'light' | 'dark' | 'auto'
+  default_view TEXT DEFAULT 'today',      -- 'today' | 'week' | 'month'
+
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Example Row:**
+
+```json
+{
+  "user_id": "user_2abc123xyz",
+  "home_timezone": "Europe/London",
+  "home_location": {
+    "city": "London",
+    "country": "United Kingdom",
+    "timezone": "Europe/London",
+    "flag": "🇬🇧"
+  },
+  "business_hours": {
+    "start": "09:00",
+    "end": "18:00"
+  },
+  "notification_settings": {
+    "emailAlerts": true,
+    "snoozeDuration": 86400000
+  },
+  "theme": "dark",
+  "default_view": "week"
+}
+```
+
+**Purpose:** Store user preferences for cross-device sync.
+
+#### Table 4: `time_savings_summary`
+
+Aggregated statistics for dashboard.
+
+```sql
+CREATE TABLE time_savings_summary (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+
+  -- Time period
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+
+  -- Aggregated metrics
+  total_minutes_saved INTEGER DEFAULT 0,
+  actions_count INTEGER DEFAULT 0,
+  action_breakdown JSONB,                 -- { buffer_added: 5, meet_link_added: 3 }
+
+  -- Unique constraint to prevent duplicates
+  UNIQUE(user_id, period_start, period_end),
+
+  -- Indexes
+  INDEX idx_time_savings_user_period (user_id, period_start, period_end)
+);
+```
+
+**Example Row:**
+
+```json
+{
+  "id": "xyz789-...",
+  "user_id": "user_2abc123xyz",
+  "period_start": "2025-10-01",
+  "period_end": "2025-10-31",
+  "total_minutes_saved": 240,
+  "actions_count": 18,
+  "action_breakdown": {
+    "buffer_added": 5,
+    "meet_link_added": 8,
+    "travel_block_added": 2,
+    "focus_time_added": 3
+  }
+}
+```
+
+**Purpose:** Pre-computed stats for fast dashboard rendering.
+
+### Data Retention Policy
+
+- **User actions:** Keep for 90 days, then archive
+- **Time savings summary:** Keep indefinitely (aggregated data)
+- **User preferences:** Keep until account deletion
+- **Deleted users:** CASCADE delete all associated data
+
+---
+
+## Privacy & Security
+
+### Row-Level Security (RLS)
+
+Supabase's built-in RLS ensures users can only access their own data.
+
+```sql
+-- Enable RLS on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE time_savings_summary ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only access their own data
+CREATE POLICY "Users can read own data" ON user_actions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own data" ON user_actions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own data" ON user_actions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own data" ON user_actions
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Repeat for other tables...
+```
+
+**How It Works:**
+1. Clerk issues JWT token with user ID
+2. Supabase validates JWT signature
+3. RLS policies check `auth.uid()` matches `user_id`
+4. Queries automatically filtered to user's data only
+
+**Result:** Even if application code has bugs, database prevents cross-user access.
+
+### Authentication Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    User Authentication                       │
+└─────────────────────────────────────────────────────────────┘
+
+1. User visits CalFix
+   ↓
+2. User clicks "Sign In with Google" (Clerk)
+   ↓
+3. Clerk redirects to Google OAuth
+   ↓
+4. User approves Clerk access
+   ↓
+5. Clerk creates session, issues JWT
+   ↓
+6. CalFix receives JWT from Clerk
+   ↓
+7. User clicks "Connect Google Calendar"
+   ↓
+8. CalFix initiates Google OAuth PKCE flow
+   ↓
+9. User approves CalFix calendar access
+   ↓
+10. Google returns access token
+    ↓
+11. Access token stored in localStorage
+    ↓
+12. CalFix fetches calendar data from Google
+    ↓
+13. Calendar data processed client-side
+    ↓
+14. Action metadata sent to Supabase (with JWT)
+    ↓
+15. Supabase validates JWT, stores data with RLS
+```
+
+**Key Points:**
+- Clerk handles user auth (login, session)
+- Google OAuth handles calendar access
+- Calendar data NEVER sent to Supabase
+- Only action metadata (event IDs) sent to Supabase
+
+### Google OAuth Token Storage
+
+**What Gets Stored Where:**
+
+| Token | Storage Location | Purpose |
+|-------|------------------|---------|
+| Clerk JWT | Clerk client (memory/cookie) | User authentication |
+| Google OAuth Access Token | Browser localStorage | Google Calendar API calls |
+| Google OAuth Refresh Token | Browser localStorage | Renew access token |
+
+**Security Measures:**
+- Tokens never sent to Supabase
+- localStorage cleared on sign out
+- Access tokens short-lived (1 hour)
+- Refresh tokens rotated on use
+
+### Data Export & Deletion (GDPR/CCPA)
+
+Users can:
+
+1. **Export all data:**
+   ```typescript
+   async function exportUserData(userId: string) {
+     const { data: actions } = await supabase
+       .from('user_actions')
+       .select('*')
+       .eq('user_id', userId);
+
+     const { data: prefs } = await supabase
+       .from('user_preferences')
+       .select('*')
+       .eq('user_id', userId);
+
+     return { actions, preferences: prefs };
+   }
+   ```
+
+2. **Delete account & data:**
+   ```typescript
+   async function deleteUserAccount(userId: string) {
+     // Clerk webhook triggers on user deletion
+     // CASCADE delete in Supabase removes all user data
+     await clerk.users.deleteUser(userId);
+   }
+   ```
+
+---
+
+## Cost Analysis
+
+### Development Costs (One-Time)
+
+| Phase | Hours | Cost @ $100/hr | Notes |
+|-------|-------|----------------|-------|
+| **Setup & Configuration** | 20-30 | $2,000-$3,000 | Clerk, Supabase, environment |
+| **Frontend Integration** | 15-25 | $1,500-$2,500 | Auth flows, protected routes |
+| **User Actions Service** | 10-15 | $1,000-$1,500 | Supabase CRUD, migration |
+| **User Preferences** | 5-10 | $500-$1,000 | Settings UI, persistence |
+| **Billing Integration** | 10-20 | $1,000-$2,000 | Stripe, feature gates |
+| **Testing & Polish** | 15-25 | $1,500-$2,500 | QA, bug fixes, UX |
+| **Documentation** | 5-10 | $500-$1,000 | User docs, privacy policy |
+
+**Total Development Cost:** $8,000 - $13,500 (80-135 hours)
+
+**Timeline:** 3-4 weeks for one developer
+
+### Monthly Operational Costs
+
+#### Scenario 1: Startup (0-100 users)
+
+| Service | Tier | Cost | Notes |
+|---------|------|------|-------|
+| Clerk | Free | $0 | Up to 10,000 MAU |
+| Supabase | Free | $0 | 500MB DB, 1GB storage |
+| Vercel | Free | $0 | Hobby tier |
+| Domain | N/A | $1.25/mo | $15/year amortized |
+
+**Total:** $1.25/month
+
+#### Scenario 2: Growing (100-1,000 users)
+
+| Service | Tier | Cost | Notes |
+|---------|------|------|-------|
+| Clerk | Paid | $25/mo | Base fee |
+| Supabase | Free | $0 | Still within limits |
+| Vercel | Free | $0 | Still within limits |
+| Domain | N/A | $1.25/mo | $15/year |
+
+**Total:** $26.25/month
+
+#### Scenario 3: Established (1,000-10,000 users)
+
+| Service | Tier | Cost | Notes |
+|---------|------|------|-------|
+| Clerk | Paid | $25 + $20 | Base + 1,000 users @ $0.02 |
+| Supabase | Pro | $25/mo | Need more DB space |
+| Vercel | Pro | $20/mo | Need more bandwidth |
+| Domain | N/A | $1.25/mo | $15/year |
+
+**Total:** $91.25/month
+
+#### Scenario 4: Scale (10,000+ users)
+
+| Service | Tier | Cost | Notes |
+|---------|------|------|-------|
+| Clerk | Paid | $225/mo | Base + 10,000 users @ $0.02 |
+| Supabase | Pro | $25/mo | May need Team ($599) at scale |
+| Vercel | Pro | $20/mo | May need Enterprise |
+| Domain | N/A | $1.25/mo | $15/year |
+
+**Total:** $271.25/month (or $799+ at higher scale)
+
+### Revenue Model & Break-Even
+
+**Pricing Tiers (Example):**
+
+| Tier | Price/User/Month | Features |
+|------|------------------|----------|
+| Free | $0 | Basic analytics, manual actions |
+| Pro | $10 | Advanced analytics, auto-optimization, time tracking |
+| Team | $20 | Multi-calendar, team scheduling, API access |
+
+**Break-Even Analysis:**
+
+At $10/user/month (Pro tier):
+- **5 paying users** = $50/mo revenue → Break-even at 100 users
+- **10 paying users** = $100/mo revenue → Profitable at 100 users
+- **50 paying users** = $500/mo revenue → Covers 1,000+ users
+- **100 paying users** = $1,000/mo revenue → Significant profit
+
+**Conversion Rate Assumptions:**
+- 10% free → Pro conversion = Profitable at 100 free users
+- 5% free → Pro conversion = Need 200 free users to break even
+
+---
+
+## Implementation Plan
+
+### Phase 1: Setup & Configuration (Week 1)
+
+**Duration:** 3-5 days
+
+#### 1.1 Clerk Setup
+
+**Tasks:**
+- [ ] Create Clerk account at https://clerk.com
+- [ ] Create new application in Clerk dashboard
+- [ ] Configure OAuth providers:
+  - [ ] Enable Google OAuth
+  - [ ] Enable email/password auth
+- [ ] Set up Stripe integration:
+  - [ ] Connect Stripe account
+  - [ ] Create subscription products
+  - [ ] Configure pricing tiers (Free, Pro, Team)
+- [ ] Configure webhooks:
+  - [ ] User created → Sync to Supabase
+  - [ ] User updated → Update Supabase
+  - [ ] User deleted → CASCADE delete in Supabase
+  - [ ] Subscription changed → Update user tier
+- [ ] Copy API keys to `.env`:
+  ```env
+  VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+  CLERK_SECRET_KEY=sk_test_...
+  CLERK_WEBHOOK_SECRET=whsec_...
+  ```
+
+**Deliverables:**
+- ✅ Clerk application configured
+- ✅ OAuth providers enabled
+- ✅ Stripe connected
+- ✅ Webhooks configured
+- ✅ API keys in `.env`
+
+#### 1.2 Supabase Setup
+
+**Tasks:**
+- [ ] Create Supabase account at https://supabase.com
+- [ ] Create new project
+- [ ] Create database schema:
+  - [ ] Run SQL migration for `users` table
+  - [ ] Run SQL migration for `user_actions` table
+  - [ ] Run SQL migration for `user_preferences` table
+  - [ ] Run SQL migration for `time_savings_summary` table
+- [ ] Configure Row-Level Security (RLS):
+  - [ ] Enable RLS on all tables
+  - [ ] Create policies for SELECT, INSERT, UPDATE, DELETE
+- [ ] Set up Clerk <> Supabase JWT integration:
+  - [ ] Get Clerk JWKS endpoint
+  - [ ] Configure in Supabase dashboard
+- [ ] Create database indexes for performance
+- [ ] Copy API keys to `.env`:
+  ```env
+  VITE_SUPABASE_URL=https://xxx.supabase.co
+  VITE_SUPABASE_ANON_KEY=eyJhbGc...
+  SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...  # Backend only
+  ```
+
+**Deliverables:**
+- ✅ Supabase project created
+- ✅ Database schema deployed
+- ✅ RLS policies active
+- ✅ Clerk JWT integration working
+- ✅ API keys in `.env`
+
+#### 1.3 Environment Variables
+
+**Update `.env` file:**
+
+```env
+# Port
+VITE_PORT=3001
+
+# Google OAuth (existing)
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_SECRET=your-client-secret
+VITE_REDIRECT_URI=http://localhost:3001
+
+# Clerk (new)
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
+
+# Supabase (new)
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGc...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+```
+
+**Create `.env.example` for documentation:**
+
+```env
+# Port
+VITE_PORT=3001
+
+# Google OAuth
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_SECRET=your-client-secret
+VITE_REDIRECT_URI=http://localhost:3001
+
+# Clerk
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your-key
+CLERK_SECRET_KEY=sk_test_your-key
+CLERK_WEBHOOK_SECRET=whsec_your-secret
+
+# Supabase
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+---
+
+### Phase 2: Frontend Integration (Week 1-2)
+
+**Duration:** 5-7 days
+
+#### 2.1 Install Dependencies
+
+```bash
+npm install @clerk/clerk-react @supabase/supabase-js
+```
+
+#### 2.2 Wrap App with Clerk Provider
+
+**Update `src/main.tsx`:**
+
+```typescript
+import { StrictMode } from 'react';
+import ReactDOM from 'react-dom/client';
+import { ClerkProvider } from '@clerk/clerk-react';
+import './index.css';
+import App from './App';
+
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!clerkPubKey) {
+  throw new Error('Missing Clerk Publishable Key');
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
+root.render(
+  <StrictMode>
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <App />
+    </ClerkProvider>
+  </StrictMode>
+);
+```
+
+#### 2.3 Create Auth Components
+
+**Tasks:**
+- [ ] Create `src/components/SignInPage.tsx`
+- [ ] Create `src/components/SignUpPage.tsx`
+- [ ] Create `src/components/UserProfile.tsx`
+- [ ] Create `src/components/ProtectedRoute.tsx`
+
+**Example `ProtectedRoute.tsx`:**
+
+```typescript
+import { useAuth } from '@clerk/clerk-react';
+import { Navigate } from 'react-router-dom';
+
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isSignedIn, isLoaded } = useAuth();
+
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isSignedIn) {
+    return <Navigate to="/sign-in" replace />;
+  }
+
+  return <>{children}</>;
+}
+```
+
+#### 2.4 Update Routing
+
+**Install React Router:**
+
+```bash
+npm install react-router-dom
+```
+
+**Update `src/App.tsx`:**
+
+```typescript
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
+import SignInPage from './components/SignInPage';
+import SignUpPage from './components/SignUpPage';
+import CalendarDashboard from './components/CalendarDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+
+function App() {
+  const { isSignedIn } = useAuth();
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/sign-in" element={<SignInPage />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <CalendarDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/"
+          element={
+            isSignedIn ? <Navigate to="/dashboard" /> : <Navigate to="/sign-in" />
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+```
+
+#### 2.5 Initialize Supabase Client
+
+**Create `src/lib/supabase.ts`:**
+
+```typescript
+import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '@clerk/clerk-react';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+/**
+ * Hook to get authenticated Supabase client
+ * Uses Clerk JWT for authentication
+ */
+export function useSupabaseClient() {
+  const { getToken } = useAuth();
+
+  const getAuthenticatedClient = async () => {
+    const token = await getToken({ template: 'supabase' });
+
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    });
+  };
+
+  return getAuthenticatedClient;
+}
+```
+
+#### 2.6 Migrate localStorage to Supabase
+
+**Create migration utility `src/utils/migrateLocalStorage.ts`:**
+
+```typescript
+import { useSupabaseClient } from '../lib/supabase';
+
+export async function migrateLocalStorageToSupabase() {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  // Check if already migrated
+  const migrated = localStorage.getItem('migrated_to_supabase');
+  if (migrated === 'true') {
+    return { alreadyMigrated: true };
+  }
+
+  // Get localStorage data
+  const actionsJson = localStorage.getItem('calfix_user_actions');
+  if (!actionsJson) {
+    localStorage.setItem('migrated_to_supabase', 'true');
+    return { migratedCount: 0 };
+  }
+
+  const { actions } = JSON.parse(actionsJson);
+
+  // Insert into Supabase
+  const { data, error } = await supabase
+    .from('user_actions')
+    .insert(actions);
+
+  if (error) {
+    console.error('Migration error:', error);
+    throw error;
+  }
+
+  // Mark as migrated
+  localStorage.setItem('migrated_to_supabase', 'true');
+
+  // Keep localStorage as backup for now
+  // localStorage.removeItem('calfix_user_actions');
+
+  return { migratedCount: actions.length };
+}
+```
+
+**Prompt user on first login:**
+
+```typescript
+// In CalendarDashboard.tsx or App.tsx
+useEffect(() => {
+  const runMigration = async () => {
+    try {
+      const result = await migrateLocalStorageToSupabase();
+      if (result.migratedCount > 0) {
+        alert(`Migrated ${result.migratedCount} actions to cloud storage!`);
+      }
+    } catch (error) {
+      console.error('Migration failed:', error);
+    }
+  };
+
+  runMigration();
+}, []);
+```
+
+**Deliverables:**
+- ✅ Clerk Provider integrated
+- ✅ Auth pages created
+- ✅ Protected routes working
+- ✅ Supabase client initialized
+- ✅ Migration utility ready
+
+---
+
+### Phase 3: User Actions Service (Week 2)
+
+**Duration:** 3-5 days
+
+#### 3.1 Create Supabase User Actions Service
+
+**Create `src/services/userActionsSupabase.ts`:**
+
+```typescript
+import { useSupabaseClient } from '../lib/supabase';
+
+export interface UserAction {
+  id?: string;
+  user_id?: string;
+  event_id: string;
+  action_type: 'buffer_added' | 'meet_link_added' | 'travel_block_added' |
+                'alert_dismissed' | 'alert_snoozed' | 'focus_time_added' |
+                'double_booking_resolved' | 'event_moved';
+  timestamp?: Date;
+  metadata?: {
+    timeSaved?: number;
+    snoozedUntil?: number;
+    alertType?: string;
+    [key: string]: any;
+  };
+}
+
+/**
+ * Record a user action in Supabase
+ */
+export async function recordAction(
+  eventId: string,
+  actionType: UserAction['action_type'],
+  metadata?: UserAction['metadata']
+) {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .insert({
+      event_id: eventId,
+      action_type: actionType,
+      metadata: metadata || {},
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Get all user actions
+ */
+export async function getUserActions(limit = 1000): Promise<UserAction[]> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .select('*')
+    .order('timestamp', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Check if alert has been dismissed
+ */
+export async function isAlertDismissed(
+  eventId: string,
+  alertType: string
+): Promise<boolean> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('action_type', 'alert_dismissed')
+    .eq('metadata->>alertType', alertType)
+    .limit(1);
+
+  if (error) throw error;
+  return (data?.length || 0) > 0;
+}
+
+/**
+ * Check if alert is currently snoozed
+ */
+export async function isAlertSnoozed(
+  eventId: string,
+  alertType: string
+): Promise<boolean> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+  const now = Date.now();
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .select('metadata')
+    .eq('event_id', eventId)
+    .eq('action_type', 'alert_snoozed')
+    .eq('metadata->>alertType', alertType)
+    .gt('metadata->snoozedUntil', now)
+    .limit(1);
+
+  if (error) throw error;
+  return (data?.length || 0) > 0;
+}
+
+/**
+ * Get total time saved
+ */
+export async function getTotalTimeSaved(): Promise<number> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .select('metadata')
+    .not('metadata->>timeSaved', 'is', null);
+
+  if (error) throw error;
+
+  return (data || []).reduce((total, action) => {
+    return total + (action.metadata?.timeSaved || 0);
+  }, 0);
+}
+
+/**
+ * Get time saved in date range
+ */
+export async function getTimeSavedInPeriod(
+  startDate: Date,
+  endDate: Date
+): Promise<number> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .select('metadata')
+    .gte('timestamp', startDate.toISOString())
+    .lte('timestamp', endDate.toISOString())
+    .not('metadata->>timeSaved', 'is', null);
+
+  if (error) throw error;
+
+  return (data || []).reduce((total, action) => {
+    return total + (action.metadata?.timeSaved || 0);
+  }, 0);
+}
+
+/**
+ * Get action statistics by type
+ */
+export async function getActionStats(): Promise<Record<string, number>> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .select('action_type');
+
+  if (error) throw error;
+
+  const stats: Record<string, number> = {};
+  (data || []).forEach(action => {
+    stats[action.action_type] = (stats[action.action_type] || 0) + 1;
+  });
+
+  return stats;
+}
+
+/**
+ * Clean up old actions (older than 90 days)
+ */
+export async function cleanupOldActions(): Promise<number> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 90);
+
+  const { data, error } = await supabase
+    .from('user_actions')
+    .delete()
+    .lt('timestamp', cutoffDate.toISOString())
+    .select();
+
+  if (error) throw error;
+  return data?.length || 0;
+}
+```
+
+#### 3.2 Update Components to Use Supabase
+
+**Tasks:**
+- [ ] Replace `recordAction()` calls with Supabase version
+- [ ] Update `isAlertDismissed()` checks
+- [ ] Update time savings display
+- [ ] Add loading states for async operations
+- [ ] Add error handling for network failures
+- [ ] Implement optimistic updates for better UX
+
+**Example optimistic update:**
+
+```typescript
+// Optimistically update UI
+setActions(prev => [...prev, newAction]);
+
+try {
+  // Save to Supabase
+  await recordAction(eventId, actionType, metadata);
+} catch (error) {
+  // Rollback on error
+  setActions(prev => prev.filter(a => a !== newAction));
+  alert('Failed to save action. Please try again.');
+}
+```
+
+**Deliverables:**
+- ✅ Supabase user actions service created
+- ✅ Components updated to use Supabase
+- ✅ Loading states added
+- ✅ Error handling implemented
+- ✅ Optimistic updates working
+
+---
+
+### Phase 4: User Preferences (Week 2)
+
+**Duration:** 2-3 days
+
+#### 4.1 Create Preferences Service
+
+**Create `src/services/userPreferences.ts`:**
+
+```typescript
+import { useSupabaseClient } from '../lib/supabase';
+
+export interface UserPreferences {
+  user_id?: string;
+  home_timezone: string;
+  home_location?: {
+    city: string;
+    country: string;
+    timezone: string;
+    flag: string;
+  };
+  business_hours?: {
+    start: string;
+    end: string;
+  };
+  notification_settings?: {
+    emailAlerts: boolean;
+    snoozeDuration: number;
+  };
+  theme: 'light' | 'dark' | 'auto';
+  default_view: 'today' | 'tomorrow' | 'week' | 'month';
+}
+
+export async function getUserPreferences(): Promise<UserPreferences | null> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .select('*')
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+    throw error;
+  }
+
+  return data;
+}
+
+export async function updateUserPreferences(
+  prefs: Partial<UserPreferences>
+): Promise<UserPreferences> {
+  const getClient = useSupabaseClient();
+  const supabase = await getClient();
+
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .upsert(prefs)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+```
+
+#### 4.2 Create Settings Page
+
+**Create `src/components/SettingsPage.tsx`:**
+
+- Timezone selector
+- Home location configurator
+- Business hours picker
+- Notification preferences
+- Theme switcher
+- Default view selector
+
+#### 4.3 Add Real-Time Sync
+
+**Use Supabase real-time subscriptions for cross-device sync:**
+
+```typescript
+useEffect(() => {
+  const getClient = useSupabaseClient();
+
+  const setupSubscription = async () => {
+    const supabase = await getClient();
+
+    const subscription = supabase
+      .channel('user_preferences_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_preferences',
+        },
+        (payload) => {
+          console.log('Preferences updated on another device:', payload);
+          setPreferences(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  };
+
+  setupSubscription();
+}, []);
+```
+
+**Deliverables:**
+- ✅ Preferences service created
+- ✅ Settings page UI built
+- ✅ Real-time sync working
+- ✅ Cross-device updates instant
+
+---
+
+### Phase 5: Billing Integration (Week 3)
+
+**Duration:** 3-5 days
+
+#### 5.1 Configure Stripe in Clerk
+
+**Tasks:**
+- [ ] Connect Stripe account to Clerk
+- [ ] Create subscription products in Stripe:
+  - [ ] Free tier ($0/month)
+  - [ ] Pro tier ($10/month)
+  - [ ] Team tier ($20/month)
+- [ ] Configure Clerk to sync subscription status
+- [ ] Set up webhooks for subscription events
+
+#### 5.2 Create Feature Gates
+
+**Create `src/lib/featureGates.ts`:**
+
+```typescript
+import { useUser } from '@clerk/clerk-react';
+
+export type SubscriptionTier = 'free' | 'pro' | 'team';
+
+export interface FeatureAccess {
+  // Free tier
+  basicAnalytics: boolean;
+  manualActions: boolean;
+
+  // Pro tier
+  advancedAnalytics: boolean;
+  autoOptimization: boolean;
+  timeTracking: boolean;
+
+  // Team tier
+  multiCalendar: boolean;
+  teamScheduling: boolean;
+  apiAccess: boolean;
+}
+
+const featureMatrix: Record<SubscriptionTier, FeatureAccess> = {
+  free: {
+    basicAnalytics: true,
+    manualActions: true,
+    advancedAnalytics: false,
+    autoOptimization: false,
+    timeTracking: false,
+    multiCalendar: false,
+    teamScheduling: false,
+    apiAccess: false,
+  },
+  pro: {
+    basicAnalytics: true,
+    manualActions: true,
+    advancedAnalytics: true,
+    autoOptimization: true,
+    timeTracking: true,
+    multiCalendar: false,
+    teamScheduling: false,
+    apiAccess: false,
+  },
+  team: {
+    basicAnalytics: true,
+    manualActions: true,
+    advancedAnalytics: true,
+    autoOptimization: true,
+    timeTracking: true,
+    multiCalendar: true,
+    teamScheduling: true,
+    apiAccess: true,
+  },
+};
+
+export function useFeatureAccess(): FeatureAccess {
+  const { user } = useUser();
+  const tier = (user?.publicMetadata?.subscriptionTier as SubscriptionTier) || 'free';
+  return featureMatrix[tier];
+}
+
+export function useCanAccessFeature(feature: keyof FeatureAccess): boolean {
+  const access = useFeatureAccess();
+  return access[feature];
+}
+```
+
+#### 5.3 Add Upgrade CTAs
+
+**Create upgrade prompts for premium features:**
+
+```typescript
+function AdvancedAnalyticsSection() {
+  const canAccess = useCanAccessFeature('advancedAnalytics');
+
+  if (!canAccess) {
+    return (
+      <div className="upgrade-prompt">
+        <h3>Advanced Analytics</h3>
+        <p>Unlock detailed insights and trends</p>
+        <button onClick={() => window.location.href = '/upgrade'}>
+          Upgrade to Pro
+        </button>
+      </div>
+    );
+  }
+
+  return <AdvancedAnalytics />;
+}
+```
+
+#### 5.4 Create Subscription Management Page
+
+**Create `src/components/SubscriptionPage.tsx`:**
+
+- Display current plan
+- Show feature comparison
+- Upgrade/downgrade buttons
+- Stripe checkout integration
+- Billing history
+
+**Deliverables:**
+- ✅ Stripe configured in Clerk
+- ✅ Feature gates implemented
+- ✅ Upgrade CTAs added
+- ✅ Subscription management page built
+- ✅ Checkout flow working
+
+---
+
+### Phase 6: Testing & Deployment (Week 3)
+
+**Duration:** 5-7 days
+
+#### 6.1 Testing Checklist
+
+**Authentication:**
+- [ ] Sign up with email works
+- [ ] Sign up with Google works
+- [ ] Sign in with email works
+- [ ] Sign in with Google works
+- [ ] Password reset works
+- [ ] User profile updates
+- [ ] Sign out works
+- [ ] Session persistence across page refresh
+
+**Google Calendar Integration:**
+- [ ] OAuth flow after Clerk auth works
+- [ ] Calendar data fetches correctly
+- [ ] Actions modify calendar successfully
+- [ ] Tokens refresh automatically
+- [ ] Multiple calendars supported
+
+**User Actions:**
+- [ ] Actions saved to Supabase
+- [ ] Actions retrieved correctly
+- [ ] Alert dismissal works
+- [ ] Alert snoozing works
+- [ ] Time savings calculated correctly
+- [ ] Cross-device sync works
+
+**Preferences:**
+- [ ] Settings save to Supabase
+- [ ] Settings load on app start
+- [ ] Real-time sync across devices
+- [ ] Theme changes apply immediately
+
+**Billing:**
+- [ ] Stripe checkout works
+- [ ] Subscription created in Clerk
+- [ ] Feature gates enforce correctly
+- [ ] Upgrade/downgrade works
+- [ ] Webhook events processed
+
+**Security:**
+- [ ] RLS policies prevent cross-user access
+- [ ] JWT validation works
+- [ ] Unauthorized requests blocked
+- [ ] HTTPS enforced in production
+
+**Edge Cases:**
+- [ ] Offline mode (localStorage fallback)
+- [ ] Network error handling
+- [ ] Loading states show correctly
+- [ ] Empty states handled
+- [ ] Large datasets perform well
+
+#### 6.2 Performance Testing
+
+**Metrics to test:**
+- Page load time < 2 seconds
+- Calendar fetch < 1 second
+- Action save < 500ms
+- Real-time sync latency < 200ms
+
+**Tools:**
+- Lighthouse audit
+- Chrome DevTools Performance tab
+- Supabase query analyzer
+
+#### 6.3 Deployment
+
+**Staging Environment:**
+
+```bash
+# Deploy to Vercel staging
+vercel --prod --env-file .env.staging
+
+# Update environment variables in Vercel dashboard
+# - VITE_CLERK_PUBLISHABLE_KEY
+# - VITE_SUPABASE_URL
+# - VITE_SUPABASE_ANON_KEY
+# - VITE_GOOGLE_CLIENT_ID
+# - VITE_GOOGLE_CLIENT_SECRET
+# - VITE_REDIRECT_URI (https://staging.calfix.com)
+```
+
+**Production Environment:**
+
+```bash
+# Deploy to Vercel production
+vercel --prod
+
+# Update production environment variables
+# - Switch to production Clerk keys
+# - Switch to production Supabase keys
+# - Update Google OAuth redirect URI
+```
+
+**Post-Deployment:**
+- [ ] Verify all features work in production
+- [ ] Test payment flow with real Stripe
+- [ ] Monitor error logs
+- [ ] Check analytics
+
+**Deliverables:**
+- ✅ All tests passing
+- ✅ Performance benchmarks met
+- ✅ Staging deployed and tested
+- ✅ Production deployed
+- ✅ Monitoring set up
+
+---
+
+## Deployment Strategy
+
+### Environments
+
+| Environment | URL | Purpose | Clerk | Supabase | Google OAuth |
+|-------------|-----|---------|-------|----------|--------------|
+| **Development** | localhost:3001 | Local testing | Test mode | Dev project | localhost redirect |
+| **Staging** | staging.calfix.com | Pre-production | Test mode | Staging project | Staging redirect |
+| **Production** | calfix.com | Live users | Production | Production project | Production redirect (verified) |
+
+### Deployment Checklist
+
+**Before First Production Deploy:**
+
+- [ ] Purchase domain (calfix.com)
+- [ ] Configure DNS (Vercel)
+- [ ] Set up SSL (automatic with Vercel)
+- [ ] Submit Google OAuth for verification (2-4 weeks)
+- [ ] Create privacy policy page
+- [ ] Create terms of service page
+- [ ] Update CLAUDE.md with new architecture
+- [ ] Write user documentation
+- [ ] Set up error tracking (Sentry)
+- [ ] Set up analytics (Posthog, Mixpanel, or Google Analytics)
+
+**Continuous Deployment:**
+
+- Set up GitHub Actions or Vercel Git integration
+- Automatic deploys on push to `main` branch
+- Preview deploys for pull requests
+
+---
+
+## Risk Mitigation
+
+### Risk 1: Data Breach of Supabase
+
+**Likelihood:** Low (Supabase has strong security)
+**Impact:** Medium (only event IDs exposed, not calendar content)
+
+**Mitigation:**
+- Only store event IDs, never calendar content
+- Row-Level Security prevents cross-user access
+- Regular security audits
+- Encrypt sensitive fields if adding PII later
+- Monitor for suspicious activity
+
+**Response Plan:**
+- Immediate password reset for all users
+- Notify affected users within 72 hours (GDPR requirement)
+- Investigate breach vector
+- Implement additional security measures
+
+### Risk 2: Vendor Lock-In
+
+**Likelihood:** Medium
+**Impact:** High (difficult to migrate)
+
+**Mitigation:**
+- **Clerk:** Has export API, can migrate to Auth0 or Supabase Auth
+- **Supabase:** Open-source, can self-host if needed
+- **Google Calendar API:** Standard API, not locked in
+- Regular data exports for backup
+
+**Response Plan:**
+- Maintain data export functionality
+- Document migration procedures
+- Keep schema compatible with other databases
+
+### Risk 3: Cost Explosion
+
+**Likelihood:** Medium (as you scale)
+**Impact:** High (erodes profit margins)
+
+**Mitigation:**
+- Set up billing alerts in Clerk/Supabase dashboards
+- Implement rate limiting (max API calls per user)
+- Archive old user actions (>90 days) to cold storage
+- Monitor Monthly Active Users (MAU) closely
+- Optimize database queries
+
+**Response Plan:**
+- Increase prices if necessary
+- Optimize infrastructure
+- Consider self-hosting Supabase at scale
+
+### Risk 4: Sync Conflicts
+
+**Likelihood:** Medium (multi-device users)
+**Impact:** Low (user frustration)
+
+**Mitigation:**
+- Use Supabase real-time subscriptions for instant sync
+- Implement last-write-wins for preferences
+- Show sync status indicator in UI
+- Handle offline mode gracefully
+
+**Response Plan:**
+- Add conflict resolution UI
+- Allow manual refresh
+- Log sync errors for debugging
+
+### Risk 5: Google OAuth Verification Rejected
+
+**Likelihood:** Low (if following guidelines)
+**Impact:** High (cannot go to production)
+
+**Mitigation:**
+- Follow all Google guidelines carefully
+- Create high-quality demonstration video
+- Write clear, accurate privacy policy
+- Respond quickly to Google feedback
+- Prepare alternative auth methods (email/password)
+
+**Response Plan:**
+- Address Google's concerns immediately
+- Resubmit with requested changes
+- Use Testing mode with manual user approval as fallback
+
+---
+
+## Privacy Policy Updates
+
+Since you're now storing user data, update your privacy policy to reflect:
+
+### What You Collect
+
+**From Clerk:**
+- Email address
+- Name
+- OAuth provider info (if using Google sign-in)
+
+**From Google Calendar:**
+- Calendar event IDs (only IDs, not content)
+- No event titles, descriptions, or attendee information
+
+**User-Provided:**
+- Timezone preferences
+- Business hours settings
+- UI preferences (theme, default view)
+
+### How You Use Data
+
+**Event IDs:**
+- Track which events had optimizations applied
+- Implement alert snoozing (dismiss permanently or temporarily)
+- Calculate time savings statistics
+
+**Preferences:**
+- Personalize user experience
+- Sync settings across devices
+
+**Email:**
+- Account management
+- Subscription billing
+- Optional notifications (user can opt out)
+
+### Data Storage & Security
+
+- User data stored in Supabase (PostgreSQL database)
+- Row-Level Security prevents cross-user access
+- Calendar event data processed **client-side only**
+- No calendar content ever stored on servers
+- Data encrypted in transit (HTTPS) and at rest
+
+### Data Retention
+
+- User actions: 90 days, then archived
+- Preferences: Until account deletion
+- Aggregated statistics: Indefinite (anonymized)
+- Account deletion: All user data CASCADE deleted within 30 days
+
+### Third-Party Services
+
+- **Clerk:** User authentication and session management
+- **Supabase:** Database hosting and real-time sync
+- **Google Calendar API:** Calendar data access (direct, not via CalFix servers)
+- **Stripe:** Payment processing (via Clerk integration)
+
+### User Rights (GDPR/CCPA)
+
+- **Right to access:** Export all data via Settings page
+- **Right to delete:** Delete account and all data permanently
+- **Right to portability:** Download data in JSON format
+- **Right to rectification:** Update preferences anytime
+
+### Contact Information
+
+Include email for privacy inquiries: privacy@calfix.com
+
+---
+
+## Timeline & Next Steps
+
+### Development Timeline
+
+| Week | Phase | Key Milestones |
+|------|-------|----------------|
+| **Week 1** | Setup + Frontend | Clerk & Supabase configured, auth flows working |
+| **Week 2** | User Actions + Prefs | Data persistence working, settings page complete |
+| **Week 3** | Billing + Testing | Stripe integrated, all tests passing |
+| **Week 4** | Deployment + Polish | Staging deployed, production ready |
+
+**Total: 4 weeks** for one developer
+
+### Immediate Next Steps
+
+**This Week:**
+1. Sign up for Clerk account
+2. Sign up for Supabase account
+3. Experiment with both platforms
+4. Review pricing and free tier limits
+
+**Next Week:**
+1. Start Phase 1 (Setup & Configuration)
+2. Create database schema in Supabase
+3. Configure Clerk webhooks
+4. Set up development environment
+
+**Month 1 Goal:** Complete implementation, deploy to staging
+
+**Month 2 Goal:** User testing, bug fixes, deploy to production
+
+**Month 3 Goal:** Marketing, user acquisition, iterate based on feedback
+
+### Success Metrics
+
+**Technical:**
+- [ ] 100% uptime in production
+- [ ] < 2 second page load time
+- [ ] < 500ms action save time
+- [ ] Zero cross-user data leaks
+- [ ] All tests green
+
+**Business:**
+- [ ] 100 free users in Month 1
+- [ ] 10 paying users in Month 2
+- [ ] 50 paying users in Month 3
+- [ ] 5% free → paid conversion rate
+- [ ] $500/month revenue by Month 3
+
+---
+
+## Appendix
+
+### Alternative Architectures Considered
+
+#### Option 1: Supabase Auth Instead of Clerk
+
+**Pros:**
+- No per-user costs (save $0.02/user)
+- Tighter integration with Supabase
+- Open-source, can self-host
+
+**Cons:**
+- More code to write (auth UI, email templates)
+- No built-in Stripe integration
+- Less polished developer experience
+
+**Decision:** Clerk chosen for speed-to-market and Stripe integration. Can migrate later if costs become issue.
+
+#### Option 2: Firebase Instead of Supabase
+
+**Pros:**
+- Excellent real-time sync
+- Google ecosystem integration
+- Free tier generous
+
+**Cons:**
+- NoSQL (Firestore) - harder complex queries
+- Vendor lock-in to Google
+- Pricing can scale unpredictably
+
+**Decision:** Supabase chosen for PostgreSQL and self-hosting option.
+
+#### Option 3: Build Custom Backend
+
+**Pros:**
+- Complete control
+- No per-user costs
+- Customizable
+
+**Cons:**
+- 10x more development time
+- Need to maintain infrastructure
+- Security responsibility
+- Hosting costs
+
+**Decision:** Not worth it for MVP. Use managed services to ship faster.
+
+### SQL Migrations
+
+**Complete SQL schema to run in Supabase:**
+
+```sql
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Users table (synced from Clerk)
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  subscription_tier TEXT DEFAULT 'free',
+  subscription_status TEXT,
+  google_calendar_connected BOOLEAN DEFAULT false
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_subscription ON users(subscription_tier, subscription_status);
+
+-- User actions table
+CREATE TABLE user_actions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL,
+  action_type TEXT NOT NULL,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  metadata JSONB
+);
+
+CREATE INDEX idx_user_actions_user_id ON user_actions(user_id);
+CREATE INDEX idx_user_actions_event_id ON user_actions(event_id);
+CREATE INDEX idx_user_actions_timestamp ON user_actions(timestamp DESC);
+CREATE INDEX idx_user_actions_type ON user_actions(action_type);
+
+-- User preferences table
+CREATE TABLE user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  home_timezone TEXT DEFAULT 'America/Los_Angeles',
+  home_location JSONB,
+  business_hours JSONB,
+  notification_settings JSONB,
+  theme TEXT DEFAULT 'light',
+  default_view TEXT DEFAULT 'today',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Time savings summary table
+CREATE TABLE time_savings_summary (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  total_minutes_saved INTEGER DEFAULT 0,
+  actions_count INTEGER DEFAULT 0,
+  action_breakdown JSONB,
+  UNIQUE(user_id, period_start, period_end)
+);
+
+CREATE INDEX idx_time_savings_user_period ON time_savings_summary(user_id, period_start, period_end);
+
+-- Enable Row-Level Security
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE time_savings_summary ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for user_actions
+CREATE POLICY "Users can read own actions" ON user_actions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own actions" ON user_actions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own actions" ON user_actions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own actions" ON user_actions
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- RLS Policies for user_preferences
+CREATE POLICY "Users can read own preferences" ON user_preferences
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own preferences" ON user_preferences
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own preferences" ON user_preferences
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- RLS Policies for time_savings_summary
+CREATE POLICY "Users can read own summaries" ON time_savings_summary
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own summaries" ON time_savings_summary
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own summaries" ON time_savings_summary
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Trigger to auto-update updated_at
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_preferences_updated_at BEFORE UPDATE ON user_preferences
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+### Useful Resources
+
+**Clerk:**
+- Documentation: https://clerk.com/docs
+- React quickstart: https://clerk.com/docs/quickstarts/react
+- Stripe integration: https://clerk.com/docs/payments/stripe
+
+**Supabase:**
+- Documentation: https://supabase.com/docs
+- Auth with Clerk: https://supabase.com/docs/guides/auth/third-party/clerk
+- RLS guide: https://supabase.com/docs/guides/auth/row-level-security
+
+**Google Calendar API:**
+- API reference: https://developers.google.com/calendar/api/v3/reference
+- OAuth verification: https://support.google.com/cloud/answer/9110914
+
+**General:**
+- GDPR compliance: https://gdpr.eu/
+- CCPA compliance: https://oag.ca.gov/privacy/ccpa
+
+---
+
+## Document Metadata
+
+**Version:** 1.0
+**Created:** October 2025
+**Last Updated:** October 2025
+**Next Review:** After Phase 1 completion
+
+**Change Log:**
+- v1.0 - Initial document created
+
+**Status:** ✅ Ready for implementation
