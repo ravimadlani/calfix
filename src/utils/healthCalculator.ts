@@ -347,7 +347,7 @@ export const detectDoubleBookings = (events) => {
   const sortedEvents = [...timedEvents].sort((a, b) => {
     const aStart = getEventStartTime(a);
     const bStart = getEventStartTime(b);
-    return aStart - bStart;
+    return aStart.getTime() - bStart.getTime();
   });
 
   // Check each pair of events for overlap
@@ -376,9 +376,9 @@ export const detectDoubleBookings = (events) => {
         conflicts.push({
           event1,
           event2,
-          overlapStart: new Date(Math.max(start1, start2)),
-          overlapEnd: new Date(Math.min(end1, end2)),
-          overlapMinutes: Math.round((Math.min(end1, end2) - Math.max(start1, start2)) / (1000 * 60)),
+          overlapStart: new Date(Math.max(start1.getTime(), start2.getTime())),
+          overlapEnd: new Date(Math.min(end1.getTime(), end2.getTime())),
+          overlapMinutes: Math.round((Math.min(end1.getTime(), end2.getTime()) - Math.max(start1.getTime(), start2.getTime())) / (1000 * 60)),
           isMeeting1,
           isMeeting2
         });
@@ -562,7 +562,7 @@ export const findFlightsWithoutTravelBlocks = (events) => {
   const sortedEvents = [...events].sort((a, b) => {
     const aTime = getEventStartTime(a);
     const bTime = getEventStartTime(b);
-    return aTime - bTime;
+    return aTime.getTime() - bTime.getTime();
   });
 
   const flightsNeedingTravelBlocks = [];
@@ -591,7 +591,7 @@ export const findFlightsWithoutTravelBlocks = (events) => {
       const isTravelBlock = eSummary.includes('travel') || eSummary.includes('transit');
 
       // Check if this travel block ends at or within 1 minute of the flight start
-      const timeDiff = Math.abs(flightStart - eEnd) / (1000 * 60); // minutes
+      const timeDiff = Math.abs(flightStart.getTime() - eEnd.getTime()) / (1000 * 60); // minutes
 
       if (isTravelBlock && timeDiff <= 1 && eEnd <= flightStart) {
         hasTravelBlockBefore = true;
@@ -612,7 +612,7 @@ export const findFlightsWithoutTravelBlocks = (events) => {
       const isTravelBlock = eSummary.includes('travel') || eSummary.includes('transit');
 
       // Check if this travel block starts at or within 1 minute of the flight end
-      const timeDiff = Math.abs(eStart - flightEnd) / (1000 * 60); // minutes
+      const timeDiff = Math.abs(eStart.getTime() - flightEnd.getTime()) / (1000 * 60); // minutes
 
       if (isTravelBlock && timeDiff <= 1 && eStart >= flightEnd) {
         hasTravelBlockAfter = true;
@@ -741,7 +741,7 @@ export const findInternationalFlightsWithoutLocation = (events) => {
   const sortedEvents = [...events].sort((a, b) => {
     const aTime = getEventStartTime(a);
     const bTime = getEventStartTime(b);
-    return aTime - bTime;
+    return aTime.getTime() - bTime.getTime();
   });
 
   const flightsNeedingLocation = [];
@@ -793,7 +793,7 @@ export const findInternationalFlightsWithoutLocation = (events) => {
           const nextFromData = airportData[nextAirports.from];
           const nextToData = airportData[nextAirports.to];
           const nextFlightTime = getEventStartTime(nextFlight);
-          const timeDiff = (nextFlightTime - new Date(arrivalTime)) / (1000 * 60 * 60);
+          const timeDiff = (nextFlightTime.getTime() - new Date(arrivalTime).getTime()) / (1000 * 60 * 60);
 
           // If next flight starts from where this lands, within 24h, and goes home
           if (nextFromData?.city === toData.city &&
@@ -828,7 +828,7 @@ export const findInternationalFlightsWithoutLocation = (events) => {
           const nextFlightTime = getEventStartTime(nextFlight);
 
           // Check if this is a connecting flight (starts from where we just arrived, within 24 hours)
-          const timeDiff = (nextFlightTime - new Date(arrivalTime)) / (1000 * 60 * 60); // hours
+          const timeDiff = (nextFlightTime.getTime() - new Date(arrivalTime).getTime()) / (1000 * 60 * 60); // hours
           if (nextFromData?.city === finalDestinationData.city && timeDiff < 24 && timeDiff > 0) {
             console.log(`  Found connecting flight: ${nextAirports.from} → ${nextAirports.to} (${timeDiff.toFixed(1)}h later)`);
             finalDestinationData = nextToData;
@@ -881,7 +881,7 @@ export const findInternationalFlightsWithoutLocation = (events) => {
                   const nextToData = airportData[nextAirports.to];
                   const nextFlightTime = getEventStartTime(nextFlight);
                   const thisFlightTime = getEventStartTime(futureEvent);
-                  const timeDiff = (nextFlightTime - thisFlightTime) / (1000 * 60 * 60);
+                  const timeDiff = (nextFlightTime.getTime() - thisFlightTime.getTime()) / (1000 * 60 * 60);
 
                   // If next flight is from where this flight lands, and goes home, within 24h
                   if (nextFromData?.city === futureToData?.city &&
@@ -1055,7 +1055,7 @@ export const findMeetingsOutsideBusinessHours = (events) => {
   const sortedEvents = [...events].sort((a, b) => {
     const aTime = getEventStartTime(a);
     const bTime = getEventStartTime(b);
-    return aTime - bTime;
+    return aTime.getTime() - bTime.getTime();
   });
 
   const meetingsOutOfHours = [];

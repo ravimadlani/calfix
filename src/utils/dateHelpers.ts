@@ -189,7 +189,7 @@ export const calculateDuration = (startTime, endTime) => {
 
   const start = new Date(startTime);
   const end = new Date(endTime);
-  const diffMs = end - start;
+  const diffMs = end.getTime() - start.getTime();
 
   return Math.round(diffMs / (1000 * 60)); // Convert to minutes
 };
@@ -210,7 +210,7 @@ export const calculateGap = (event1, event2) => {
 
   const endTime = new Date(end1);
   const startTime = new Date(start2);
-  const diffMs = startTime - endTime;
+  const diffMs = startTime.getTime() - endTime.getTime();
 
   return Math.round(diffMs / (1000 * 60)); // Convert to minutes
 };

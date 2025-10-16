@@ -10,9 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.53.1",
+    "@supabase/supabase-js": "^2.75.0",
     "date-fns": "^4.1.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.4",
+    "svix": "^1.77.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
@@ -20,6 +24,7 @@
     "@types/node": "^24.8.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
+    "@vercel/node": "^5.4.0",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.36.0",
