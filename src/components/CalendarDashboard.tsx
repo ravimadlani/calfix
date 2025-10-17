@@ -763,6 +763,13 @@ const CalendarDashboard = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
           <div className="flex gap-3">
+            <a
+              href="/admin"
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              <span>⚙️</span>
+              Admin
+            </a>
             <button
               onClick={() => setShowTeamScheduler(true)}
               className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors flex items-center gap-2"

@@ -10,6 +10,7 @@ import { SignUpPage } from './components/SignUpPage';
 import { UserProfilePage } from './components/UserProfilePage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import CalendarDashboard from './components/CalendarDashboard';
+import AdminPanel from './components/AdminPanel';
 
 function App() {
   return (
@@ -47,6 +48,15 @@ function App() {
         element={
           <ProtectedRoute>
             <UserProfilePage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminPanel />
           </ProtectedRoute>
         }
       />

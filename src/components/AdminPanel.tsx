@@ -1,0 +1,254 @@
+/**
+ * AdminPanel Component
+ * Admin dashboard for managing users and generating test data
+ */
+
+import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
+import { createClient } from '@supabase/supabase-js';
+import { generateTestCalendarData } from '../services/testDataGenerator';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+interface User {
+  id: string;
+  email: string;
+  subscription_tier: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+const AdminPanel = () => {
+  const { user: clerkUser } = useUser();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Check if user is admin (you can customize this logic)
+  const isAdmin = clerkUser?.primaryEmailAddress?.emailAddress === 'ravi@madlanilabs.com';
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadUsers();
+    }
+  }, [isAdmin]);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setUsers(data || []);
+    } catch (err: any) {
+      setError(`Failed to load users: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateTestData = async () => {
+    if (!window.confirm('This will create 2 months of test calendar events. Continue?')) {
+      return;
+    }
+
+    setGenerating(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await generateTestCalendarData();
+      setSuccessMessage(`Successfully created ${result.totalEvents} test events!`);
+
+      // Show breakdown
+      alert(`Test Data Created:\n\n` +
+        `• ${result.backToBack} back-to-back meetings\n` +
+        `• ${result.insufficientBuffer} meetings with insufficient buffers\n` +
+        `• ${result.doubleBookings} double bookings\n` +
+        `• ${result.flights} flights without travel blocks\n` +
+        `• ${result.internationalFlights} international flights without location\n` +
+        `• ${result.outOfHours} out-of-hours meetings\n` +
+        `• ${result.noVideoLink} meetings without video links\n` +
+        `• ${result.declinedMeetings} declined meetings\n` +
+        `• ${result.focusBlocks} focus time blocks\n` +
+        `• ${result.regularMeetings} regular meetings`);
+    } catch (err: any) {
+      setError(`Failed to generate test data: ${err.message}`);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+          <span className="text-4xl block mb-3">🚫</span>
+          <h2 className="text-xl font-bold text-red-900 mb-2">Access Denied</h2>
+          <p className="text-red-700">You do not have permission to access the admin panel.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
+          <p className="text-gray-600 mt-1">Manage users and test data</p>
+        </div>
+        <a
+          href="/dashboard"
+          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
+        >
+          ← Back to Dashboard
+        </a>
+      </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <p className="text-green-800 font-medium">{successMessage}</p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-800 font-medium">{error}</p>
+        </div>
+      )}
+
+      {/* Test Data Generator */}
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">🧪 Test Data Generator</h2>
+            <p className="text-gray-700 mb-4">
+              Generate 2 months of realistic calendar events with various issues that CalFix can detect:
+            </p>
+            <ul className="text-sm text-gray-600 space-y-1 mb-4">
+              <li>• Back-to-back meetings (no buffers)</li>
+              <li>• Insufficient buffers (&lt;10 minutes)</li>
+              <li>• Double bookings (overlapping events)</li>
+              <li>• Flights without travel blocks</li>
+              <li>• International flights without location tracking</li>
+              <li>• Out-of-hours meetings (while traveling)</li>
+              <li>• Meetings without video links</li>
+              <li>• Declined meetings (to be removed)</li>
+              <li>• Focus time blocks (good examples)</li>
+              <li>• Regular meetings with proper spacing</li>
+            </ul>
+            <button
+              onClick={handleGenerateTestData}
+              disabled={generating}
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {generating ? 'Generating Test Data...' : 'Generate Test Calendar Data'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Users List */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">👥 Users</h2>
+          <button
+            onClick={loadUsers}
+            disabled={loading}
+            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading users...</p>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-600">No users found</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Email</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Subscription</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Created</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">User ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4 text-gray-900">{user.email}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                          user.subscription_tier === 'pro'
+                            ? 'bg-purple-100 text-purple-800'
+                            : user.subscription_tier === 'premium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {user.subscription_tier}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 text-sm">
+                      {new Date(user.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="py-3 px-4 text-gray-500 text-xs font-mono">{user.id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Stats */}
+        <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-600 mb-1">Total Users</p>
+            <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-600 mb-1">Free Tier</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {users.filter((u) => u.subscription_tier === 'free').length}
+            </p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-600 mb-1">Pro/Premium</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {users.filter((u) => u.subscription_tier === 'pro' || u.subscription_tier === 'premium').length}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminPanel;
