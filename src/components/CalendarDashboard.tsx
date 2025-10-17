@@ -11,12 +11,16 @@ import DayFilterPills from './DayFilterPills';
 import EventsTimeline from './EventsTimeline';
 import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
+import GoogleCalendarConnectPrompt from './GoogleCalendarConnectPrompt';
 
 import { fetchEvents, addBufferBefore, addBufferAfter, moveEvent, createFocusBlock, findNextAvailableSlot, batchAddBuffers, deletePlaceholderAndLog, deleteEvent, createTravelBlock, createLocationEvent, createEvent, fetchCalendarList, batchAddGoogleMeetLinks } from '../services/googleCalendar';
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
+import { isAuthenticated as isGoogleAuthenticated, handleCallback } from '../services/googleAuth';
 
 const CalendarDashboard = () => {
+  const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [currentView, setCurrentView] = useState('today');
   const [events, setEvents] = useState([]);
   const [eventsWithGaps, setEventsWithGaps] = useState([]);
@@ -231,18 +235,56 @@ const CalendarDashboard = () => {
     }
   };
 
-  // Load calendar list on mount
+  // Check Google Calendar authentication on mount and handle OAuth callback
   useEffect(() => {
-    loadCalendarList();
+    const checkGoogleAuth = async () => {
+      // Check if we're returning from OAuth (URL has 'code' parameter)
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+
+      if (code) {
+        try {
+          // Exchange code for tokens
+          await handleCallback(code);
+
+          // Clean up URL by removing OAuth parameters
+          window.history.replaceState({}, document.title, window.location.pathname);
+
+          // Update authentication state
+          setIsGoogleCalendarConnected(true);
+          setCheckingAuth(false);
+        } catch (error) {
+          console.error('OAuth callback error:', error);
+          alert('Failed to connect Google Calendar. Please try again.');
+          setCheckingAuth(false);
+        }
+      } else {
+        // No OAuth code, just check if already authenticated
+        const authenticated = isGoogleAuthenticated();
+        setIsGoogleCalendarConnected(authenticated);
+        setCheckingAuth(false);
+      }
+    };
+
+    checkGoogleAuth();
   }, []);
 
-  // Load events when view changes
+  // Load calendar list on mount (only if Google Calendar is connected)
   useEffect(() => {
-    setEvents([]); // Clear events immediately to prevent showing stale data
-    setEventsWithGaps([]);
-    loadEvents();
-    setSelectedDay(null); // Reset day filter when view changes
-  }, [currentView]);
+    if (isGoogleCalendarConnected) {
+      loadCalendarList();
+    }
+  }, [isGoogleCalendarConnected]);
+
+  // Load events when view changes (only if Google Calendar is connected)
+  useEffect(() => {
+    if (isGoogleCalendarConnected) {
+      setEvents([]); // Clear events immediately to prevent showing stale data
+      setEventsWithGaps([]);
+      loadEvents();
+      setSelectedDay(null); // Reset day filter when view changes
+    }
+  }, [currentView, isGoogleCalendarConnected]);
 
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event, options: any = {}) => {
@@ -610,6 +652,23 @@ const CalendarDashboard = () => {
       alert(`"${placeholderEvent.summary}" has been deleted and logged to AI-Removed Events.`);
     }
   };
+
+  // Show loading while checking authentication
+  if (checkingAuth) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show Google Calendar connection prompt if not connected
+  if (!isGoogleCalendarConnected) {
+    return <GoogleCalendarConnectPrompt />;
+  }
 
   if (loading && events.length === 0) {
     return (
