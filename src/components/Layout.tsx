@@ -3,7 +3,7 @@
  * Provides consistent navigation and structure across all pages
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserButton, useUser } from '@clerk/clerk-react';
 
@@ -18,6 +18,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isActive = (path: string) => {
     return location.pathname === path;
   };
+
+  // Handle scrolling to anchors when navigating to homepage with hash
+  useEffect(() => {
+    if (location.hash) {
+      const elementId = location.hash.substring(1);
+      setTimeout(() => {
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } else {
+      // Scroll to top when no hash
+      window.scrollTo(0, 0);
+    }
+  }, [location]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -134,14 +150,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Link>
                 </li>
                 <li>
-                  <a href="#features" className="text-sm text-gray-600 hover:text-indigo-600">
-                    Features
-                  </a>
+                  {location.pathname === '/' ? (
+                    <a href="#features" className="text-sm text-gray-600 hover:text-indigo-600">
+                      Features
+                    </a>
+                  ) : (
+                    <Link to="/#features" className="text-sm text-gray-600 hover:text-indigo-600">
+                      Features
+                    </Link>
+                  )}
                 </li>
                 <li>
-                  <a href="#pricing" className="text-sm text-gray-600 hover:text-indigo-600">
-                    Pricing
-                  </a>
+                  {location.pathname === '/' ? (
+                    <a href="#pricing" className="text-sm text-gray-600 hover:text-indigo-600">
+                      Pricing
+                    </a>
+                  ) : (
+                    <Link to="/#pricing" className="text-sm text-gray-600 hover:text-indigo-600">
+                      Pricing
+                    </Link>
+                  )}
                 </li>
               </ul>
             </div>
