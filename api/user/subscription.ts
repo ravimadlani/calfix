@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fetch user subscription info
     const { data, error } = await supabase
       .from('users')
-      .select('subscription_tier, stripe_customer_id, stripe_subscription_id')
+      .select('subscription_tier, stripe_customer_id, stripe_subscription_id, trial_ends_at')
       .eq('id', userId)
       .single();
 
@@ -39,9 +39,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const tier = data.subscription_tier || 'trial';
+
+    // Determine calendar limits based on tier
+    let maxCalendars = 1;
+    let hasMultiCalendarAccess = false;
+
+    switch (tier) {
+      case 'trial':
+        // Trial users get basic features (1 calendar)
+        maxCalendars = 1;
+        hasMultiCalendarAccess = false;
+        break;
+      case 'basic':
+        maxCalendars = 1;
+        hasMultiCalendarAccess = false;
+        break;
+      case 'ea':
+        maxCalendars = 5;
+        hasMultiCalendarAccess = true;
+        break;
+      case 'ea_pro':
+        maxCalendars = 15;
+        hasMultiCalendarAccess = true;
+        break;
+      default:
+        maxCalendars = 1;
+        hasMultiCalendarAccess = false;
+    }
+
+    // Check if trial has expired
+    let isTrialExpired = false;
+    if (tier === 'trial' && data.trial_ends_at) {
+      const trialEndDate = new Date(data.trial_ends_at);
+      isTrialExpired = trialEndDate < new Date();
+    }
+
     return res.status(200).json({
-      subscriptionTier: data.subscription_tier || 'free',
-      hasEAAccess: data.subscription_tier === 'ea' || data.subscription_tier === 'premium',
+      subscriptionTier: tier,
+      maxCalendars,
+      hasMultiCalendarAccess,
+      isTrialExpired,
+      trialEndsAt: data.trial_ends_at,
       stripeCustomerId: data.stripe_customer_id,
       stripeSubscriptionId: data.stripe_subscription_id,
     });

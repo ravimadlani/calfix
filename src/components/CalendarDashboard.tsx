@@ -25,8 +25,9 @@ const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
-  const [hasEAAccess, setHasEAAccess] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('trial');
+  const [maxCalendars, setMaxCalendars] = useState(1);
+  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [currentView, setCurrentView] = useState('today');
   const [events, setEvents] = useState([]);
@@ -56,13 +57,21 @@ const CalendarDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setSubscriptionTier(data.subscriptionTier);
-        setHasEAAccess(data.hasEAAccess);
+        setMaxCalendars(data.maxCalendars);
+        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
+
+        console.log('Subscription check:', {
+          tier: data.subscriptionTier,
+          maxCalendars: data.maxCalendars,
+          hasMultiCalendarAccess: data.hasMultiCalendarAccess
+        });
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
-      // Default to free tier on error
-      setSubscriptionTier('free');
-      setHasEAAccess(false);
+      // Default to trial tier on error
+      setSubscriptionTier('trial');
+      setMaxCalendars(1);
+      setHasMultiCalendarAccess(false);
     }
   };
 
@@ -96,16 +105,16 @@ const CalendarDashboard = () => {
 
       console.log('Manageable calendars (filtered):', manageable);
 
-      // Filter calendars based on subscription tier
+      // Filter calendars based on subscription tier and maxCalendars limit
       let calendarsToShow = manageable;
-      if (!hasEAAccess) {
-        // Free tier: Only show primary calendar
+      if (!hasMultiCalendarAccess) {
+        // Trial/Basic tier: Only show primary calendar
         calendarsToShow = manageable.filter(cal => cal.primary);
-        console.log('Free tier: Limiting to primary calendar only');
+        console.log(`${subscriptionTier} tier: Limiting to primary calendar only`);
       } else {
-        // EA tier: Show up to 5 calendars
-        calendarsToShow = manageable.slice(0, 5);
-        console.log(`EA tier: Showing ${calendarsToShow.length} calendar(s)`);
+        // EA/EA Pro tier: Show up to maxCalendars
+        calendarsToShow = manageable.slice(0, maxCalendars);
+        console.log(`${subscriptionTier} tier: Showing ${calendarsToShow.length} calendar(s) (max: ${maxCalendars})`);
       }
 
       setAvailableCalendars(calendarsToShow);
@@ -332,10 +341,10 @@ const CalendarDashboard = () => {
 
   // Load calendar list on mount (only if Google Calendar is connected)
   useEffect(() => {
-    if (isGoogleCalendarConnected && hasEAAccess !== undefined) {
+    if (isGoogleCalendarConnected && maxCalendars > 0) {
       loadCalendarList();
     }
-  }, [isGoogleCalendarConnected, hasEAAccess]);
+  }, [isGoogleCalendarConnected, maxCalendars, hasMultiCalendarAccess]);
 
   // Load events when view changes (only if Google Calendar is connected)
   useEffect(() => {
@@ -851,8 +860,8 @@ const CalendarDashboard = () => {
         </div>
       </div>
 
-      {/* Calendar Selector - Only for EA Tier */}
-      {hasEAAccess ? (
+      {/* Calendar Selector - Only for Multi-Calendar Tiers */}
+      {hasMultiCalendarAccess ? (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
@@ -898,19 +907,19 @@ const CalendarDashboard = () => {
                 <span className="text-sm font-medium text-gray-900">
                   📅 {availableCalendars[0]?.summary || 'Your Calendar'}
                 </span>
-                <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                  Free Tier
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded uppercase">
+                  {subscriptionTier === 'trial' ? '7-Day Trial' : subscriptionTier}
                 </span>
               </div>
               <p className="text-xs text-gray-600">
-                Manage up to 5 calendars with EA Mode
+                Manage up to {maxCalendars === 5 ? '5' : maxCalendars === 15 ? '15' : '5'} calendars with {maxCalendars === 5 ? 'EA' : 'EA Pro'}
               </p>
             </div>
             <button
               onClick={() => setShowUpgradeModal(true)}
               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-lg transition-all transform hover:scale-105 whitespace-nowrap"
             >
-              Upgrade to EA
+              {subscriptionTier === 'trial' ? 'View Plans' : subscriptionTier === 'basic' ? 'Upgrade' : 'Upgrade'}
             </button>
           </div>
         </div>
@@ -918,7 +927,11 @@ const CalendarDashboard = () => {
       </div>
 
       {/* Upgrade Modal */}
-      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentTier={subscriptionTier as 'trial' | 'basic' | 'ea' | 'ea_pro'}
+      />
 
       {/* Statistics Grid */}
       {displayAnalytics && (
