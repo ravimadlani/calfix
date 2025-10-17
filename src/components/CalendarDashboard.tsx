@@ -17,8 +17,11 @@ import { fetchEvents, addBufferBefore, addBufferAfter, moveEvent, createFocusBlo
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
 import { isAuthenticated as isGoogleAuthenticated, handleCallback } from '../services/googleAuth';
+import { syncCalendarsToSupabase } from '../services/calendarSync';
+import { useUser } from '@clerk/clerk-react';
 
 const CalendarDashboard = () => {
+  const { user: clerkUser } = useUser();
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [currentView, setCurrentView] = useState('today');
@@ -70,6 +73,21 @@ const CalendarDashboard = () => {
 
       console.log('Manageable calendars (filtered):', manageable);
       setAvailableCalendars(manageable);
+
+      // Sync calendars to Supabase if user is authenticated with Clerk
+      if (clerkUser?.id && manageable.length > 0) {
+        try {
+          await syncCalendarsToSupabase(
+            clerkUser.id,
+            manageable,
+            manageable.find(c => c.primary)?.id
+          );
+          console.log('Successfully synced calendars to Supabase');
+        } catch (syncError) {
+          console.error('Failed to sync calendars to Supabase:', syncError);
+          // Don't fail the whole operation if sync fails
+        }
+      }
     } catch (error) {
       console.error('Error loading calendar list:', error);
       // If we can't fetch the list, still allow manual entry
