@@ -272,6 +272,18 @@ export const signOut = (): void => {
 };
 
 /**
+ * Force re-authentication with proper scope
+ * Use this when permissions are insufficient
+ */
+export const forceReauthentication = async (): Promise<void> => {
+  // Clear all existing tokens
+  signOut();
+
+  // Initiate new authentication flow with proper scope
+  await signIn();
+};
+
+/**
  * Handle errors from Google API calls
  */
 export const handleApiError = async (response: Response): Promise<void> => {

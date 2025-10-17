@@ -15,11 +15,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Initialize Supabase with service role key for admin operations
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  // Note: Vercel serverless functions don't use VITE_ prefix
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Supabase environment variables not configured');
+    console.error('Supabase environment variables not configured:', {
+      supabaseUrl: !!supabaseUrl,
+      supabaseServiceKey: !!supabaseServiceKey
+    });
     return res.status(500).json({ error: 'Database not configured' });
   }
 

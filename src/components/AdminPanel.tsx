@@ -6,7 +6,11 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { generateTestCalendarData } from '../services/testDataGenerator';
-import { isAuthenticated as isGoogleAuthenticated, signIn as signInWithGoogle } from '../services/googleAuth';
+import {
+  isAuthenticated as isGoogleAuthenticated,
+  signIn as signInWithGoogle,
+  forceReauthentication
+} from '../services/googleAuth';
 
 interface User {
   id: string;
@@ -100,8 +104,9 @@ const AdminPanel = () => {
       if (err.message?.includes('401') || err.message?.includes('unauthenticated') || err.message?.includes('unauthorized')) {
         setError('Google Calendar authentication expired. Please reconnect your Google Calendar.');
         setIsGoogleConnected(false);
-      } else if (err.message?.includes('403')) {
-        setError('Permission denied. Make sure you have write access to your Google Calendar.');
+      } else if (err.message?.includes('403') || err.message?.includes('Permission denied')) {
+        setError('Permission denied: Your Google Calendar connection doesn\'t have write permissions. Please reconnect with proper permissions.');
+        // Show special error state for permission issues
       } else {
         setError(`Failed to generate test data: ${err.message}`);
       }
@@ -118,6 +123,19 @@ const AdminPanel = () => {
       setSuccessMessage('Google Calendar connected successfully!');
     } catch (err: any) {
       setError(`Failed to connect Google Calendar: ${err.message}`);
+    }
+  };
+
+  const handleReconnectGoogle = async () => {
+    try {
+      // Force re-authentication to get proper permissions
+      await forceReauthentication();
+      // Note: The page will redirect, so these won't execute
+      setIsGoogleConnected(true);
+      setError(null);
+      setSuccessMessage('Reconnecting to Google Calendar with proper permissions...');
+    } catch (err: any) {
+      setError(`Failed to reconnect Google Calendar: ${err.message}`);
     }
   };
 
@@ -160,6 +178,14 @@ const AdminPanel = () => {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-red-800 font-medium">{error}</p>
+          {error.includes('Permission denied') && (
+            <button
+              onClick={handleReconnectGoogle}
+              className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Reconnect with Proper Permissions
+            </button>
+          )}
         </div>
       )}
 
