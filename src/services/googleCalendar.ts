@@ -14,7 +14,7 @@ const PRIMARY_CALENDAR = 'primary';
  * @param {Object} options - Fetch options
  * @returns {Promise<Object>} Response data
  */
-const makeApiRequest = async (endpoint, options = {}) => {
+const makeApiRequest = async (endpoint, options: any = {}) => {
   try {
     const accessToken = await getValidAccessToken();
 
@@ -154,12 +154,13 @@ export const updateEvent = async (eventId, eventData) => {
 /**
  * Delete a calendar event
  * @param {string} eventId - Event ID
+ * @param {string} calendarId - Calendar ID (defaults to primary)
  * @returns {Promise<void>}
  */
-export const deleteEvent = async (eventId) => {
+export const deleteEvent = async (eventId, calendarId = PRIMARY_CALENDAR) => {
   try {
     await makeApiRequest(
-      `/calendars/${PRIMARY_CALENDAR}/events/${eventId}`,
+      `/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
       {
         method: 'DELETE'
       }
@@ -253,7 +254,7 @@ const initGapiClient = async () => {
     throw new Error('GAPI library not loaded');
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     window.gapi.load('client', async () => {
       try {
         const accessToken = await getValidAccessToken();
@@ -295,12 +296,12 @@ export const fetchCalendarList = async () => {
  * @param {Array<string>} calendarIds - Array of calendar IDs (email addresses) to check
  * @returns {Promise<Object>} Free/busy data
  */
-export const findFreeBusy = async (timeMin, timeMax, calendarIds = [PRIMARY_CALENDAR]) => {
+export const findFreeBusy = async (timeMin, timeMax, calendarIds: string | string[] = [PRIMARY_CALENDAR]) => {
   try {
     // Convert calendar IDs to items array
     const items = Array.isArray(calendarIds)
       ? calendarIds.map(id => ({ id: id.trim() }))
-      : [{ id: calendarIds.trim() }];
+      : [{ id: (calendarIds as string).trim() }];
 
     const requestBody = {
       timeMin,
@@ -437,7 +438,7 @@ export const createLocationEvent = async (startDate, endDate, city, country, tim
   const endDateStr = endDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
   // Calculate number of days
-  const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+  const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
   const daysText = days === 1 ? '1 day' : `${days} days`;
 
   const eventData = {
@@ -469,7 +470,7 @@ export const moveEvent = async (eventId, event, newStartTime) => {
   // Calculate duration
   const originalStart = new Date(event.start.dateTime);
   const originalEnd = new Date(event.end.dateTime);
-  const durationMs = originalEnd - originalStart;
+  const durationMs = originalEnd.getTime() - originalStart.getTime();
 
   // Calculate new end time
   const newEndTime = new Date(newStartTime.getTime() + durationMs);
@@ -531,7 +532,7 @@ export const findNextAvailableSlot = (events, durationMinutes, searchStartTime) 
   const sortedEvents = [...events].sort((a, b) => {
     const aStart = new Date(a.start.dateTime || a.start.date);
     const bStart = new Date(b.start.dateTime || b.start.date);
-    return aStart - bStart;
+    return aStart.getTime() - bStart.getTime();
   });
 
   let searchTime = new Date(searchStartTime);
@@ -542,7 +543,7 @@ export const findNextAvailableSlot = (events, durationMinutes, searchStartTime) 
     const eventEnd = new Date(event.end.dateTime || event.end.date);
 
     // Check if there's a gap before this event
-    const gapMs = eventStart - searchTime;
+    const gapMs = eventStart.getTime() - searchTime.getTime();
     const gapMinutes = gapMs / (1000 * 60);
 
     if (gapMinutes >= durationMinutes) {

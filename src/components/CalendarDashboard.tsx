@@ -245,7 +245,7 @@ const CalendarDashboard = () => {
   }, [currentView]);
 
   // Handle adding buffer before event
-  const handleAddBufferBefore = async (event, options = {}) => {
+  const handleAddBufferBefore = async (event, options: any = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer before this event?')) {
       return;
     }
@@ -272,7 +272,7 @@ const CalendarDashboard = () => {
   };
 
   // Handle adding buffer after event
-  const handleAddBufferAfter = async (event, options = {}) => {
+  const handleAddBufferAfter = async (event, options: any = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer after this event?')) {
       return;
     }
@@ -597,7 +597,7 @@ const CalendarDashboard = () => {
   };
 
   // Delete placeholder and log to AI-Removed Events
-  const handleDeletePlaceholder = async (placeholderEvent, options = {}) => {
+  const handleDeletePlaceholder = async (placeholderEvent, options: any = {}) => {
     await deletePlaceholderAndLog(placeholderEvent);
 
     // Only refresh if not in bulk mode (bulk mode will refresh once at the end)

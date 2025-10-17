@@ -83,7 +83,7 @@ const EventsTimeline = ({
     });
 
     // Sort days chronologically
-    const sortedDays = Object.values(eventsByDay).sort((a, b) => a.date - b.date);
+    const sortedDays = Object.values(eventsByDay).sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
 
     return (
       <div className="space-y-8">

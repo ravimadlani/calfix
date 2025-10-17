@@ -66,7 +66,7 @@ export const calculateAnalytics = (events, extendedEvents = null) => {
   const sortedEvents = [...events].sort((a, b) => {
     const aTime = getEventStartTime(a);
     const bTime = getEventStartTime(b);
-    return aTime - bTime;
+    return aTime.getTime() - bTime.getTime();
   });
 
   // Filter out all-day events for certain calculations
@@ -148,7 +148,7 @@ export const getEventsWithGaps = (events) => {
   const sortedEvents = [...events].sort((a, b) => {
     const aTime = getEventStartTime(a);
     const bTime = getEventStartTime(b);
-    return aTime - bTime;
+    return aTime.getTime() - bTime.getTime();
   });
 
   const gaps = analyzeGaps(sortedEvents);
@@ -287,7 +287,7 @@ export const getWeeklySummary = (events) => {
   let busiestDay = null;
   let maxMeetings = 0;
 
-  Object.entries(eventsByDay).forEach(([day, dayEvents]) => {
+  Object.entries(eventsByDay).forEach(([day, dayEvents]: [string, any[]]) => {
     const meetingCount = dayEvents.filter(e => isMeeting(e)).length;
     if (meetingCount > maxMeetings) {
       maxMeetings = meetingCount;

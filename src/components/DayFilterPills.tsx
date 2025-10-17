@@ -104,7 +104,7 @@ const DayFilterPills = ({ events, selectedDay, onDaySelect, viewType, timeRange 
   console.log('View type:', viewType);
   console.log('Total events:', events.length);
   console.log('Grouped dates:', sortedDates);
-  console.log('Events by date:', Object.entries(eventsByDate).map(([key, val]) => ({
+  console.log('Events by date:', Object.entries(eventsByDate).map(([key, val]: [string, any]) => ({
     dateKey: key,
     dayName: val.dayName,
     actualDate: val.date.toDateString(),

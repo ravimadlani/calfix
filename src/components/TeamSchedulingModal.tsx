@@ -105,7 +105,7 @@ const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary
       endDate.setDate(endDate.getDate() + searchDays);
       endDate.setHours(17, 0, 0, 0); // End at 5 PM
 
-      const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       console.log(`=== SEARCH PARAMETERS ===`);
       console.log(`Search days requested: ${searchDays}`);
       console.log(`Actual days to search: ${daysDiff}`);
@@ -283,7 +283,7 @@ const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary
     }
 
     // Sort slots by date
-    const sorted = [...selectedSlots].sort((a, b) => a.start - b.start);
+    const sorted = [...selectedSlots].sort((a, b) => a.start.getTime() - b.start.getTime());
 
     // Format slots for email with multiple timezones
     const slotText = sorted.map((slot, index) => {

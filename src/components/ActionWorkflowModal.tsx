@@ -320,7 +320,7 @@ const ActionWorkflowModal = ({
                   // Calculate trip duration
                   const arrivalDate = new Date(event.arrivalDate);
                   const departureDate = new Date(event.departureDate);
-                  const durationDays = Math.ceil((departureDate - arrivalDate) / (1000 * 60 * 60 * 24));
+                  const durationDays = Math.ceil((departureDate.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24));
 
                   return (
                     <div
@@ -759,7 +759,7 @@ const ActionWorkflowModal = ({
                 const nextEvent = events.find(e => {
                   const eStart = new Date(e.start?.dateTime || e.start?.date);
                   // Allow up to 1 minute difference to account for rounding
-                  const timeDiff = Math.abs(eStart - eventEnd);
+                  const timeDiff = Math.abs(eStart.getTime() - eventEnd.getTime());
                   return timeDiff <= 60000; // 60 seconds
                 });
 

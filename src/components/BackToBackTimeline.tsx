@@ -212,7 +212,7 @@ const BackToBackTimeline = ({ backToBackPairs, onAddBuffer }) => {
             {/* Timeline Visualization */}
             <div className="p-6">
               {(() => {
-                const totalDurationMs = timelineEnd - timelineStart;
+                const totalDurationMs = timelineEnd.getTime() - timelineStart.getTime();
                 const totalMinutes = totalDurationMs / (1000 * 60);
                 const heightInPixels = Math.max(400, (totalMinutes / 15) * 60);
 
@@ -222,9 +222,9 @@ const BackToBackTimeline = ({ backToBackPairs, onAddBuffer }) => {
                     <div className="w-24 flex-shrink-0">
                       <div className="relative" style={{ height: `${heightInPixels}px` }}>
                         {timeMarkers.map((marker, idx) => {
-                          const totalDuration = timelineEnd - timelineStart;
+                          const totalDuration = timelineEnd.getTime() - timelineStart.getTime();
                           const markerTime = marker.getTime();
-                          const position = ((markerTime - timelineStart) / totalDuration) * 100;
+                          const position = ((markerTime - timelineStart.getTime()) / totalDuration) * 100;
 
                           return (
                             <div

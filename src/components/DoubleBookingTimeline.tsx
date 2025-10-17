@@ -220,8 +220,8 @@ const DoubleBookingTimeline = ({ conflicts, onDeletePlaceholder, onDeleteEvent }
         const start2 = new Date(event2.start?.dateTime || event2.start?.date);
         const end2 = new Date(event2.end?.dateTime || event2.end?.date);
 
-        const timelineStart = new Date(Math.min(start1, start2));
-        const timelineEnd = new Date(Math.max(end1, end2));
+        const timelineStart = new Date(Math.min(start1.getTime(), start2.getTime()));
+        const timelineEnd = new Date(Math.max(end1.getTime(), end2.getTime()));
 
         const timeMarkers = generateTimeMarkers(timelineStart, timelineEnd);
 
@@ -253,8 +253,8 @@ const DoubleBookingTimeline = ({ conflicts, onDeletePlaceholder, onDeleteEvent }
                 </div>
                 {/* Calculate overlap percentage */}
                 {(() => {
-                  const duration1 = (end1 - start1) / (1000 * 60);
-                  const duration2 = (end2 - start2) / (1000 * 60);
+                  const duration1 = (end1.getTime() - start1.getTime()) / (1000 * 60);
+                  const duration2 = (end2.getTime() - start2.getTime()) / (1000 * 60);
                   const overlapPercent1 = Math.round((overlapMinutes / duration1) * 100);
                   const overlapPercent2 = Math.round((overlapMinutes / duration2) * 100);
                   const isCompleteOverlap = overlapPercent1 === 100 && overlapPercent2 === 100;
@@ -278,7 +278,7 @@ const DoubleBookingTimeline = ({ conflicts, onDeletePlaceholder, onDeleteEvent }
             <div className="p-6">
               {/* Calculate total duration in minutes for better scaling */}
               {(() => {
-                const totalDurationMs = timelineEnd - timelineStart;
+                const totalDurationMs = timelineEnd.getTime() - timelineStart.getTime();
                 const totalMinutes = totalDurationMs / (1000 * 60);
                 // Use 60 pixels per 15 minutes for good scaling
                 const heightInPixels = Math.max(400, (totalMinutes / 15) * 60);
@@ -289,9 +289,9 @@ const DoubleBookingTimeline = ({ conflicts, onDeletePlaceholder, onDeleteEvent }
                     <div className="w-24 flex-shrink-0">
                       <div className="relative" style={{ height: `${heightInPixels}px` }}>
                         {timeMarkers.map((marker, idx) => {
-                          const totalDuration = timelineEnd - timelineStart;
+                          const totalDuration = timelineEnd.getTime() - timelineStart.getTime();
                           const markerTime = marker.getTime();
-                          const position = ((markerTime - timelineStart) / totalDuration) * 100;
+                          const position = ((markerTime - timelineStart.getTime()) / totalDuration) * 100;
 
                           return (
                             <div
