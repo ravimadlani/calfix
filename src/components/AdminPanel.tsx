@@ -5,12 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { createClient } from '@supabase/supabase-js';
 import { generateTestCalendarData } from '../services/testDataGenerator';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface User {
   id: string;
@@ -32,22 +27,31 @@ const AdminPanel = () => {
   const isAdmin = clerkUser?.primaryEmailAddress?.emailAddress === 'ravi@madlanilabs.com';
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && clerkUser) {
       loadUsers();
     }
-  }, [isAdmin]);
+  }, [isAdmin, clerkUser]);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      setError(null);
 
-      if (error) throw error;
+      // Call admin API endpoint with admin email header
+      const response = await fetch('/api/admin/users', {
+        method: 'GET',
+        headers: {
+          'x-admin-email': clerkUser?.primaryEmailAddress?.emailAddress || '',
+        },
+      });
 
-      setUsers(data || []);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch users');
+      }
+
+      const data = await response.json();
+      setUsers(data.users || []);
     } catch (err: any) {
       setError(`Failed to load users: ${err.message}`);
     } finally {
