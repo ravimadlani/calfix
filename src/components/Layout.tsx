@@ -155,14 +155,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-sm text-gray-600 hover:text-indigo-600">
+                  <Link to="/privacy" className="text-sm text-gray-600 hover:text-indigo-600">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="text-sm text-gray-600 hover:text-indigo-600">
+                  <Link to="/terms" className="text-sm text-gray-600 hover:text-indigo-600">
                     Terms of Service
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>

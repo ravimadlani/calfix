@@ -12,6 +12,8 @@ import Layout from './components/Layout';
 import LandingPage from './components/LandingPage';
 import CalendarDashboard from './components/CalendarDashboard';
 import AdminPanel from './components/AdminPanel';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
 
         {/* Protected Routes */}
         <Route
