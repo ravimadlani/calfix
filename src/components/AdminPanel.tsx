@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { generateTestCalendarData } from '../services/testDataGenerator';
+import { isAuthenticated as isGoogleAuthenticated, signIn as signInWithGoogle } from '../services/googleAuth';
 
 interface User {
   id: string;
@@ -22,6 +23,7 @@ const AdminPanel = () => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   // Check if user is admin (you can customize this logic)
   const isAdmin = clerkUser?.primaryEmailAddress?.emailAddress === 'ravi@madlanilabs.com';
@@ -29,6 +31,8 @@ const AdminPanel = () => {
   useEffect(() => {
     if (isAdmin && clerkUser) {
       loadUsers();
+      // Check Google authentication status
+      setIsGoogleConnected(isGoogleAuthenticated());
     }
   }, [isAdmin, clerkUser]);
 
@@ -60,6 +64,12 @@ const AdminPanel = () => {
   };
 
   const handleGenerateTestData = async () => {
+    // First check if Google Calendar is connected
+    if (!isGoogleConnected) {
+      setError('Please connect your Google Calendar first to generate test data.');
+      return;
+    }
+
     if (!window.confirm('This will create 2 months of test calendar events. Continue?')) {
       return;
     }
@@ -85,9 +95,29 @@ const AdminPanel = () => {
         `• ${result.focusBlocks} focus time blocks\n` +
         `• ${result.regularMeetings} regular meetings`);
     } catch (err: any) {
-      setError(`Failed to generate test data: ${err.message}`);
+      console.error('Test data generation error:', err);
+      // Check if it's an authentication error
+      if (err.message?.includes('401') || err.message?.includes('unauthenticated') || err.message?.includes('unauthorized')) {
+        setError('Google Calendar authentication expired. Please reconnect your Google Calendar.');
+        setIsGoogleConnected(false);
+      } else if (err.message?.includes('403')) {
+        setError('Permission denied. Make sure you have write access to your Google Calendar.');
+      } else {
+        setError(`Failed to generate test data: ${err.message}`);
+      }
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      await signInWithGoogle();
+      setIsGoogleConnected(true);
+      setError(null);
+      setSuccessMessage('Google Calendar connected successfully!');
+    } catch (err: any) {
+      setError(`Failed to connect Google Calendar: ${err.message}`);
     }
   };
 
@@ -138,6 +168,28 @@ const AdminPanel = () => {
         <div className="flex items-start gap-4">
           <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900 mb-2">🧪 Test Data Generator</h2>
+
+            {/* Google Calendar Connection Status */}
+            {!isGoogleConnected && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p className="text-yellow-800 mb-3">
+                  ⚠️ Google Calendar is not connected. Connect it first to generate test data.
+                </p>
+                <button
+                  onClick={handleConnectGoogle}
+                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Connect Google Calendar
+                </button>
+              </div>
+            )}
+
+            {isGoogleConnected && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 inline-block">
+                <p className="text-green-800 text-sm">✅ Google Calendar connected</p>
+              </div>
+            )}
+
             <p className="text-gray-700 mb-4">
               Generate 2 months of realistic calendar events with various issues that CalFix can detect:
             </p>
@@ -155,7 +207,7 @@ const AdminPanel = () => {
             </ul>
             <button
               onClick={handleGenerateTestData}
-              disabled={generating}
+              disabled={generating || !isGoogleConnected}
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generating ? 'Generating Test Data...' : 'Generate Test Calendar Data'}
