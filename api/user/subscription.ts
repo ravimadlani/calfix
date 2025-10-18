@@ -20,7 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('Missing environment variables:', {
       supabaseUrl: !!supabaseUrl,
-      supabaseServiceKey: !!supabaseServiceKey
+      supabaseServiceKey: !!supabaseServiceKey,
+      envKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE'))
     });
     return res.status(500).json({ error: 'Database not configured' });
   }
