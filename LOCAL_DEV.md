@@ -1,6 +1,6 @@
 # Local Development Setup
 
-This guide helps you run CalFix locally for debugging and development.
+This guide helps you run CalFix locally for debugging and development with full API support.
 
 ## Quick Start
 
@@ -10,17 +10,27 @@ npm install
 ```
 
 ### 2. Set Up Environment Variables
-Create `.env.development.local` file with your credentials (already created for you).
+The `.env` file already contains all necessary credentials for development.
 
-### 3. Run Local Development Server
+### 3. Run Development Servers
+
+#### Option A: Run Everything (Recommended)
 ```bash
-npm run dev:vercel
+npm run dev:all
 ```
+This starts:
+- **Frontend**: http://localhost:3001 (Vite with hot reload)
+- **API**: http://localhost:3000 (Vercel functions)
+- API calls from frontend are automatically proxied to the Vercel dev server
 
-This will start:
-- Vite dev server (React app) on http://localhost:3001
-- Vercel Functions locally (API endpoints)
-- All environment variables from `.env.development.local`
+#### Option B: Run Separately
+```bash
+# Terminal 1 - API Server
+npm run dev:api
+
+# Terminal 2 - Frontend
+npm run dev
+```
 
 ## What This Gives You
 
@@ -50,11 +60,11 @@ curl http://localhost:3001/api/user/subscription
 2. Go to Network tab
 3. Watch API calls and responses
 
-## Alternative: Run Frontend Only
-If you just need the frontend without API functions:
-```bash
-npm run dev
-```
+## How It Works
+
+- **Frontend**: Runs locally on http://localhost:3001 with hot module replacement
+- **API Endpoints**: When deployed to Vercel, the `/api/*` routes are handled by serverless functions
+- **Database**: Uses the production Supabase instance (no local database needed)
 
 ## Troubleshooting
 
