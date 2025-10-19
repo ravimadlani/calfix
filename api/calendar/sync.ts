@@ -2,13 +2,27 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('[Calendar Sync] Request received:', {
+    method: req.method,
+    headers: req.headers,
+    bodyKeys: Object.keys(req.body || {}),
+  });
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { userId, calendars, primaryCalendarId } = req.body;
 
+  console.log('[Calendar Sync] Request data:', {
+    userId,
+    calendarsCount: calendars?.length,
+    primaryCalendarId,
+    firstCalendar: calendars?.[0],
+  });
+
   if (!userId || !calendars) {
+    console.error('[Calendar Sync] Missing required fields:', { userId: !!userId, calendars: !!calendars });
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -29,10 +43,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // 1. Delete existing managed calendars for this user
-    await supabase
+    console.log('[Calendar Sync] Deleting existing calendars for user:', userId);
+    const { error: deleteError } = await supabase
       .from('managed_calendars')
       .delete()
       .eq('user_id', userId);
+
+    if (deleteError) {
+      console.error('[Calendar Sync] Error deleting existing calendars:', deleteError);
+    }
 
     // 2. Insert new managed calendars
     const managedCalendarsData = calendars.map((cal: any) => ({
@@ -44,28 +63,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       created_at: new Date().toISOString(),
     }));
 
-    const { error: calendarsError } = await supabase
+    console.log('[Calendar Sync] Inserting managed calendars:', {
+      count: managedCalendarsData.length,
+      data: managedCalendarsData
+    });
+
+    const { error: calendarsError, data: insertedCalendars } = await supabase
       .from('managed_calendars')
-      .insert(managedCalendarsData);
+      .insert(managedCalendarsData)
+      .select();
 
     if (calendarsError) {
-      console.error('Error inserting managed calendars:', calendarsError);
+      console.error('[Calendar Sync] Error inserting managed calendars:', calendarsError);
       return res.status(500).json({ error: 'Failed to sync calendars' });
     }
 
+    console.log('[Calendar Sync] Successfully inserted calendars:', insertedCalendars);
+
     // 3. Create default calendar preferences if they don't exist
-    const { data: existingPrefs } = await supabase
+    console.log('[Calendar Sync] Checking existing calendar preferences for user:', userId);
+    const { data: existingPrefs, error: prefsSelectError } = await supabase
       .from('calendar_preferences')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
 
-    if (!existingPrefs) {
-      const { error: prefsError } = await supabase
-        .from('calendar_preferences')
-        .insert({
-          user_id: userId,
-          default_calendar_id: primaryCalendarId,
+    console.log('[Calendar Sync] Existing preferences:', {
+      found: !!existingPrefs,
+      count: existingPrefs?.length,
+      error: prefsSelectError
+    });
+
+    if (!existingPrefs || existingPrefs.length === 0) {
+      const preferencesData = {
+        user_id: userId,
+        calendar_id: primaryCalendarId || calendars[0]?.id || 'primary',
+        preferences: {
           work_hours_start: '09:00',
           work_hours_end: '17:00',
           timezone: 'Europe/London',
@@ -74,13 +106,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           auto_decline_conflicts: false,
           show_travel_time: true,
           show_focus_time: true,
-          created_at: new Date().toISOString(),
-        });
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('[Calendar Sync] Creating calendar preferences:', preferencesData);
+
+      const { error: prefsError, data: createdPrefs } = await supabase
+        .from('calendar_preferences')
+        .insert(preferencesData)
+        .select();
 
       if (prefsError) {
-        console.error('Error creating calendar preferences:', prefsError);
+        console.error('[Calendar Sync] Error creating calendar preferences:', prefsError);
         // Don't fail the request if preferences creation fails
+      } else {
+        console.log('[Calendar Sync] Successfully created preferences:', createdPrefs);
       }
+    } else {
+      console.log('[Calendar Sync] Preferences already exist, skipping creation');
     }
 
     return res.status(200).json({
