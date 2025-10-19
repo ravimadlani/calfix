@@ -120,18 +120,28 @@ const CalendarDashboard = () => {
       setAvailableCalendars(calendarsToShow);
 
       // Sync calendars to Supabase if user is authenticated with Clerk
+      console.log('[CalendarDashboard] Checking if should sync:', {
+        hasClerkUser: !!clerkUser?.id,
+        clerkUserId: clerkUser?.id,
+        manageableCount: manageable.length,
+        primaryCalendar: manageable.find(c => c.primary)
+      });
+
       if (clerkUser?.id && manageable.length > 0) {
         try {
+          console.log('[CalendarDashboard] Starting calendar sync to Supabase...');
           await syncCalendarsToSupabase(
             clerkUser.id,
             manageable,
             manageable.find(c => c.primary)?.id
           );
-          console.log('Successfully synced calendars to Supabase');
+          console.log('[CalendarDashboard] Successfully synced calendars to Supabase');
         } catch (syncError) {
-          console.error('Failed to sync calendars to Supabase:', syncError);
+          console.error('[CalendarDashboard] Failed to sync calendars to Supabase:', syncError);
           // Don't fail the whole operation if sync fails
         }
+      } else {
+        console.log('[CalendarDashboard] Skipping sync - no Clerk user or no manageable calendars');
       }
     } catch (error) {
       console.error('Error loading calendar list:', error);
