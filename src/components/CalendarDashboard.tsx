@@ -3,7 +3,7 @@
  * Main dashboard that orchestrates all calendar features
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ViewSelector from './ViewSelector';
 import StatsCard from './StatsCard';
 import DayActionsPanel from './DayActionsPanel';
@@ -13,6 +13,7 @@ import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
 import GoogleCalendarConnectPrompt from './GoogleCalendarConnectPrompt';
 import UpgradeModal from './UpgradeModal';
+import { RecurringMeetingsPanel } from './RecurringMeetings';
 
 import { fetchEvents, addBufferBefore, addBufferAfter, moveEvent, createFocusBlock, findNextAvailableSlot, batchAddBuffers, deletePlaceholderAndLog, deleteEvent, createTravelBlock, createLocationEvent, createEvent, fetchCalendarList, batchAddGoogleMeetLinks } from '../services/googleCalendar';
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
@@ -20,6 +21,7 @@ import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../se
 import { isAuthenticated as isGoogleAuthenticated, handleCallback } from '../services/googleAuth';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser } from '@clerk/clerk-react';
+import { recurringMeetingsActions } from '../store/meetings';
 
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
@@ -47,6 +49,15 @@ const CalendarDashboard = () => {
     return localStorage.getItem('managed_calendar_id') || 'primary';
   });
   const [availableCalendars, setAvailableCalendars] = useState([]);
+
+  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress || '';
+  const internalDomains = useMemo(() => {
+    if (!primaryEmail.includes('@')) {
+      return [];
+    }
+    const domain = primaryEmail.split('@')[1]?.toLowerCase();
+    return domain ? [domain] : [];
+  }, [primaryEmail]);
 
   // Check user's subscription tier
   const checkSubscription = async () => {
@@ -152,6 +163,8 @@ const CalendarDashboard = () => {
   const loadEvents = async () => {
     setLoading(true);
     setError(null);
+    recurringMeetingsActions.setLoading(true);
+    recurringMeetingsActions.setError(null);
 
     try {
       let timeRange;
@@ -287,14 +300,25 @@ const CalendarDashboard = () => {
     } catch (err) {
       console.error('Error loading events:', err);
 
+      const rawMessage = err instanceof Error ? err.message : String(err || '');
+      const fallbackMessage = rawMessage || 'Failed to load calendar events';
+
       // Check for permission-specific errors
-      if (err.message && (err.message.includes('Permission denied') || err.message.includes('Not Found') || err.message.includes('No access'))) {
-        setError(`Cannot access calendar "${managedCalendarId}".\n\nPlease check:\n• The email address is correct\n• You have delegate access to this calendar\n• The calendar owner has granted "Make changes to events" permission`);
+      if (
+        rawMessage.includes('Permission denied') ||
+        rawMessage.includes('Not Found') ||
+        rawMessage.includes('No access')
+      ) {
+        const permissionError = `Cannot access calendar "${managedCalendarId}".\n\nPlease check:\n• The email address is correct\n• You have delegate access to this calendar\n• The calendar owner has granted "Make changes to events" permission`;
+        setError(permissionError);
+        recurringMeetingsActions.setError(permissionError);
       } else {
-        setError(err.message || 'Failed to load calendar events');
+        setError(fallbackMessage);
+        recurringMeetingsActions.setError(fallbackMessage);
       }
     } finally {
       setLoading(false);
+      recurringMeetingsActions.setLoading(false);
     }
   };
 
@@ -355,6 +379,14 @@ const CalendarDashboard = () => {
       setSelectedDay(null); // Reset day filter when view changes
     }
   }, [currentView, isGoogleCalendarConnected]);
+
+  useEffect(() => {
+    const referenceDate = new Date();
+    recurringMeetingsActions.hydrateFromEvents(events, {
+      internalDomains: internalDomains.length ? internalDomains : undefined,
+      referenceDate
+    });
+  }, [events, internalDomains]);
 
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event, options: any = {}) => {
@@ -995,6 +1027,9 @@ const CalendarDashboard = () => {
           onActionClick={handleOpenWorkflow}
         />
       )}
+
+      {/* Recurring Meetings Health Panel */}
+      <RecurringMeetingsPanel />
 
       {/* Action Workflow Modal */}
       <ActionWorkflowModal
