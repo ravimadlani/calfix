@@ -25,7 +25,18 @@ import {
   findInternationalFlightsWithoutLocation,
   countInternationalFlightsWithoutLocation,
   findMeetingsOutsideBusinessHours,
-  countMeetingsOutsideBusinessHours
+  countMeetingsOutsideBusinessHours,
+  findRecurringMeetingSeries,
+  countRecurringMeetingSeries,
+  calculateRecurringMeetingHours,
+  calculateRecurringVsOneTimeRatio,
+  getTopTimeConsumingSeries,
+  findStaleRecurringSeries,
+  findNewRecurringSeries,
+  findRecurringWithoutVideoLinks,
+  findRecurringWithoutAgenda,
+  findRecurringCausingBackToBack,
+  findRecurringOutOfHours
 } from '../utils/healthCalculator';
 
 /**
@@ -58,7 +69,18 @@ export const calculateAnalytics = (events, extendedEvents = null) => {
       internationalFlightsWithoutLocation: [],
       internationalFlightsNeedingLocationCount: 0,
       meetingsOutsideBusinessHours: [],
-      outOfHoursMeetingCount: 0
+      outOfHoursMeetingCount: 0,
+      recurringSeriesCount: 0,
+      recurringMeetingSeries: [],
+      recurringMeetingHours: 0,
+      recurringVsOneTimeRatio: 0,
+      topTimeConsumingSeries: [],
+      staleRecurringSeries: [],
+      newRecurringSeries: [],
+      recurringWithoutVideoLinks: [],
+      recurringWithoutAgenda: [],
+      recurringCausingBackToBack: [],
+      recurringOutOfHours: []
     };
   }
 
@@ -108,6 +130,19 @@ export const calculateAnalytics = (events, extendedEvents = null) => {
   const meetingsOutsideBusinessHours = findMeetingsOutsideBusinessHours(sortedEvents);
   const outOfHoursMeetingCount = meetingsOutsideBusinessHours.length;
 
+  // Recurring Meetings Analytics
+  const recurringMeetingSeries = findRecurringMeetingSeries(sortedEvents);
+  const recurringSeriesCount = recurringMeetingSeries.length;
+  const recurringMeetingHours = calculateRecurringMeetingHours(sortedEvents);
+  const recurringVsOneTimeRatio = calculateRecurringVsOneTimeRatio(sortedEvents);
+  const topTimeConsumingSeries = getTopTimeConsumingSeries(sortedEvents, 5);
+  const staleRecurringSeries = findStaleRecurringSeries(sortedEvents);
+  const newRecurringSeries = findNewRecurringSeries(sortedEvents);
+  const recurringWithoutVideoLinks = findRecurringWithoutVideoLinks(sortedEvents);
+  const recurringWithoutAgenda = findRecurringWithoutAgenda(sortedEvents);
+  const recurringCausingBackToBack = findRecurringCausingBackToBack(sortedEvents);
+  const recurringOutOfHours = findRecurringOutOfHours(sortedEvents);
+
   return {
     totalEvents: events.length,
     totalMeetings,
@@ -130,7 +165,18 @@ export const calculateAnalytics = (events, extendedEvents = null) => {
     internationalFlightsWithoutLocation,
     internationalFlightsNeedingLocationCount,
     meetingsOutsideBusinessHours,
-    outOfHoursMeetingCount
+    outOfHoursMeetingCount,
+    recurringSeriesCount,
+    recurringMeetingSeries,
+    recurringMeetingHours,
+    recurringVsOneTimeRatio,
+    topTimeConsumingSeries,
+    staleRecurringSeries,
+    newRecurringSeries,
+    recurringWithoutVideoLinks,
+    recurringWithoutAgenda,
+    recurringCausingBackToBack,
+    recurringOutOfHours
   };
 };
 

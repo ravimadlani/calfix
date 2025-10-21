@@ -1126,3 +1126,372 @@ export const findMeetingsOutsideBusinessHours = (events) => {
 export const countMeetingsOutsideBusinessHours = (events) => {
   return findMeetingsOutsideBusinessHours(events).length;
 };
+
+/**
+ * ========================================
+ * RECURRING MEETINGS ANALYTICS
+ * ========================================
+ */
+
+/**
+ * Parse RFC 5545 recurrence rule to extract frequency
+ * @param {string} rrule - RFC 5545 RRULE string
+ * @returns {Object} - Frequency type and label
+ */
+const parseRecurrenceRule = (rrule) => {
+  if (!rrule) return { frequency: 'unknown', label: 'Unknown' };
+
+  // Extract FREQ= value
+  const freqMatch = rrule.match(/FREQ=([A-Z]+)/);
+  if (!freqMatch) return { frequency: 'unknown', label: 'Unknown' };
+
+  const freq = freqMatch[1];
+
+  // Check for INTERVAL
+  const intervalMatch = rrule.match(/INTERVAL=(\d+)/);
+  const interval = intervalMatch ? parseInt(intervalMatch[1]) : 1;
+
+  // Extract days of week if present
+  const dayMatch = rrule.match(/BYDAY=([A-Z,]+)/);
+  const days = dayMatch ? dayMatch[1].split(',') : [];
+
+  switch (freq) {
+    case 'DAILY':
+      return {
+        frequency: 'daily',
+        label: interval === 1 ? 'Daily' : `Every ${interval} days`,
+        interval,
+        days: []
+      };
+    case 'WEEKLY':
+      if (interval === 2) {
+        return {
+          frequency: 'biweekly',
+          label: days.length > 0 ? `Biweekly (${days.join(', ')})` : 'Biweekly',
+          interval,
+          days
+        };
+      }
+      return {
+        frequency: 'weekly',
+        label: days.length > 0 ? `Weekly (${days.join(', ')})` : 'Weekly',
+        interval,
+        days
+      };
+    case 'MONTHLY':
+      return {
+        frequency: 'monthly',
+        label: interval === 1 ? 'Monthly' : `Every ${interval} months`,
+        interval,
+        days: []
+      };
+    default:
+      return {
+        frequency: 'custom',
+        label: `Custom (${freq})`,
+        interval,
+        days
+      };
+  }
+};
+
+/**
+ * Check if a meeting has a video conference link
+ * @param {Object} event - Calendar event
+ * @returns {boolean} - True if has video link
+ */
+const hasVideoConferenceLink = (event) => {
+  if (event.conferenceData?.entryPoints?.length > 0) return true;
+
+  const description = event.description?.toLowerCase() || '';
+  const location = event.location?.toLowerCase() || '';
+
+  const videoKeywords = ['zoom', 'meet.google', 'teams.microsoft', 'webex', 'whereby'];
+  return videoKeywords.some(keyword =>
+    description.includes(keyword) || location.includes(keyword)
+  );
+};
+
+/**
+ * Analyze a single recurring meeting series
+ * @param {string} recurringEventId - Series ID
+ * @param {Array} instances - All instances of this series
+ * @param {Array} allEvents - All events for back-to-back detection
+ * @returns {Object} - Analyzed series data
+ */
+const analyzeRecurringSeries = (recurringEventId, instances, allEvents) => {
+  if (!instances || instances.length === 0) {
+    return null;
+  }
+
+  // Sort instances by start time
+  const sortedInstances = [...instances].sort((a, b) => {
+    const aTime = getEventStartTime(a);
+    const bTime = getEventStartTime(b);
+    return aTime.getTime() - bTime.getTime();
+  });
+
+  const firstInstance = sortedInstances[0];
+  const lastInstance = sortedInstances[sortedInstances.length - 1];
+
+  // Parse recurrence rule from first instance
+  const recurrenceInfo = parseRecurrenceRule(firstInstance.recurrence?.[0] || '');
+
+  // Calculate total time
+  let totalMinutes = 0;
+  sortedInstances.forEach(instance => {
+    if (!isAllDayEvent(instance)) {
+      const duration = calculateDuration(
+        instance.start?.dateTime,
+        instance.end?.dateTime
+      );
+      totalMinutes += duration;
+    }
+  });
+
+  // Count cancelled instances
+  const cancelledCount = sortedInstances.filter(i => i.status === 'cancelled').length;
+  const confirmedInstances = sortedInstances.filter(i => i.status !== 'cancelled');
+
+  // Calculate decline rate
+  let totalResponses = 0;
+  let declinedCount = 0;
+
+  confirmedInstances.forEach(instance => {
+    if (instance.attendees && instance.attendees.length > 0) {
+      instance.attendees.forEach(attendee => {
+        if (attendee.responseStatus) {
+          totalResponses++;
+          if (attendee.responseStatus === 'declined') {
+            declinedCount++;
+          }
+        }
+      });
+    }
+  });
+
+  const declineRate = totalResponses > 0 ? (declinedCount / totalResponses) * 100 : 0;
+  const cancellationRate = sortedInstances.length > 0
+    ? (cancelledCount / sortedInstances.length) * 100
+    : 0;
+
+  // Check if series is stale (no meetings in last 30 days)
+  const now = new Date();
+  const lastOccurrenceDate = getEventStartTime(lastInstance);
+  const daysSinceLastMeeting = Math.floor((now.getTime() - lastOccurrenceDate.getTime()) / (1000 * 60 * 60 * 24));
+  const isStale = daysSinceLastMeeting > 30;
+
+  // Check if series is new (started in last 30 days)
+  const firstOccurrenceDate = getEventStartTime(firstInstance);
+  const daysSinceFirstMeeting = Math.floor((now.getTime() - firstOccurrenceDate.getTime()) / (1000 * 60 * 60 * 24));
+  const isNew = daysSinceFirstMeeting <= 30 && daysSinceFirstMeeting >= 0;
+
+  // Check characteristics
+  const hasVideoLink = hasVideoConferenceLink(firstInstance);
+  const hasAgenda = !!(firstInstance.description && firstInstance.description.trim().length > 0);
+
+  // Check if causes back-to-back
+  let causesBackToBack = false;
+  const gaps = analyzeGaps(allEvents);
+  confirmedInstances.forEach(instance => {
+    const relatedGaps = gaps.filter(gap =>
+      gap.afterEvent.id === instance.id || gap.beforeEvent.id === instance.id
+    );
+    if (relatedGaps.some(g => g.status === 'back-to-back')) {
+      causesBackToBack = true;
+    }
+  });
+
+  // Check if out of hours
+  let isOutOfHours = false;
+  confirmedInstances.forEach(instance => {
+    const startTime = getEventStartTime(instance);
+    if (startTime) {
+      const hour = startTime.getHours();
+      if (hour < 8 || hour >= 18) {
+        isOutOfHours = true;
+      }
+    }
+  });
+
+  // Average attendee count
+  let totalAttendees = 0;
+  let instancesWithAttendees = 0;
+  confirmedInstances.forEach(instance => {
+    if (instance.attendees && instance.attendees.length > 0) {
+      totalAttendees += instance.attendees.length;
+      instancesWithAttendees++;
+    }
+  });
+  const averageAttendeeCount = instancesWithAttendees > 0
+    ? totalAttendees / instancesWithAttendees
+    : firstInstance.attendees?.length || 0;
+
+  return {
+    recurringEventId,
+    summary: firstInstance.summary || 'Untitled Meeting',
+    frequency: recurrenceInfo.frequency,
+    frequencyLabel: recurrenceInfo.label,
+    occurrenceCount: confirmedInstances.length,
+    totalMinutes,
+    totalHours: parseFloat((totalMinutes / 60).toFixed(1)),
+    instances: sortedInstances,
+    organizer: firstInstance.organizer,
+    attendeeCount: firstInstance.attendees?.length || 0,
+    averageAttendeeCount: parseFloat(averageAttendeeCount.toFixed(1)),
+    isOutOfHours,
+    hasVideoLink,
+    hasAgenda,
+    causesBackToBack,
+    firstOccurrence: firstOccurrenceDate,
+    lastOccurrence: lastOccurrenceDate,
+    declineRate: parseFloat(declineRate.toFixed(1)),
+    cancellationRate: parseFloat(cancellationRate.toFixed(1)),
+    isStale,
+    isNew,
+    daysWithoutMeeting: daysSinceLastMeeting
+  };
+};
+
+/**
+ * Find and analyze all recurring meeting series
+ * @param {Array} events - Array of calendar events
+ * @returns {Array} - Array of analyzed recurring series
+ */
+export const findRecurringMeetingSeries = (events) => {
+  if (!events || !events.length) return [];
+
+  // Only analyze meetings
+  const meetings = events.filter(event => isMeeting(event) && !isAllDayEvent(event));
+
+  // Group by recurringEventId
+  const seriesMap = new Map();
+
+  meetings.forEach(event => {
+    if (event.recurringEventId) {
+      const seriesId = event.recurringEventId;
+      if (!seriesMap.has(seriesId)) {
+        seriesMap.set(seriesId, []);
+      }
+      seriesMap.get(seriesId).push(event);
+    }
+  });
+
+  // Analyze each series
+  const analyzedSeries = [];
+  seriesMap.forEach((instances, seriesId) => {
+    const analysis = analyzeRecurringSeries(seriesId, instances, events);
+    if (analysis) {
+      analyzedSeries.push(analysis);
+    }
+  });
+
+  // Sort by total time (descending)
+  return analyzedSeries.sort((a, b) => b.totalMinutes - a.totalMinutes);
+};
+
+/**
+ * Count recurring meeting series
+ * @param {Array} events - Array of calendar events
+ * @returns {number} - Count of unique recurring series
+ */
+export const countRecurringMeetingSeries = (events) => {
+  return findRecurringMeetingSeries(events).length;
+};
+
+/**
+ * Calculate total hours spent in recurring meetings
+ * @param {Array} events - Array of calendar events
+ * @returns {number} - Total hours in recurring meetings
+ */
+export const calculateRecurringMeetingHours = (events) => {
+  const series = findRecurringMeetingSeries(events);
+  const totalMinutes = series.reduce((sum, s) => sum + s.totalMinutes, 0);
+  return parseFloat((totalMinutes / 60).toFixed(1));
+};
+
+/**
+ * Calculate ratio of recurring to one-time meetings
+ * @param {Array} events - Array of calendar events
+ * @returns {number} - Percentage of meetings that are recurring
+ */
+export const calculateRecurringVsOneTimeRatio = (events) => {
+  if (!events || !events.length) return 0;
+
+  const meetings = events.filter(event => isMeeting(event) && !isAllDayEvent(event));
+  if (meetings.length === 0) return 0;
+
+  const recurringCount = meetings.filter(event => event.recurringEventId).length;
+  return parseFloat(((recurringCount / meetings.length) * 100).toFixed(1));
+};
+
+/**
+ * Get top time-consuming recurring series
+ * @param {Array} events - Array of calendar events
+ * @param {number} limit - Number of series to return
+ * @returns {Array} - Top N series by total time
+ */
+export const getTopTimeConsumingSeries = (events, limit = 5) => {
+  const series = findRecurringMeetingSeries(events);
+  return series.slice(0, limit);
+};
+
+/**
+ * Find stale recurring series (no meetings in 30+ days)
+ * @param {Array} events - Array of calendar events
+ * @returns {Array} - Stale series
+ */
+export const findStaleRecurringSeries = (events) => {
+  const series = findRecurringMeetingSeries(events);
+  return series.filter(s => s.isStale);
+};
+
+/**
+ * Find new recurring series (started in last 30 days)
+ * @param {Array} events - Array of calendar events
+ * @returns {Array} - New series
+ */
+export const findNewRecurringSeries = (events) => {
+  const series = findRecurringMeetingSeries(events);
+  return series.filter(s => s.isNew);
+};
+
+/**
+ * Find recurring series without video links
+ * @param {Array} events - Array of calendar events
+ * @returns {Array} - Series without video links
+ */
+export const findRecurringWithoutVideoLinks = (events) => {
+  const series = findRecurringMeetingSeries(events);
+  return series.filter(s => !s.hasVideoLink);
+};
+
+/**
+ * Find recurring series without agenda/description
+ * @param {Array} events - Array of calendar events
+ * @returns {Array} - Series without agenda
+ */
+export const findRecurringWithoutAgenda = (events) => {
+  const series = findRecurringMeetingSeries(events);
+  return series.filter(s => !s.hasAgenda);
+};
+
+/**
+ * Find recurring series causing back-to-back meetings
+ * @param {Array} events - Array of calendar events
+ * @returns {Array} - Series causing back-to-back
+ */
+export const findRecurringCausingBackToBack = (events) => {
+  const series = findRecurringMeetingSeries(events);
+  return series.filter(s => s.causesBackToBack);
+};
+
+/**
+ * Find recurring series scheduled outside business hours
+ * @param {Array} events - Array of calendar events
+ * @returns {Array} - Series outside business hours
+ */
+export const findRecurringOutOfHours = (events) => {
+  const series = findRecurringMeetingSeries(events);
+  return series.filter(s => s.isOutOfHours);
+};

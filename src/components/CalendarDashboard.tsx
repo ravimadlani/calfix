@@ -13,6 +13,7 @@ import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
 import GoogleCalendarConnectPrompt from './GoogleCalendarConnectPrompt';
 import UpgradeModal from './UpgradeModal';
+import RecurringMeetingsAnalysis from './RecurringMeetingsAnalysis';
 
 import { fetchEvents, addBufferBefore, addBufferAfter, moveEvent, createFocusBlock, findNextAvailableSlot, batchAddBuffers, deletePlaceholderAndLog, deleteEvent, createTravelBlock, createLocationEvent, createEvent, fetchCalendarList, batchAddGoogleMeetLinks } from '../services/googleCalendar';
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
@@ -42,6 +43,7 @@ const CalendarDashboard = () => {
   const [currentTimeRange, setCurrentTimeRange] = useState(null);
   const [workflowModal, setWorkflowModal] = useState({ isOpen: false, actionType: null });
   const [showTeamScheduler, setShowTeamScheduler] = useState(false);
+  const [showRecurringAnalysis, setShowRecurringAnalysis] = useState(false);
   const [managedCalendarId, setManagedCalendarId] = useState(() => {
     // Load from localStorage or default to 'primary'
     return localStorage.getItem('managed_calendar_id') || 'primary';
@@ -935,43 +937,104 @@ const CalendarDashboard = () => {
 
       {/* Statistics Grid */}
       {displayAnalytics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-          <StatsCard
-            icon="📅"
-            label="Total Events"
-            value={displayAnalytics.totalEvents}
-            subtext={`${displayAnalytics.totalMeetings} meetings`}
-            color="indigo"
-          />
-          <StatsCard
-            icon="⏰"
-            label="Meeting Time"
-            value={formatHours(displayAnalytics.totalMeetingHours)}
-            subtext="Total hours"
-            color="blue"
-          />
-          <StatsCard
-            icon="🔴"
-            label="Back-to-Back"
-            value={displayAnalytics.backToBackCount}
-            subtext="Needs buffers"
-            color={displayAnalytics.backToBackCount > 0 ? 'red' : 'green'}
-          />
-          <StatsCard
-            icon="🎯"
-            label="Focus Blocks"
-            value={displayAnalytics.focusBlockCount}
-            subtext="60+ min gaps"
-            color="green"
-          />
-          <StatsCard
-            icon="🌙"
-            label="Out of Hours"
-            value={displayAnalytics.outOfHoursMeetingCount}
-            subtext="In foreign timezone"
-            color={displayAnalytics.outOfHoursMeetingCount > 0 ? 'orange' : 'green'}
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+            <StatsCard
+              icon="📅"
+              label="Total Events"
+              value={displayAnalytics.totalEvents}
+              subtext={`${displayAnalytics.totalMeetings} meetings`}
+              color="indigo"
+            />
+            <StatsCard
+              icon="⏰"
+              label="Meeting Time"
+              value={formatHours(displayAnalytics.totalMeetingHours)}
+              subtext="Total hours"
+              color="blue"
+            />
+            <StatsCard
+              icon="🔴"
+              label="Back-to-Back"
+              value={displayAnalytics.backToBackCount}
+              subtext="Needs buffers"
+              color={displayAnalytics.backToBackCount > 0 ? 'red' : 'green'}
+            />
+            <StatsCard
+              icon="🎯"
+              label="Focus Blocks"
+              value={displayAnalytics.focusBlockCount}
+              subtext="60+ min gaps"
+              color="green"
+            />
+            <StatsCard
+              icon="🌙"
+              label="Out of Hours"
+              value={displayAnalytics.outOfHoursMeetingCount}
+              subtext="In foreign timezone"
+              color={displayAnalytics.outOfHoursMeetingCount > 0 ? 'orange' : 'green'}
+            />
+          </div>
+
+          {/* Recurring Meetings Card - Expanded */}
+          {displayAnalytics.recurringSeriesCount > 0 && (
+            <div
+              onClick={() => setShowRecurringAnalysis(true)}
+              className="mt-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-3xl">🔄</span>
+                    <h3 className="text-xl font-bold text-gray-900">Recurring Meetings Analytics</h3>
+                  </div>
+                  <p className="text-gray-700 mb-4">
+                    You have <strong className="text-purple-700">{displayAnalytics.recurringSeriesCount} active recurring series</strong> consuming{' '}
+                    <strong className="text-purple-700">{displayAnalytics.recurringMeetingHours}h</strong> ({displayAnalytics.recurringVsOneTimeRatio.toFixed(0)}% of your meeting time)
+                  </p>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="bg-white rounded-lg p-3 border border-purple-200">
+                      <div className="text-xs text-gray-600 mb-1">Time Investment</div>
+                      <div className="text-lg font-bold text-purple-700">{displayAnalytics.recurringMeetingHours}h</div>
+                    </div>
+                    {displayAnalytics.newRecurringSeries.length > 0 && (
+                      <div className="bg-white rounded-lg p-3 border border-green-200">
+                        <div className="text-xs text-gray-600 mb-1">New Series</div>
+                        <div className="text-lg font-bold text-green-700">✨ {displayAnalytics.newRecurringSeries.length}</div>
+                      </div>
+                    )}
+                    {displayAnalytics.staleRecurringSeries.length > 0 && (
+                      <div className="bg-white rounded-lg p-3 border border-gray-300">
+                        <div className="text-xs text-gray-600 mb-1">Stale Series</div>
+                        <div className="text-lg font-bold text-gray-700">⏸️ {displayAnalytics.staleRecurringSeries.length}</div>
+                      </div>
+                    )}
+                    {(displayAnalytics.recurringWithoutVideoLinks.length +
+                      displayAnalytics.recurringWithoutAgenda.length +
+                      displayAnalytics.recurringCausingBackToBack.length) > 0 && (
+                      <div className="bg-white rounded-lg p-3 border border-yellow-200">
+                        <div className="text-xs text-gray-600 mb-1">Health Issues</div>
+                        <div className="text-lg font-bold text-yellow-700">
+                          ⚠️ {displayAnalytics.recurringWithoutVideoLinks.length +
+                               displayAnalytics.recurringWithoutAgenda.length +
+                               displayAnalytics.recurringCausingBackToBack.length}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 text-purple-700 font-medium">
+                    <span>Click to view detailed analysis</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Day Filter Pills for Week and Month Views */}
@@ -1007,6 +1070,14 @@ const CalendarDashboard = () => {
         onDeletePlaceholder={handleDeletePlaceholder}
         onAddBuffer={handleAddBufferAfter}
       />
+
+      {/* Recurring Meetings Analysis Modal */}
+      {showRecurringAnalysis && displayAnalytics && (
+        <RecurringMeetingsAnalysis
+          analytics={displayAnalytics}
+          onClose={() => setShowRecurringAnalysis(false)}
+        />
+      )}
 
       {/* Events Timeline */}
       <div>

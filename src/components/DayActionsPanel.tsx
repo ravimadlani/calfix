@@ -127,6 +127,46 @@ const DayActionsPanel = ({ analytics, recommendations, viewLabel, selectedDayDat
     });
   }
 
+  // Recurring meetings health issues
+  if (analytics.recurringWithoutVideoLinks && analytics.recurringWithoutVideoLinks.length > 0) {
+    actionableItems.push({
+      priority: 'medium',
+      icon: '🔄',
+      title: `${analytics.recurringWithoutVideoLinks.length} Recurring Series Without Video Links`,
+      description: 'Regular meetings missing video conference information',
+      action: 'Add video links to recurring meeting series',
+      color: 'bg-purple-50 border-purple-300 text-purple-900',
+      actionType: 'recurring-no-video',
+      clickable: false
+    });
+  }
+
+  if (analytics.recurringCausingBackToBack && analytics.recurringCausingBackToBack.length > 0) {
+    actionableItems.push({
+      priority: 'medium',
+      icon: '🔄',
+      title: `${analytics.recurringCausingBackToBack.length} Recurring Series Causing Back-to-Back`,
+      description: 'Regular meetings creating scheduling conflicts',
+      action: 'Review recurring meeting times and durations',
+      color: 'bg-purple-50 border-purple-300 text-purple-900',
+      actionType: 'recurring-back-to-back',
+      clickable: false
+    });
+  }
+
+  if (analytics.staleRecurringSeries && analytics.staleRecurringSeries.length > 0) {
+    actionableItems.push({
+      priority: 'medium',
+      icon: '⏸️',
+      title: `${analytics.staleRecurringSeries.length} Stale Recurring Series`,
+      description: 'Meeting series with no instances in 30+ days',
+      action: 'Review and archive inactive recurring meetings',
+      color: 'bg-gray-50 border-gray-300 text-gray-900',
+      actionType: 'recurring-stale',
+      clickable: false
+    });
+  }
+
   // Focus time recommendations
   if (analytics.focusBlockCount === 0 && analytics.totalEvents > 0) {
     actionableItems.push({

@@ -9,6 +9,7 @@ import type {
   FlightWithTravelNeeds,
   InternationalFlightWithLocation,
   MeetingOutsideHours,
+  CalendarOrganizer,
 } from './calendar';
 
 export interface HealthScoreInterpretation {
@@ -42,6 +43,18 @@ export interface CalendarAnalytics {
   internationalFlightsNeedingLocationCount: number;
   meetingsOutsideBusinessHours: MeetingOutsideHours[];
   outOfHoursMeetingCount: number;
+  // Recurring Meetings Analytics
+  recurringSeriesCount: number;
+  recurringMeetingSeries: RecurringMeetingSeries[];
+  recurringMeetingHours: number;
+  recurringVsOneTimeRatio: number;
+  topTimeConsumingSeries: RecurringMeetingSeries[];
+  staleRecurringSeries: RecurringMeetingSeries[];
+  newRecurringSeries: RecurringMeetingSeries[];
+  recurringWithoutVideoLinks: RecurringMeetingSeries[];
+  recurringWithoutAgenda: RecurringMeetingSeries[];
+  recurringCausingBackToBack: RecurringMeetingSeries[];
+  recurringOutOfHours: RecurringMeetingSeries[];
 }
 
 export interface Insight {
@@ -96,4 +109,55 @@ export interface OptimalTimeSlot {
   gapMinutes: number;
   score: number;
   reason: string;
+}
+
+/**
+ * Recurring Meetings Analytics Types
+ */
+
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom' | 'unknown';
+
+export interface RecurringMeetingSeries {
+  recurringEventId: string;
+  summary: string;
+  frequency: RecurrenceFrequency;
+  frequencyLabel: string;
+  occurrenceCount: number;
+  totalMinutes: number;
+  totalHours: number;
+  instances: CalendarEvent[];
+  organizer?: CalendarOrganizer;
+  attendeeCount: number;
+  isOutOfHours: boolean;
+  hasVideoLink: boolean;
+  hasAgenda: boolean;
+  causesBackToBack: boolean;
+  firstOccurrence: Date;
+  lastOccurrence: Date;
+  averageAttendeeCount: number;
+  declineRate: number;
+  cancellationRate: number;
+  isStale: boolean;
+  isNew: boolean;
+  daysWithoutMeeting: number;
+}
+
+export interface RecurrencePattern {
+  frequency: RecurrenceFrequency;
+  interval: number;
+  daysOfWeek?: string[];
+  dayOfMonth?: number;
+  count?: number;
+  until?: Date;
+}
+
+export interface RecurringMeetingsInsight {
+  type: 'time-investment' | 'attendance' | 'health-issue' | 'optimization';
+  severity: 'info' | 'warning' | 'critical';
+  icon: string;
+  title: string;
+  description: string;
+  affectedSeries: RecurringMeetingSeries[];
+  actionable: boolean;
+  recommendation?: string;
 }
