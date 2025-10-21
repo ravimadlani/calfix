@@ -20,17 +20,17 @@ export function useSupabaseClient() {
     return createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         // Fetch function that automatically includes Clerk token
-        fetch: async (url, options = {}) => {
+        fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
           const clerkToken = await getToken({ template: 'supabase' });
 
-          const headers = new Headers(options?.headers);
+          const headers = new Headers(options.headers);
           if (clerkToken) {
             headers.set('Authorization', `Bearer ${clerkToken}`);
           }
 
           return fetch(url, {
             ...options,
-            headers,
+            headers
           });
         },
       },
