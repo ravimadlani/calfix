@@ -1,7 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+console.log('[Calendar Sync] API endpoint loaded');
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('[Calendar Sync] Handler called');
   console.log('[Calendar Sync] Request received:', {
     method: req.method,
     headers: req.headers,
@@ -31,10 +34,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  console.log('[Calendar Sync] Environment check:', {
+    hasSupabaseUrl: !!supabaseUrl,
+    supabaseUrl: supabaseUrl?.substring(0, 30) + '...',
+    hasServiceKey: !!supabaseServiceKey,
+    serviceKeyLength: supabaseServiceKey?.length,
+    envKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE'))
+  });
+
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing environment variables:', {
+    console.error('[Calendar Sync] Missing environment variables:', {
       supabaseUrl: !!supabaseUrl,
-      supabaseServiceKey: !!supabaseServiceKey
+      supabaseServiceKey: !!supabaseServiceKey,
+      availableEnvKeys: Object.keys(process.env)
     });
     return res.status(500).json({ error: 'Database not configured' });
   }

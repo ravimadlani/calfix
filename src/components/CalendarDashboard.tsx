@@ -17,7 +17,7 @@ import UpgradeModal from './UpgradeModal';
 import { fetchEvents, addBufferBefore, addBufferAfter, moveEvent, createFocusBlock, findNextAvailableSlot, batchAddBuffers, deletePlaceholderAndLog, deleteEvent, createTravelBlock, createLocationEvent, createEvent, fetchCalendarList, batchAddGoogleMeetLinks } from '../services/googleCalendar';
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
-import { isAuthenticated as isGoogleAuthenticated, handleCallback } from '../services/googleAuth';
+import { isAuthenticated as isGoogleAuthenticated } from '../services/googleAuth';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser } from '@clerk/clerk-react';
 
@@ -25,10 +25,13 @@ const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
   const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [subscriptionTier, setSubscriptionTier] = useState<string>('trial');
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null); // Start with null until we know the tier
   const [maxCalendars, setMaxCalendars] = useState(1);
   const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isInTrial, setIsInTrial] = useState(false);
+  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false); // Track if subscription check is done
   const [currentView, setCurrentView] = useState('today');
   const [events, setEvents] = useState([]);
   const [eventsWithGaps, setEventsWithGaps] = useState([]);
@@ -47,10 +50,14 @@ const CalendarDashboard = () => {
     return localStorage.getItem('managed_calendar_id') || 'primary';
   });
   const [availableCalendars, setAvailableCalendars] = useState([]);
+  const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
 
   // Check user's subscription tier
   const checkSubscription = async () => {
-    if (!clerkUser?.id) return;
+    if (!clerkUser?.id) {
+      setSubscriptionLoaded(true); // Mark as loaded even if no user
+      return;
+    }
 
     try {
       const response = await fetch(`/api/user/subscription?userId=${clerkUser.id}`);
@@ -59,19 +66,26 @@ const CalendarDashboard = () => {
         setSubscriptionTier(data.subscriptionTier);
         setMaxCalendars(data.maxCalendars);
         setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
+        setIsInTrial(data.isInTrial);
+        setDaysLeftInTrial(data.daysLeftInTrial);
 
         console.log('Subscription check:', {
           tier: data.subscriptionTier,
           maxCalendars: data.maxCalendars,
-          hasMultiCalendarAccess: data.hasMultiCalendarAccess
+          hasMultiCalendarAccess: data.hasMultiCalendarAccess,
+          isInTrial: data.isInTrial,
+          daysLeftInTrial: data.daysLeftInTrial
         });
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
-      // Default to trial tier on error
-      setSubscriptionTier('trial');
+      // Default to basic tier on error
+      setSubscriptionTier('basic');
       setMaxCalendars(1);
       setHasMultiCalendarAccess(false);
+    } finally {
+      // Always mark subscription as loaded
+      setSubscriptionLoaded(true);
     }
   };
 
@@ -105,12 +119,16 @@ const CalendarDashboard = () => {
 
       console.log('Manageable calendars (filtered):', manageable);
 
+      // Store ALL manageable calendars for upgrade teaser detection
+      setAllManageableCalendars(manageable);
+
       // Filter calendars based on subscription tier and maxCalendars limit
       let calendarsToShow = manageable;
       if (!hasMultiCalendarAccess) {
         // Trial/Basic tier: Only show primary calendar
         calendarsToShow = manageable.filter(cal => cal.primary);
         console.log(`${subscriptionTier} tier: Limiting to primary calendar only`);
+        console.log(`[Upgrade Opportunity] User has access to ${manageable.length} calendars but can only use 1`);
       } else {
         // EA/EA Pro tier: Show up to maxCalendars
         calendarsToShow = manageable.slice(0, maxCalendars);
@@ -150,18 +168,39 @@ const CalendarDashboard = () => {
   };
 
   // Update managed calendar and persist to localStorage
-  const updateManagedCalendar = (calendarId) => {
+  const updateManagedCalendar = async (calendarId) => {
     const trimmedId = calendarId.trim() || 'primary';
+    console.log(`[Calendar Switch] Starting switch from ${managedCalendarId} to ${trimmedId}`);
+
+    // Clear current events immediately to show loading state
+    setEvents([]);
+    setEventsWithGaps([]);
+    setExtendedEventsForFlights([]);
+    setAnalytics(null);
+    setSelectedDay(null); // Clear any day selection
+
+    // Update the managed calendar
     setManagedCalendarId(trimmedId);
     localStorage.setItem('managed_calendar_id', trimmedId);
-    // Reload events for the new calendar
-    loadEvents();
+
+    console.log(`[Calendar Switch] State updated, calling loadEvents for calendar: ${trimmedId}`);
+
+    // Reload events for the new calendar - PASS THE NEW ID DIRECTLY
+    try {
+      await loadEvents(trimmedId);  // Pass the new calendar ID directly
+      console.log(`[Calendar Switch] Successfully loaded events for ${trimmedId}`);
+    } catch (error) {
+      console.error(`[Calendar Switch] Error loading events for ${trimmedId}:`, error);
+    }
   };
 
   // Fetch events based on current view
-  const loadEvents = async () => {
+  const loadEvents = async (calendarIdOverride = null) => {
     setLoading(true);
     setError(null);
+
+    // Use the override if provided, otherwise use state
+    const calendarToUse = calendarIdOverride || managedCalendarId;
 
     try {
       let timeRange;
@@ -194,9 +233,9 @@ const CalendarDashboard = () => {
       console.log('=== FETCHING EVENTS ===');
       console.log('View:', currentView);
       console.log('Time range:', timeRange);
-      console.log('Calendar:', managedCalendarId);
+      console.log('Calendar:', calendarToUse);
 
-      const fetchedEvents = await fetchEvents(timeRange.timeMin, timeRange.timeMax, 2500, managedCalendarId);
+      const fetchedEvents = await fetchEvents(timeRange.timeMin, timeRange.timeMax, 2500, calendarToUse);
 
       console.log('Fetched events count (before filtering):', fetchedEvents.length);
 
@@ -254,7 +293,7 @@ const CalendarDashboard = () => {
         extendedStart.toISOString(),
         extendedEnd.toISOString(),
         2500, // Fetch all events for extended range
-        managedCalendarId
+        calendarToUse
       );
 
       console.log('Extended events for flight analysis:', extendedEvents.length);
@@ -311,28 +350,35 @@ const CalendarDashboard = () => {
   // Check Google Calendar authentication on mount and handle OAuth callback
   useEffect(() => {
     const checkGoogleAuth = async () => {
-      // Check if we're returning from OAuth (URL has 'code' parameter)
+      // Check for OAuth success/error flags from the callback handler
       const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
+      const oauthSuccess = urlParams.get('oauth_success');
+      const oauthError = urlParams.get('oauth_error');
 
-      if (code) {
-        try {
-          // Exchange code for tokens
-          await handleCallback(code);
+      if (oauthSuccess) {
+        // OAuth was successful
+        console.log('[CalendarDashboard] OAuth successful');
+        setIsGoogleCalendarConnected(true);
+        setCheckingAuth(false);
 
-          // Clean up URL by removing OAuth parameters
-          window.history.replaceState({}, document.title, window.location.pathname);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
 
-          // Update authentication state
-          setIsGoogleCalendarConnected(true);
-          setCheckingAuth(false);
-        } catch (error) {
-          console.error('OAuth callback error:', error);
-          alert('Failed to connect Google Calendar. Please try again.');
-          setCheckingAuth(false);
-        }
+        // Show success message
+        console.log('Google Calendar connected successfully!');
+      } else if (oauthError) {
+        // OAuth failed
+        console.error('[CalendarDashboard] OAuth failed:', oauthError);
+        setIsGoogleCalendarConnected(false);
+        setCheckingAuth(false);
+
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        // Show error
+        alert(`Failed to connect Google Calendar: ${oauthError}`);
       } else {
-        // No OAuth code, just check if already authenticated
+        // Normal page load, just check if already authenticated
         const authenticated = isGoogleAuthenticated();
         setIsGoogleCalendarConnected(authenticated);
         setCheckingAuth(false);
@@ -349,22 +395,22 @@ const CalendarDashboard = () => {
     }
   }, [clerkUser]);
 
-  // Load calendar list on mount (only if Google Calendar is connected)
+  // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {
-    if (isGoogleCalendarConnected && maxCalendars > 0) {
+    if (isGoogleCalendarConnected && subscriptionLoaded && maxCalendars > 0) {
       loadCalendarList();
     }
-  }, [isGoogleCalendarConnected, maxCalendars, hasMultiCalendarAccess]);
+  }, [isGoogleCalendarConnected, subscriptionLoaded, maxCalendars, hasMultiCalendarAccess]);
 
-  // Load events when view changes (only if Google Calendar is connected)
+  // Load events when view changes (only after subscription is loaded)
   useEffect(() => {
-    if (isGoogleCalendarConnected) {
+    if (isGoogleCalendarConnected && subscriptionLoaded) {
       setEvents([]); // Clear events immediately to prevent showing stale data
       setEventsWithGaps([]);
       loadEvents();
       setSelectedDay(null); // Reset day filter when view changes
     }
-  }, [currentView, isGoogleCalendarConnected]);
+  }, [currentView, isGoogleCalendarConnected, subscriptionLoaded]);
 
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event, options: any = {}) => {
@@ -733,8 +779,8 @@ const CalendarDashboard = () => {
     }
   };
 
-  // Show loading while checking authentication
-  if (checkingAuth) {
+  // Show loading while checking authentication or subscription
+  if (checkingAuth || (clerkUser && !subscriptionLoaded)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -838,109 +884,140 @@ const CalendarDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Header with View Selector and Controls */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
-          <div className="flex gap-3">
-            <a
-              href="/admin"
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-            >
-              <span>⚙️</span>
-              Admin
-            </a>
-            <button
-              onClick={() => setShowTeamScheduler(true)}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-            >
-              <span>👥</span>
-              Schedule Meeting
-            </button>
+      {/* Calendar Management Section */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+        {hasMultiCalendarAccess ? (
+          <>
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Managing Calendar:
+              </label>
+              <select
+                value={managedCalendarId}
+                onChange={(e) => updateManagedCalendar(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
+              >
+                {availableCalendars.map((cal) => (
+                  <option key={cal.id} value={cal.id}>
+                    {cal.summary} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
+                  </option>
+                ))}
+              </select>
+              {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId) && (
+                <button
+                  onClick={() => {
+                    const primaryCal = availableCalendars.find(c => c.primary);
+                    updateManagedCalendar(primaryCal ? primaryCal.id : 'primary');
+                  }}
+                  className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  Reset to My Calendar
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
+              {' • '}
+              {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
+              {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId)
+                ? ' • Managing as delegate'
+                : ''}
+            </p>
+          </>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-gray-900">
+                📅 {availableCalendars[0]?.summary || 'Your Calendar'}
+              </span>
+              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded uppercase">
+                {isInTrial ? `${subscriptionTier || 'Loading'} Trial (${daysLeftInTrial} days left)` : (subscriptionTier || 'Loading')}
+              </span>
+            </div>
+            <p className="text-xs text-gray-600">
+              {(() => {
+                console.log('[Upgrade Teaser] Checking:', {
+                  subscriptionTier,
+                  allManageableCount: allManageableCalendars.length,
+                  shownCount: availableCalendars.length,
+                  allManageableCalendars: allManageableCalendars.map(c => ({ summary: c.summary, accessRole: c.accessRole }))
+                });
+
+                if (subscriptionTier === 'basic' && allManageableCalendars.length > 1) {
+                  return `🎯 You have access to ${allManageableCalendars.length} calendars! Upgrade to EA to manage them all`;
+                }
+                return `Manage up to ${maxCalendars === 5 ? '5' : maxCalendars === 15 ? '15' : '1'} calendar${maxCalendars > 1 ? 's' : ''} with ${maxCalendars === 5 ? 'EA' : maxCalendars === 15 ? 'EA Pro' : 'your plan'}`;
+              })()}
+            </p>
+          </div>
+        )}
+
+        {/* Action Buttons - Below the calendar selection */}
+        <div className="flex gap-2 pt-2 border-t border-slate-200">
           <button
             onClick={loadEvents}
             disabled={loading}
             className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Refresh
           </button>
+          <button
+            onClick={() => {/* TODO: Add preferences modal */}}
+            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Preferences
+          </button>
         </div>
       </div>
 
-      {/* Calendar Selector - Only for Multi-Calendar Tiers */}
-      {hasMultiCalendarAccess ? (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-              Managing Calendar:
-            </label>
-            <select
-              value={managedCalendarId}
-              onChange={(e) => updateManagedCalendar(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
-            >
-              {availableCalendars.map((cal) => (
-                <option key={cal.id} value={cal.id}>
-                  {cal.summary} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
-                </option>
-              ))}
-            </select>
-            {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId) && (
-              <button
-                onClick={() => {
-                  const primaryCal = availableCalendars.find(c => c.primary);
-                  updateManagedCalendar(primaryCal ? primaryCal.id : 'primary');
-                }}
-                className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
-              >
-                Reset to My Calendar
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
-            {' • '}
-            {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
-            {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId)
-              ? ' • Managing as delegate'
-              : ''}
-          </p>
-        </div>
-      ) : (
+      {/* Upgrade Banner for Basic Users */}
+      {subscriptionTier === 'basic' && allManageableCalendars.length > 1 && (
         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">
-                  📅 {availableCalendars[0]?.summary || 'Your Calendar'}
-                </span>
-                <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded uppercase">
-                  {subscriptionTier === 'trial' ? '7-Day Trial' : subscriptionTier}
-                </span>
-              </div>
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                🎯 Unlock All Your Calendars
+              </p>
               <p className="text-xs text-gray-600">
-                Manage up to {maxCalendars === 5 ? '5' : maxCalendars === 15 ? '15' : '5'} calendars with {maxCalendars === 5 ? 'EA' : 'EA Pro'}
+                You have access to {allManageableCalendars.length} calendars but can only manage 1 with Basic plan
               </p>
             </div>
             <button
               onClick={() => setShowUpgradeModal(true)}
               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-lg transition-all transform hover:scale-105 whitespace-nowrap"
             >
-              {subscriptionTier === 'trial' ? 'View Plans' : subscriptionTier === 'basic' ? 'Upgrade' : 'Upgrade'}
+              Unlock All Calendars
             </button>
           </div>
         </div>
       )}
+
+      {/* Header with View Selector and Controls */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
+          <button
+            onClick={() => setShowTeamScheduler(true)}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+          >
+            <span>👥</span>
+            Schedule Meeting
+          </button>
+        </div>
       </div>
 
       {/* Upgrade Modal */}
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        currentTier={subscriptionTier as 'trial' | 'basic' | 'ea' | 'ea_pro'}
+        currentTier={(subscriptionTier || 'basic') as 'basic' | 'ea' | 'ea_pro'}
       />
 
       {/* Statistics Grid */}

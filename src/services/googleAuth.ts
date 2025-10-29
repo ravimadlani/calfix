@@ -8,6 +8,9 @@ const CLIENT_SECRET = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI;
 const SCOPE = 'https://www.googleapis.com/auth/calendar'; // Full calendar access including free/busy
 
+// Debug: Log the actual redirect URI being used
+console.log('[Google Auth] Using REDIRECT_URI:', REDIRECT_URI);
+
 // Storage keys
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'google_access_token',
@@ -82,7 +85,16 @@ export const getAuthUrl = async (): Promise<string> => {
     code_challenge_method: 'S256'
   });
 
-  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  console.log('[Google Auth] OAuth parameters:', {
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPE
+  });
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  console.log('[Google Auth] Full auth URL:', authUrl);
+
+  return authUrl;
 };
 
 /**

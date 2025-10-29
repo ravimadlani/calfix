@@ -8,10 +8,10 @@ import React, { useState } from 'react';
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentTier?: 'trial' | 'basic' | 'ea' | 'ea_pro';
+  currentTier?: 'basic' | 'ea' | 'ea_pro';
 }
 
-const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, currentTier = 'trial' }) => {
+const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, currentTier = 'basic' }) => {
   const [selectedTier, setSelectedTier] = useState<'basic' | 'ea' | 'ea_pro'>('ea');
 
   if (!isOpen) return null;
