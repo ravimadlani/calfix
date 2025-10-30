@@ -89,9 +89,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         hasMultiCalendarAccess = false;
     }
 
-    // If trial has expired and no active subscription, limit access
-    if (isTrialExpired && !data.stripe_subscription_id) {
-      maxCalendars = 0;  // No access after trial without subscription
+    // Only limit access if on basic tier with expired trial and no active subscription
+    // Users with ea or ea_pro tiers should always have access regardless of Stripe status
+    if (tier === 'basic' && isTrialExpired && !data.stripe_subscription_id) {
+      maxCalendars = 0;  // No access after trial without subscription for basic tier
       hasMultiCalendarAccess = false;
     }
 
