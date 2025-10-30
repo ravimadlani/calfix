@@ -833,7 +833,7 @@ const CalendarDashboard = () => {
           <h2 className="text-xl font-bold text-red-900 mb-2">Error Loading Calendar</h2>
           <p className="text-red-700 mb-4">{error}</p>
           <button
-            onClick={loadEvents}
+            onClick={() => loadEvents()}
             className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
           >
             Try Again
@@ -971,7 +971,7 @@ const CalendarDashboard = () => {
         {/* Action Buttons - Below the calendar selection */}
         <div className="flex gap-2 pt-2 border-t border-slate-200">
           <button
-            onClick={loadEvents}
+            onClick={() => loadEvents()}
             disabled={loading}
             className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors disabled:opacity-50 flex items-center gap-2"
           >

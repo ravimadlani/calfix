@@ -39,3 +39,4 @@ CLAUDE.md
 
 # Playwright MCP screenshots
 .playwright-mcp/
+.env*.local
