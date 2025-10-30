@@ -31,3 +31,11 @@ CLAUDE.md
 *.sln
 *.sw?
 .vercel
+
+# Environment files from Vercel CLI
+.env.preview
+.env.production
+.env.development
+
+# Playwright MCP screenshots
+.playwright-mcp/
