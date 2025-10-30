@@ -47,7 +47,12 @@ const CalendarDashboard = () => {
   const [showTeamScheduler, setShowTeamScheduler] = useState(false);
   const [managedCalendarId, setManagedCalendarId] = useState(() => {
     // Load from localStorage or default to 'primary'
-    return localStorage.getItem('managed_calendar_id') || 'primary';
+    const storedId = localStorage.getItem('managed_calendar_id');
+    // Ensure it's a string, not an object that might have been incorrectly stored
+    if (storedId && typeof storedId === 'string' && storedId !== '[object Object]') {
+      return storedId;
+    }
+    return 'primary';
   });
   const [availableCalendars, setAvailableCalendars] = useState([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
@@ -169,7 +174,9 @@ const CalendarDashboard = () => {
 
   // Update managed calendar and persist to localStorage
   const updateManagedCalendar = async (calendarId) => {
-    const trimmedId = calendarId.trim() || 'primary';
+    // Ensure we're working with a string, not an object
+    const idString = typeof calendarId === 'object' ? (calendarId?.id || 'primary') : calendarId;
+    const trimmedId = idString.trim() || 'primary';
     console.log(`[Calendar Switch] Starting switch from ${managedCalendarId} to ${trimmedId}`);
 
     // Clear current events immediately to show loading state
@@ -202,6 +209,15 @@ const CalendarDashboard = () => {
     // Use the override if provided, otherwise use state
     const calendarToUse = calendarIdOverride || managedCalendarId;
 
+    // Debug logging to catch the object issue
+    console.log('[loadEvents] calendarIdOverride:', calendarIdOverride);
+    console.log('[loadEvents] managedCalendarId:', managedCalendarId);
+    console.log('[loadEvents] calendarToUse:', calendarToUse);
+    console.log('[loadEvents] typeof calendarToUse:', typeof calendarToUse);
+
+    // Ensure we're using a string, not an object
+    const calendarIdString = typeof calendarToUse === 'object' ? (calendarToUse?.id || 'primary') : calendarToUse;
+
     try {
       let timeRange;
 
@@ -233,9 +249,9 @@ const CalendarDashboard = () => {
       console.log('=== FETCHING EVENTS ===');
       console.log('View:', currentView);
       console.log('Time range:', timeRange);
-      console.log('Calendar:', calendarToUse);
+      console.log('Calendar:', calendarIdString);
 
-      const fetchedEvents = await fetchEvents(timeRange.timeMin, timeRange.timeMax, 2500, calendarToUse);
+      const fetchedEvents = await fetchEvents(timeRange.timeMin, timeRange.timeMax, 2500, calendarIdString);
 
       console.log('Fetched events count (before filtering):', fetchedEvents.length);
 
@@ -293,7 +309,7 @@ const CalendarDashboard = () => {
         extendedStart.toISOString(),
         extendedEnd.toISOString(),
         2500, // Fetch all events for extended range
-        calendarToUse
+        calendarIdString
       );
 
       console.log('Extended events for flight analysis:', extendedEvents.length);
@@ -338,7 +354,7 @@ const CalendarDashboard = () => {
 
       // Check for permission-specific errors
       if (err.message && (err.message.includes('Permission denied') || err.message.includes('Not Found') || err.message.includes('No access'))) {
-        setError(`Cannot access calendar "${managedCalendarId}".\n\nPlease check:\n• The email address is correct\n• You have delegate access to this calendar\n• The calendar owner has granted "Make changes to events" permission`);
+        setError(`Cannot access calendar "${calendarIdString}".\n\nPlease check:\n• The email address is correct\n• You have delegate access to this calendar\n• The calendar owner has granted "Make changes to events" permission`);
       } else {
         setError(err.message || 'Failed to load calendar events');
       }
