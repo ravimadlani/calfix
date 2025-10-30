@@ -45,18 +45,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const tier = data.subscription_tier || 'trial';
+    // Get the actual subscription tier (defaults to 'basic' per our migration)
+    const tier = data.subscription_tier || 'basic';
+
+    // Check if user is in trial period
+    let isInTrial = false;
+    let isTrialExpired = false;
+    let daysLeftInTrial = 0;
+
+    if (data.trial_ends_at) {
+      const trialEndDate = new Date(data.trial_ends_at);
+      const now = new Date();
+
+      if (trialEndDate > now) {
+        isInTrial = true;
+        // Calculate days left in trial
+        daysLeftInTrial = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        isTrialExpired = true;
+      }
+    }
 
     // Determine calendar limits based on tier
     let maxCalendars = 1;
     let hasMultiCalendarAccess = false;
 
     switch (tier) {
-      case 'trial':
-        // Trial users get basic features (1 calendar)
-        maxCalendars = 1;
-        hasMultiCalendarAccess = false;
-        break;
       case 'basic':
         maxCalendars = 1;
         hasMultiCalendarAccess = false;
@@ -70,22 +84,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         hasMultiCalendarAccess = true;
         break;
       default:
+        // Default to basic tier limits
         maxCalendars = 1;
         hasMultiCalendarAccess = false;
     }
 
-    // Check if trial has expired
-    let isTrialExpired = false;
-    if (tier === 'trial' && data.trial_ends_at) {
-      const trialEndDate = new Date(data.trial_ends_at);
-      isTrialExpired = trialEndDate < new Date();
+    // If trial has expired and no active subscription, limit access
+    if (isTrialExpired && !data.stripe_subscription_id) {
+      maxCalendars = 0;  // No access after trial without subscription
+      hasMultiCalendarAccess = false;
     }
 
     return res.status(200).json({
       subscriptionTier: tier,
       maxCalendars,
       hasMultiCalendarAccess,
+      isInTrial,
       isTrialExpired,
+      daysLeftInTrial,
       trialEndsAt: data.trial_ends_at,
       stripeCustomerId: data.stripe_customer_id,
       stripeSubscriptionId: data.stripe_subscription_id,

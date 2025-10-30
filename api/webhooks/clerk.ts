@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .insert({
             id: data.id,
             email: data.email_addresses?.[0]?.email_address || null,
-            subscription_tier: 'free', // Default to free tier
+            subscription_tier: 'basic', // Default to basic tier (with trial)
             created_at: new Date().toISOString(),
           });
 

@@ -14,6 +14,7 @@ import CalendarDashboard from './components/CalendarDashboard';
 import AdminPanel from './components/AdminPanel';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
+import { OAuthCallback } from './components/OAuthCallback';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
