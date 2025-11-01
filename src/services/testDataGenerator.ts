@@ -365,7 +365,7 @@ const generateDeclinedMeeting = async (date: Date, result: TestDataResult): Prom
     start: { dateTime: startTime.toISOString(), timeZone: 'Europe/London' },
     end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },
     attendees: [
-      { email: SAMPLE_ATTENDEES[0], responseStatus: 'declined' as any },
+      { email: SAMPLE_ATTENDEES[0], responseStatus: 'declined' as const },
     ],
     description: 'This meeting was declined',
   });

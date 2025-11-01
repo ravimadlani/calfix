@@ -3,7 +3,7 @@
  * Shows pricing tiers and allows users to upgrade their subscription
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -11,8 +11,7 @@ interface UpgradeModalProps {
   currentTier?: 'basic' | 'ea' | 'ea_pro';
 }
 
-const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, currentTier = 'basic' }) => {
-  const [selectedTier, setSelectedTier] = useState<'basic' | 'ea' | 'ea_pro'>('ea');
+const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
@@ -76,7 +75,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, currentTie
 
   const handleSelectPlan = (tierId: string) => {
     // TODO: Implement Stripe checkout
-    alert(`Stripe integration coming soon!\n\nSelected: ${tierId.toUpperCase()}\n\nFor now, contact ravi@madlanilabs.com`);
+    alert(`Stripe integration coming soon!\n\nSelected: ${tierId.toUpperCase()}\n\nFor now, contact hello@calfix.pro`);
   };
 
   return (

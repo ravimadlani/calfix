@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { CalendarListEntry } from '../../src/types';
 import { createClient } from '@supabase/supabase-js';
 
 console.log('[Calendar Sync] API endpoint loaded');
@@ -66,7 +67,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Insert new managed calendars
-    const managedCalendarsData = calendars.map((cal: any) => ({
+    const typedCalendars = calendars as CalendarListEntry[];
+
+    const managedCalendarsData = typedCalendars.map((cal) => ({
       user_id: userId,
       calendar_id: cal.id,
       calendar_name: cal.summary,

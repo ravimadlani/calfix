@@ -161,7 +161,7 @@ const DoubleBookingTimeline = ({ conflicts, onDeletePlaceholder, onDeleteEvent }
     const roundedStart = new Date(start);
     roundedStart.setMinutes(Math.floor(start.getMinutes() / 15) * 15, 0, 0);
 
-    let current = new Date(roundedStart);
+    const current = new Date(roundedStart);
 
     while (current <= end) {
       markers.push(new Date(current));
@@ -212,7 +212,7 @@ const DoubleBookingTimeline = ({ conflicts, onDeletePlaceholder, onDeleteEvent }
 
       {/* Individual Conflict Cards */}
       {conflicts.map((conflict, index) => {
-        const { event1, event2, overlapStart, overlapEnd, overlapMinutes, isMeeting1, isMeeting2 } = conflict;
+        const { event1, event2, overlapStart, overlapMinutes, isMeeting1, isMeeting2 } = conflict;
 
         // Determine the overall time range for this conflict
         const start1 = new Date(event1.start?.dateTime || event1.start?.date);

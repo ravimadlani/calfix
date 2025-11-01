@@ -4,9 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { findFreeBusy } from '../services/googleCalendar';
+import { useCalendarProvider } from '../context/CalendarProviderContext';
 
 const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary' }) => {
+  const { activeProvider } = useCalendarProvider();
+  const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
+  const providerCapabilities = activeProvider.capabilities;
   const [step, setStep] = useState(1); // 1: Input, 2: Availability, 3: Draft Email
   const [teamEmails, setTeamEmails] = useState(['']);
   const [customerEmail, setCustomerEmail] = useState('');
@@ -70,23 +73,16 @@ const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary
   };
 
   // Format time in multiple timezones
-  const formatTimeInTimezones = (date) => {
-    return selectedTimezones.map(tz => {
-      const timeStr = date.toLocaleTimeString('en-US', {
-        timeZone: tz,
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-      const tzLabel = commonTimezones.find(t => t.value === tz)?.label || tz;
-      return `${timeStr} ${tzLabel}`;
-    }).join(' / ');
-  };
-
   // Search for availability
   const searchAvailability = async () => {
     setLoading(true);
     try {
+      if (!providerCapabilities.supportsFreeBusy) {
+        alert('Free/busy lookup is not supported for the selected calendar provider yet.');
+        setLoading(false);
+        return;
+      }
+
       // Filter out empty emails
       const validEmails = teamEmails.filter(email => email.trim() !== '');
 
@@ -115,7 +111,7 @@ const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary
       console.log(`Team members: ${managedCalendarId}, ${validEmails.join(', ')}`);
 
       // Use Google Calendar Free/Busy API
-      const freeBusyData = await findFreeBusy(
+      const freeBusyData = await providerFindFreeBusy(
         startDate.toISOString(),
         endDate.toISOString(),
         [managedCalendarId, ...validEmails]
@@ -139,7 +135,8 @@ const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary
       setStep(2);
     } catch (error) {
       console.error('Error searching availability:', error);
-      alert('Error finding availability: ' + error.message);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert('Error finding availability: ' + message);
     } finally {
       setLoading(false);
     }
@@ -170,12 +167,12 @@ const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary
     });
 
     // Iterate through each day
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     let totalSlotsChecked = 0;
     let slotsInPast = 0;
     let slotsAfterHours = 0;
     let slotsWithConflicts = 0;
-    let datesChecked = [];
+    const datesChecked: string[] = [];
 
     while (currentDate < endDate) {
       // Skip weekends
@@ -209,7 +206,7 @@ const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary
           }
 
           // Check if all team members are free during this slot
-          let conflicts = [];
+          const conflicts: Array<{ email: string; busyStart: Date; busyEnd: Date }> = [];
           const allFree = emails.every(email => {
             const calendar = freeBusyData.calendars?.[email];
             if (!calendar || !calendar.busy) return true;

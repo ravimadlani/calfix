@@ -10,7 +10,7 @@ npm install
 ```
 
 ### 2. Set Up Environment Variables
-The `.env` file already contains all necessary credentials for development.
+The `.env` file already contains all necessary Google credentials for development. If you want to experiment with the upcoming Outlook provider, add the `VITE_OUTLOOK_*` variables outlined in `.env.example`.
 
 ### 3. Run Development Servers
 

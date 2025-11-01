@@ -1,3 +1,13 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "playwright",
+        "run-mcp-server",
+        "--headless"
+      ]
+    }
+  }
 }

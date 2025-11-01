@@ -3,7 +3,8 @@
  * High-level service that combines utilities and API for analytics
  */
 
-import { calculateDuration, getEventStartTime, isAllDayEvent } from '../utils/dateHelpers';
+import type { CalendarEvent } from '../types';
+import { getEventStartTime, isAllDayEvent } from '../utils/dateHelpers';
 import { isMeeting } from '../utils/eventCategorizer';
 import {
   analyzeGaps,
@@ -15,17 +16,11 @@ import {
   generateInsights,
   getHealthScoreInterpretation,
   detectDoubleBookings,
-  countDoubleBookings,
   findMeetingsWithoutVideoLinks,
-  countMeetingsWithoutVideoLinks,
   findDeclinedTwoPersonMeetings,
-  countDeclinedTwoPersonMeetings,
   findFlightsWithoutTravelBlocks,
-  countFlightsWithoutTravelBlocks,
   findInternationalFlightsWithoutLocation,
-  countInternationalFlightsWithoutLocation,
-  findMeetingsOutsideBusinessHours,
-  countMeetingsOutsideBusinessHours
+  findMeetingsOutsideBusinessHours
 } from '../utils/healthCalculator';
 
 /**
@@ -34,7 +29,7 @@ import {
  * @param {Array} extendedEvents - Extended event range for flight analysis (optional)
  * @returns {Object} Analytics data
  */
-export const calculateAnalytics = (events, extendedEvents = null) => {
+export const calculateAnalytics = (events: CalendarEvent[], extendedEvents: CalendarEvent[] | null = null) => {
   if (!events || !events.length) {
     return {
       totalEvents: 0,
@@ -139,7 +134,7 @@ export const calculateAnalytics = (events, extendedEvents = null) => {
  * @param {Array} events - Array of calendar events
  * @returns {Array} Events with gap info
  */
-export const getEventsWithGaps = (events) => {
+export const getEventsWithGaps = (events: CalendarEvent[]) => {
   if (!events || !events.length) {
     return [];
   }
@@ -154,7 +149,7 @@ export const getEventsWithGaps = (events) => {
   const gaps = analyzeGaps(sortedEvents);
 
   // Attach gap info to events
-  return sortedEvents.map((event, index) => {
+  return sortedEvents.map(event => {
     // Find gap after this event
     const gapAfter = gaps.find(gap => gap.afterEvent.id === event.id);
 
@@ -170,7 +165,7 @@ export const getEventsWithGaps = (events) => {
  * @param {Array} events - Array of calendar events
  * @returns {Array} Problematic events with recommendations
  */
-export const getProblematicEvents = (events) => {
+export const getProblematicEvents = (events: CalendarEvent[]) => {
   if (!events || !events.length) {
     return [];
   }
@@ -202,7 +197,7 @@ export const getProblematicEvents = (events) => {
  * @param {Array} events - Array of calendar events
  * @returns {Array} Focus time opportunities
  */
-export const getFocusOpportunities = (events) => {
+export const getFocusOpportunities = (events: CalendarEvent[]) => {
   if (!events || !events.length) {
     return [];
   }
@@ -225,7 +220,7 @@ export const getFocusOpportunities = (events) => {
  * @param {Array} events - Array of calendar events for the day
  * @returns {Object} Daily summary
  */
-export const getDailySummary = (events) => {
+export const getDailySummary = (events: CalendarEvent[]) => {
   const analytics = calculateAnalytics(events);
 
   // Calculate additional daily metrics
@@ -235,10 +230,10 @@ export const getDailySummary = (events) => {
   let latestMeeting = null;
 
   if (timedEvents.length > 0) {
-    const meetingTimes = timedEvents.map(event => getEventStartTime(event));
+    const meetingTimes = timedEvents.map(event => getEventStartTime(event).getTime());
     earliestMeeting = new Date(Math.min(...meetingTimes));
 
-    const endTimes = timedEvents.map(event => new Date(event.end.dateTime || event.end.date));
+    const endTimes = timedEvents.map(event => new Date(event.end.dateTime || event.end.date).getTime());
     latestMeeting = new Date(Math.max(...endTimes));
   }
 
@@ -264,11 +259,11 @@ export const getDailySummary = (events) => {
  * @param {Array} events - Array of calendar events for the week
  * @returns {Object} Weekly summary
  */
-export const getWeeklySummary = (events) => {
+export const getWeeklySummary = (events: CalendarEvent[]) => {
   const analytics = calculateAnalytics(events);
 
   // Group events by day
-  const eventsByDay = {};
+  const eventsByDay: Record<string, CalendarEvent[]> = {};
 
   events.forEach(event => {
     const startTime = getEventStartTime(event);
@@ -287,7 +282,7 @@ export const getWeeklySummary = (events) => {
   let busiestDay = null;
   let maxMeetings = 0;
 
-  Object.entries(eventsByDay).forEach(([day, dayEvents]: [string, any[]]) => {
+  Object.entries(eventsByDay).forEach(([day, dayEvents]: [string, CalendarEvent[]]) => {
     const meetingCount = dayEvents.filter(e => isMeeting(e)).length;
     if (meetingCount > maxMeetings) {
       maxMeetings = meetingCount;
@@ -309,7 +304,7 @@ export const getWeeklySummary = (events) => {
  * @param {Array} events - Array of calendar events
  * @returns {Array} Array of recommendation objects
  */
-export const getRecommendations = (events) => {
+export const getRecommendations = (events: CalendarEvent[]) => {
   const analytics = calculateAnalytics(events);
   const recommendations = [];
 

@@ -1,12 +1,31 @@
+import type { CalendarEvent, EventWithGap, TimeRange } from '../types';
+
 /**
  * EventsTimeline Component
  * Displays events with day headings when viewing multiple days
  */
 
-
 import EventCard from './EventCard';
 
-const EventsTimeline = ({
+type TimelineEvent = EventWithGap | (CalendarEvent & { gapAfter?: unknown });
+
+interface EventsTimelineProps {
+  events: TimelineEvent[];
+  showDayHeadings: boolean;
+  onAddBufferBefore: (event: CalendarEvent) => Promise<void>;
+  onAddBufferAfter: (event: CalendarEvent) => Promise<void>;
+  onMoveEvent: (event: CalendarEvent) => Promise<void>;
+  timeRange: TimeRange | null;
+}
+
+type EventsByDayEntry = {
+  dayName: string;
+  dateStr: string;
+  events: TimelineEvent[];
+  date: Date;
+};
+
+const EventsTimeline: React.FC<EventsTimelineProps> = ({
   events,
   showDayHeadings,
   onAddBufferBefore,
@@ -32,7 +51,7 @@ const EventsTimeline = ({
 
   // Group events by day if showing day headings
   if (showDayHeadings) {
-    const eventsByDay = {};
+    const eventsByDay: Record<string, EventsByDayEntry> = {};
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     // Parse time range boundaries if provided
@@ -83,11 +102,13 @@ const EventsTimeline = ({
     });
 
     // Sort days chronologically
-    const sortedDays = Object.values(eventsByDay).sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
+    const sortedDays = Object.entries(eventsByDay)
+      .map(([key, value]) => ({ dayKey: key, ...value }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     return (
       <div className="space-y-8">
-        {sortedDays.map(({ dayKey, dayName, dateStr, events: dayEvents, date }) => (
+        {sortedDays.map(({ dayName, dateStr, events: dayEvents, date }) => (
           <div key={date.toISOString()} className="space-y-4">
             {/* Day Heading */}
             <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl shadow-lg p-4 sticky top-20 z-10">

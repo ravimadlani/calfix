@@ -3,14 +3,10 @@
  * Admin dashboard for managing users and generating test data
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { generateTestCalendarData } from '../services/testDataGenerator';
-import {
-  isAuthenticated as isGoogleAuthenticated,
-  signIn as signInWithGoogle,
-  forceReauthentication
-} from '../services/googleAuth';
+import { useCalendarProvider } from '../context/CalendarProviderContext';
 
 interface User {
   id: string;
@@ -22,25 +18,24 @@ interface User {
 
 const AdminPanel = () => {
   const { user: clerkUser } = useUser();
+  const {
+    activeProvider,
+    activeProviderId,
+    signIn,
+    isAuthenticated
+  } = useCalendarProvider();
+  const providerLabel = activeProvider.label;
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [isCalendarConnected, setIsCalendarConnected] = useState(false);
 
   // Check if user is admin (you can customize this logic)
-  const isAdmin = clerkUser?.primaryEmailAddress?.emailAddress === 'ravi@madlanilabs.com';
+  const isAdmin = clerkUser?.primaryEmailAddress?.emailAddress === 'ravi@calfix.pro';
 
-  useEffect(() => {
-    if (isAdmin && clerkUser) {
-      loadUsers();
-      // Check Google authentication status
-      setIsGoogleConnected(isGoogleAuthenticated());
-    }
-  }, [isAdmin, clerkUser]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -60,17 +55,25 @@ const AdminPanel = () => {
 
       const data = await response.json();
       setUsers(data.users || []);
-    } catch (err: any) {
-      setError(`Failed to load users: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`Failed to load users: ${message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [clerkUser?.primaryEmailAddress?.emailAddress]);
+
+  useEffect(() => {
+    if (isAdmin && clerkUser) {
+      loadUsers();
+      setIsCalendarConnected(isAuthenticated(activeProviderId));
+    }
+  }, [activeProviderId, isAdmin, clerkUser, isAuthenticated, loadUsers]);
 
   const handleGenerateTestData = async () => {
-    // First check if Google Calendar is connected
-    if (!isGoogleConnected) {
-      setError('Please connect your Google Calendar first to generate test data.');
+    // First check if provider calendar is connected
+    if (!isCalendarConnected) {
+      setError(`Please connect your ${providerLabel} calendar first to generate test data.`);
       return;
     }
 
@@ -98,44 +101,45 @@ const AdminPanel = () => {
         `• ${result.declinedMeetings} declined meetings\n` +
         `• ${result.focusBlocks} focus time blocks\n` +
         `• ${result.regularMeetings} regular meetings`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Test data generation error:', err);
-      // Check if it's an authentication error
-      if (err.message?.includes('401') || err.message?.includes('unauthenticated') || err.message?.includes('unauthorized')) {
-        setError('Google Calendar authentication expired. Please reconnect your Google Calendar.');
-        setIsGoogleConnected(false);
-      } else if (err.message?.includes('403') || err.message?.includes('Permission denied')) {
-        setError('Permission denied: Your Google Calendar connection doesn\'t have write permissions. Please reconnect with proper permissions.');
-        // Show special error state for permission issues
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('401') || message.includes('unauthenticated') || message.includes('unauthorized')) {
+        setError(`${providerLabel} authentication expired. Please reconnect your calendar.`);
+        setIsCalendarConnected(false);
+      } else if (message.includes('403') || message.includes('Permission denied')) {
+        setError(`Permission denied: Your ${providerLabel} connection doesn't have write permissions. Please reconnect with proper permissions.`);
       } else {
-        setError(`Failed to generate test data: ${err.message}`);
+        setError(`Failed to generate test data: ${message}`);
       }
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleConnectGoogle = async () => {
+  const handleConnectCalendar = async () => {
     try {
-      await signInWithGoogle();
-      setIsGoogleConnected(true);
+      await signIn(activeProviderId);
+      setIsCalendarConnected(true);
       setError(null);
-      setSuccessMessage('Google Calendar connected successfully!');
-    } catch (err: any) {
-      setError(`Failed to connect Google Calendar: ${err.message}`);
+      setSuccessMessage(`${providerLabel} connected successfully!`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`Failed to connect ${providerLabel}: ${message}`);
     }
   };
 
-  const handleReconnectGoogle = async () => {
+  const handleReconnectCalendar = async () => {
     try {
-      // Force re-authentication to get proper permissions
-      await forceReauthentication();
+      await activeProvider.auth.forceReauthentication();
       // Note: The page will redirect, so these won't execute
-      setIsGoogleConnected(true);
+      setIsCalendarConnected(true);
       setError(null);
-      setSuccessMessage('Reconnecting to Google Calendar with proper permissions...');
-    } catch (err: any) {
-      setError(`Failed to reconnect Google Calendar: ${err.message}`);
+      setSuccessMessage(`Reconnecting to ${providerLabel} with proper permissions...`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`Failed to reconnect ${providerLabel}: ${message}`);
     }
   };
 
@@ -180,7 +184,7 @@ const AdminPanel = () => {
           <p className="text-red-800 font-medium">{error}</p>
           {error.includes('Permission denied') && (
             <button
-              onClick={handleReconnectGoogle}
+              onClick={handleReconnectCalendar}
               className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
             >
               Reconnect with Proper Permissions
@@ -195,24 +199,24 @@ const AdminPanel = () => {
           <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900 mb-2">🧪 Test Data Generator</h2>
 
-            {/* Google Calendar Connection Status */}
-            {!isGoogleConnected && (
+            {/* Calendar Connection Status */}
+            {!isCalendarConnected && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <p className="text-yellow-800 mb-3">
-                  ⚠️ Google Calendar is not connected. Connect it first to generate test data.
+                  ⚠️ {providerLabel} is not connected. Connect it first to generate test data.
                 </p>
                 <button
-                  onClick={handleConnectGoogle}
+                  onClick={handleConnectCalendar}
                   className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors"
                 >
-                  Connect Google Calendar
+                  Connect {providerLabel}
                 </button>
               </div>
             )}
 
-            {isGoogleConnected && (
+            {isCalendarConnected && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 inline-block">
-                <p className="text-green-800 text-sm">✅ Google Calendar connected</p>
+                <p className="text-green-800 text-sm">✅ {providerLabel} connected</p>
               </div>
             )}
 
@@ -233,7 +237,7 @@ const AdminPanel = () => {
             </ul>
             <button
               onClick={handleGenerateTestData}
-              disabled={generating || !isGoogleConnected}
+              disabled={generating || !isCalendarConnected}
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generating ? 'Generating Test Data...' : 'Generate Test Calendar Data'}

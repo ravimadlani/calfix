@@ -151,8 +151,6 @@ const DayActionsPanel = ({ analytics, recommendations, viewLabel, selectedDayDat
 
   // Add recommendation-based actions (skip duplicates we already added from analytics)
   if (recommendations && recommendations.length > 0) {
-    const existingTitles = new Set(actionableItems.map(item => item.title.toLowerCase()));
-
     recommendations.slice(0, 2).forEach(rec => {
       if (rec.type !== 'success') { // Skip success messages as we already show them
         // Skip if we already added this recommendation from analytics

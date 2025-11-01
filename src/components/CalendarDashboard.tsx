@@ -3,7 +3,7 @@
  * Main dashboard that orchestrates all calendar features
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ViewSelector from './ViewSelector';
 import StatsCard from './StatsCard';
 import DayActionsPanel from './DayActionsPanel';
@@ -11,19 +11,49 @@ import DayFilterPills from './DayFilterPills';
 import EventsTimeline from './EventsTimeline';
 import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
-import GoogleCalendarConnectPrompt from './GoogleCalendarConnectPrompt';
+import CalendarConnectPrompt from './CalendarConnectPrompt';
 import UpgradeModal from './UpgradeModal';
 
-import { fetchEvents, addBufferBefore, addBufferAfter, moveEvent, createFocusBlock, findNextAvailableSlot, batchAddBuffers, deletePlaceholderAndLog, deleteEvent, createTravelBlock, createLocationEvent, createEvent, fetchCalendarList, batchAddGoogleMeetLinks } from '../services/googleCalendar';
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
-import { isAuthenticated as isGoogleAuthenticated } from '../services/googleAuth';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser } from '@clerk/clerk-react';
+import { useCalendarProvider } from '../context/CalendarProviderContext';
+import type { CalendarEvent, CalendarProviderId } from '../types';
 
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
-  const [isGoogleCalendarConnected, setIsGoogleCalendarConnected] = useState(false);
+  const {
+    activeProvider,
+    activeProviderId,
+    setActiveProvider,
+    isAuthenticated: isProviderAuthenticated
+  } = useCalendarProvider();
+
+  const calendarApi = activeProvider.calendar;
+  const helperApi = activeProvider.helpers;
+  const providerCapabilities = activeProvider.capabilities;
+
+  const {
+    fetchEvents: fetchProviderEvents,
+    createEvent: createProviderEvent,
+    deleteEvent: deleteProviderEvent,
+    fetchCalendarList: fetchProviderCalendarList,
+    addConferenceLink: providerAddConferenceLink
+  } = calendarApi;
+
+  const {
+    addBufferBefore: providerAddBufferBefore,
+    addBufferAfter: providerAddBufferAfter,
+    batchAddBuffers: providerBatchAddBuffers,
+    deletePlaceholderAndLog: providerDeletePlaceholderAndLog,
+    createTravelBlock: providerCreateTravelBlock,
+    createLocationEvent: providerCreateLocationEvent,
+    batchAddConferenceLinks: providerBatchAddConferenceLinks,
+    findNextAvailableSlot: providerFindNextAvailableSlot,
+    moveEvent: providerMoveEvent
+  } = helperApi;
+  const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null); // Start with null until we know the tier
   const [maxCalendars, setMaxCalendars] = useState(1);
@@ -39,7 +69,7 @@ const CalendarDashboard = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [, setActionLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null); // For filtering by day in week views
   const [extendedEventsForFlights, setExtendedEventsForFlights] = useState([]); // Extended events for flight analysis
   const [currentTimeRange, setCurrentTimeRange] = useState(null);
@@ -57,15 +87,51 @@ const CalendarDashboard = () => {
   const [availableCalendars, setAvailableCalendars] = useState([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
 
+  const requireHelper = <T extends (...args: unknown[]) => unknown>(helper: T | undefined, message: string): T | null => {
+    if (!helper) {
+      alert(message);
+      return null;
+    }
+
+    return helper;
+  };
+
+  type ActionOptions = {
+    skipNotification?: boolean;
+    skipRefresh?: boolean;
+  };
+
+  type FlightEvent = CalendarEvent & {
+    arrivalDate?: Date;
+    departureDate?: Date;
+    needsTravelBlockBefore?: boolean;
+    needsTravelBlockAfter?: boolean;
+    fromData?: {
+      city: string;
+      country: string;
+      timezone: string;
+      flag: string;
+    };
+    toData?: {
+      city: string;
+      country: string;
+      timezone: string;
+      flag: string;
+    };
+    isReturningHome?: boolean;
+  };
+
   // Check user's subscription tier
-  const checkSubscription = async () => {
-    if (!clerkUser?.id) {
+  const checkSubscription = useCallback(async () => {
+    const userId = clerkUser?.id;
+
+    if (!userId) {
       setSubscriptionLoaded(true); // Mark as loaded even if no user
       return;
     }
 
     try {
-      const response = await fetch(`/api/user/subscription?userId=${clerkUser.id}`);
+      const response = await fetch(`/api/user/subscription?userId=${userId}`);
       if (response.ok) {
         const data = await response.json();
         setSubscriptionTier(data.subscriptionTier);
@@ -92,12 +158,12 @@ const CalendarDashboard = () => {
       // Always mark subscription as loaded
       setSubscriptionLoaded(true);
     }
-  };
+  }, [clerkUser?.id]);
 
   // Fetch list of calendars user has access to
-  const loadCalendarList = async () => {
+  const loadCalendarList = useCallback(async () => {
     try {
-      const calendars = await fetchCalendarList();
+      const calendars = await fetchProviderCalendarList();
       console.log('All calendars:', calendars);
 
       // Filter to only show calendars where user has write access (owner or writer)
@@ -108,9 +174,6 @@ const CalendarDashboard = () => {
 
         // Exclude resource calendars (conference rooms, equipment)
         const isNotResource = !cal.id.includes('resource.calendar.google.com');
-
-        // Exclude group calendars
-        const isNotGroup = !cal.id.includes('@group.calendar.google.com') || cal.primary;
 
         // Must be a user calendar (typically ends with @gmail.com or custom domain)
         const isUserCalendar = cal.id.includes('@') && (
@@ -155,6 +218,7 @@ const CalendarDashboard = () => {
           console.log('[CalendarDashboard] Starting calendar sync to Supabase...');
           await syncCalendarsToSupabase(
             clerkUser.id,
+            activeProviderId,
             manageable,
             manageable.find(c => c.primary)?.id
           );
@@ -170,39 +234,17 @@ const CalendarDashboard = () => {
       console.error('Error loading calendar list:', error);
       // If we can't fetch the list, still allow manual entry
     }
-  };
-
-  // Update managed calendar and persist to localStorage
-  const updateManagedCalendar = async (calendarId) => {
-    // Ensure we're working with a string, not an object
-    const idString = typeof calendarId === 'object' ? (calendarId?.id || 'primary') : calendarId;
-    const trimmedId = idString.trim() || 'primary';
-    console.log(`[Calendar Switch] Starting switch from ${managedCalendarId} to ${trimmedId}`);
-
-    // Clear current events immediately to show loading state
-    setEvents([]);
-    setEventsWithGaps([]);
-    setExtendedEventsForFlights([]);
-    setAnalytics(null);
-    setSelectedDay(null); // Clear any day selection
-
-    // Update the managed calendar
-    setManagedCalendarId(trimmedId);
-    localStorage.setItem('managed_calendar_id', trimmedId);
-
-    console.log(`[Calendar Switch] State updated, calling loadEvents for calendar: ${trimmedId}`);
-
-    // Reload events for the new calendar - PASS THE NEW ID DIRECTLY
-    try {
-      await loadEvents(trimmedId);  // Pass the new calendar ID directly
-      console.log(`[Calendar Switch] Successfully loaded events for ${trimmedId}`);
-    } catch (error) {
-      console.error(`[Calendar Switch] Error loading events for ${trimmedId}:`, error);
-    }
-  };
+  }, [
+    activeProviderId,
+    clerkUser?.id,
+    fetchProviderCalendarList,
+    hasMultiCalendarAccess,
+    maxCalendars,
+    subscriptionTier
+  ]);
 
   // Fetch events based on current view
-  const loadEvents = async (calendarIdOverride = null) => {
+  const loadEvents = useCallback(async (calendarIdOverride: string | null = null) => {
     setLoading(true);
     setError(null);
 
@@ -216,7 +258,7 @@ const CalendarDashboard = () => {
     console.log('[loadEvents] typeof calendarToUse:', typeof calendarToUse);
 
     // Ensure we're using a string, not an object
-    const calendarIdString = typeof calendarToUse === 'object' ? (calendarToUse?.id || 'primary') : calendarToUse;
+    const calendarIdString = calendarToUse ?? 'primary';
 
     try {
       let timeRange;
@@ -251,7 +293,12 @@ const CalendarDashboard = () => {
       console.log('Time range:', timeRange);
       console.log('Calendar:', calendarIdString);
 
-      const fetchedEvents = await fetchEvents(timeRange.timeMin, timeRange.timeMax, 2500, calendarIdString);
+      const fetchedEvents = await fetchProviderEvents({
+        timeMin: timeRange.timeMin,
+        timeMax: timeRange.timeMax,
+        maxResults: 2500,
+        calendarId: calendarIdString
+      });
 
       console.log('Fetched events count (before filtering):', fetchedEvents.length);
 
@@ -305,12 +352,12 @@ const CalendarDashboard = () => {
       const extendedEnd = new Date(timeMaxDate);
       extendedEnd.setDate(extendedEnd.getDate() + 14); // Look 14 days after view
 
-      const extendedEvents = await fetchEvents(
-        extendedStart.toISOString(),
-        extendedEnd.toISOString(),
-        2500, // Fetch all events for extended range
-        calendarIdString
-      );
+      const extendedEvents = await fetchProviderEvents({
+        timeMin: extendedStart.toISOString(),
+        timeMax: extendedEnd.toISOString(),
+        maxResults: 2500,
+        calendarId: calendarIdString
+      });
 
       console.log('Extended events for flight analysis:', extendedEvents.length);
 
@@ -361,85 +408,110 @@ const CalendarDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentView, fetchProviderEvents, managedCalendarId]);
 
-  // Check Google Calendar authentication on mount and handle OAuth callback
+  // Update managed calendar and persist to localStorage
+  const updateManagedCalendar = useCallback(async (calendarId: string) => {
+    const trimmedId = calendarId.trim() || 'primary';
+    console.log(`[Calendar Switch] Starting switch from ${managedCalendarId} to ${trimmedId}`);
+
+    setEvents([]);
+    setEventsWithGaps([]);
+    setExtendedEventsForFlights([]);
+    setAnalytics(null);
+    setSelectedDay(null);
+
+    setManagedCalendarId(trimmedId);
+    localStorage.setItem('managed_calendar_id', trimmedId);
+
+    console.log(`[Calendar Switch] State updated, calling loadEvents for calendar: ${trimmedId}`);
+
+    try {
+      await loadEvents(trimmedId);
+      console.log(`[Calendar Switch] Successfully loaded events for ${trimmedId}`);
+    } catch (error) {
+      console.error(`[Calendar Switch] Error loading events for ${trimmedId}:`, error);
+    }
+  }, [loadEvents, managedCalendarId]);
+
+  // Check active provider authentication on mount and after OAuth redirect
   useEffect(() => {
-    const checkGoogleAuth = async () => {
-      // Check for OAuth success/error flags from the callback handler
-      const urlParams = new URLSearchParams(window.location.search);
-      const oauthSuccess = urlParams.get('oauth_success');
-      const oauthError = urlParams.get('oauth_error');
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthSuccess = urlParams.get('oauth_success');
+    const oauthError = urlParams.get('oauth_error');
+    const providerParam = urlParams.get('provider') as CalendarProviderId | null;
+    const targetProviderId = providerParam || activeProviderId;
 
-      if (oauthSuccess) {
-        // OAuth was successful
-        console.log('[CalendarDashboard] OAuth successful');
-        setIsGoogleCalendarConnected(true);
-        setCheckingAuth(false);
+    if (providerParam && providerParam !== activeProviderId) {
+      setActiveProvider(providerParam);
+    }
 
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+    if (oauthSuccess || oauthError) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
 
-        // Show success message
-        console.log('Google Calendar connected successfully!');
-      } else if (oauthError) {
-        // OAuth failed
-        console.error('[CalendarDashboard] OAuth failed:', oauthError);
-        setIsGoogleCalendarConnected(false);
-        setCheckingAuth(false);
+    if (oauthError) {
+      console.error('[CalendarDashboard] OAuth failed:', oauthError);
+      setIsCalendarConnected(false);
+      setCheckingAuth(false);
+      alert(`Failed to connect calendar: ${oauthError}`);
+      return;
+    }
 
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+    if (oauthSuccess) {
+      console.log('[CalendarDashboard] OAuth successful');
+    }
 
-        // Show error
-        alert(`Failed to connect Google Calendar: ${oauthError}`);
-      } else {
-        // Normal page load, just check if already authenticated
-        const authenticated = isGoogleAuthenticated();
-        setIsGoogleCalendarConnected(authenticated);
-        setCheckingAuth(false);
-      }
-    };
-
-    checkGoogleAuth();
-  }, []);
+    const authenticated = isProviderAuthenticated(targetProviderId);
+    setIsCalendarConnected(authenticated);
+    setCheckingAuth(false);
+  }, [activeProviderId, isProviderAuthenticated, setActiveProvider]);
 
   // Check subscription on mount
   useEffect(() => {
     if (clerkUser?.id) {
       checkSubscription();
     }
-  }, [clerkUser]);
+  }, [checkSubscription, clerkUser?.id]);
 
   // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {
-    if (isGoogleCalendarConnected && subscriptionLoaded && maxCalendars > 0) {
+    if (isCalendarConnected && subscriptionLoaded && maxCalendars > 0) {
       loadCalendarList();
     }
-  }, [isGoogleCalendarConnected, subscriptionLoaded, maxCalendars, hasMultiCalendarAccess]);
+  }, [isCalendarConnected, subscriptionLoaded, maxCalendars, hasMultiCalendarAccess, loadCalendarList]);
 
   // Load events when view changes (only after subscription is loaded)
   useEffect(() => {
-    if (isGoogleCalendarConnected && subscriptionLoaded) {
-      setEvents([]); // Clear events immediately to prevent showing stale data
+    if (isCalendarConnected && subscriptionLoaded) {
+      setEvents([]);
       setEventsWithGaps([]);
       loadEvents();
-      setSelectedDay(null); // Reset day filter when view changes
+      setSelectedDay(null);
     }
-  }, [currentView, isGoogleCalendarConnected, subscriptionLoaded]);
+  }, [currentView, isCalendarConnected, loadEvents, subscriptionLoaded]);
 
   // Handle adding buffer before event
-  const handleAddBufferBefore = async (event, options: any = {}) => {
+  const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer before this event?')) {
+      return;
+    }
+
+    const helper = requireHelper(
+      providerAddBufferBefore,
+      'Buffer creation is not supported for this calendar provider yet.'
+    );
+
+    if (!helper) {
       return;
     }
 
     setActionLoading(true);
     try {
-      await addBufferBefore(event);
+      await helper(event);
 
       if (!options.skipRefresh) {
-        await loadEvents(); // Refresh
+        await loadEvents();
       }
 
       if (!options.skipNotification) {
@@ -447,7 +519,8 @@ const CalendarDashboard = () => {
       }
     } catch (err) {
       if (!options.skipNotification) {
-        alert(`Failed to add buffer: ${err.message}`);
+        const message = err instanceof Error ? err.message : String(err);
+        alert(`Failed to add buffer: ${message}`);
       }
       throw err;
     } finally {
@@ -456,17 +529,26 @@ const CalendarDashboard = () => {
   };
 
   // Handle adding buffer after event
-  const handleAddBufferAfter = async (event, options: any = {}) => {
+  const handleAddBufferAfter = async (event: CalendarEvent, options: ActionOptions = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer after this event?')) {
+      return;
+    }
+
+    const helper = requireHelper(
+      providerAddBufferAfter,
+      'Buffer creation is not supported for this calendar provider yet.'
+    );
+
+    if (!helper) {
       return;
     }
 
     setActionLoading(true);
     try {
-      await addBufferAfter(event);
+      await helper(event);
 
       if (!options.skipRefresh) {
-        await loadEvents(); // Refresh
+        await loadEvents();
       }
 
       if (!options.skipNotification) {
@@ -474,7 +556,8 @@ const CalendarDashboard = () => {
       }
     } catch (err) {
       if (!options.skipNotification) {
-        alert(`Failed to add buffer: ${err.message}`);
+        const message = err instanceof Error ? err.message : String(err);
+        alert(`Failed to add buffer: ${message}`);
       }
       throw err;
     } finally {
@@ -483,8 +566,21 @@ const CalendarDashboard = () => {
   };
 
   // Handle moving event
-  const handleMoveEvent = async (event) => {
-    const nextSlot = findNextAvailableSlot(events, 60, new Date(event.end.dateTime));
+  const handleMoveEvent = async (event: CalendarEvent) => {
+    const findSlot = requireHelper(
+      providerFindNextAvailableSlot,
+      'Automatic rescheduling is not supported for this calendar provider yet.'
+    );
+    const move = requireHelper(
+      providerMoveEvent,
+      'Automatic rescheduling is not supported for this calendar provider yet.'
+    );
+
+    if (!findSlot || !move) {
+      return;
+    }
+
+    const nextSlot = findSlot(events, 60, new Date(event.end.dateTime || event.end.date));
 
     if (!nextSlot) {
       alert('No available time slots found');
@@ -498,83 +594,15 @@ const CalendarDashboard = () => {
 
     setActionLoading(true);
     try {
-      await moveEvent(event.id, event, nextSlot);
-      await loadEvents(); // Refresh
+      await move(event.id, event, nextSlot);
+      await loadEvents();
       alert('Event moved successfully!');
     } catch (err) {
-      alert(`Failed to move event: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Failed to move event: ${message}`);
     } finally {
       setActionLoading(false);
     }
-  };
-
-  // Quick action: Block focus time tomorrow
-  const handleBlockFocusTime = async () => {
-    if (!window.confirm('Block a 2-hour focus time tomorrow at optimal time?')) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(10, 0, 0, 0); // 10 AM
-
-      await createFocusBlock(tomorrow);
-      alert('Focus time blocked successfully!');
-    } catch (err) {
-      alert(`Failed to block focus time: ${err.message}`);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Quick action: Add buffers to all back-to-back meetings
-  const handleAddBuffersToBackToBack = async () => {
-    if (!analytics || analytics.backToBackCount === 0) {
-      alert('No back-to-back meetings found');
-      return;
-    }
-
-    if (!window.confirm(`Add 15-minute buffers after ${analytics.backToBackCount} back-to-back meetings?`)) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      // Find back-to-back meetings
-      const backToBackEvents = eventsWithGaps.filter(
-        e => e.gapAfter && e.gapAfter.status === 'back-to-back'
-      );
-
-      await batchAddBuffers(backToBackEvents, 'after');
-      await loadEvents(); // Refresh
-      alert('Buffers added successfully!');
-    } catch (err) {
-      alert(`Failed to add buffers: ${err.message}`);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Quick action: Clear evening
-  const handleClearEvening = () => {
-    const eveningEvents = events.filter(event => {
-      const startTime = new Date(event.start.dateTime || event.start.date);
-      return startTime.getHours() >= 17;
-    });
-
-    if (eveningEvents.length === 0) {
-      alert('No evening meetings found');
-      return;
-    }
-
-    alert(`Found ${eveningEvents.length} evening events. This feature will be available soon!`);
-  };
-
-  // Quick action: Optimize Friday
-  const handleOptimizeFriday = () => {
-    alert('Friday optimization feature coming soon! This will help free up your Friday afternoon.');
   };
 
   // Open workflow modal
@@ -588,9 +616,9 @@ const CalendarDashboard = () => {
   };
 
   // Execute workflow action
-  const handleExecuteWorkflow = async (actionType, selectedEventIds) => {
+  const handleExecuteWorkflow = async (actionType: string, selectedEventIds: string[]) => {
     // For flights and international flights, get events from analytics to preserve properties
-    const selectedEvents = actionType === 'flights-travel-blocks' && displayAnalytics?.flightsWithoutTravelBlocks
+    const selectedEvents: CalendarEvent[] = actionType === 'flights-travel-blocks' && displayAnalytics?.flightsWithoutTravelBlocks
       ? displayAnalytics.flightsWithoutTravelBlocks.filter(e => selectedEventIds.includes(e.id))
       : actionType === 'international-flights-location' && displayAnalytics?.internationalFlightsWithoutLocation
       ? displayAnalytics.internationalFlightsWithoutLocation.filter(e => selectedEventIds.includes(e.id))
@@ -602,23 +630,49 @@ const CalendarDashboard = () => {
       case 'back-to-back':
       case 'insufficient-buffer':
         // Add buffers after selected events
-        await batchAddBuffers(selectedEvents, 'after');
+        {
+          const bufferHelper = requireHelper(
+            providerBatchAddBuffers,
+            'Bulk buffer creation is not supported for this calendar provider yet.'
+          );
+
+          if (!bufferHelper) {
+            break;
+          }
+
+          await bufferHelper(selectedEvents, 'after');
+        }
         break;
 
-      case 'international-flights-location':
+      case 'international-flights-location': {
         // Add location tracking events for international flights
         let locationSuccessCount = 0;
         let locationFailCount = 0;
 
-        for (const event of selectedEvents) {
+        const locationHelper = requireHelper(
+          providerCreateLocationEvent,
+          'Location tracking events are not supported for this calendar provider yet.'
+        );
+
+        if (!locationHelper) {
+          break;
+        }
+
+        const flightEvents = selectedEvents as FlightEvent[];
+
+        for (const event of flightEvents) {
           try {
             // For return flights home, track where we came FROM
             // For outbound flights, track where we're going TO
             const locationData = event.isReturningHome ? event.fromData : event.toData;
 
-            await createLocationEvent(
-              event.arrivalDate,
-              event.departureDate,
+            if (!locationData) {
+              throw new Error('Missing location metadata for flight');
+            }
+
+            await locationHelper(
+              event.arrivalDate ?? new Date(event.start.dateTime || event.start.date),
+              event.departureDate ?? new Date(event.end.dateTime || event.end.date),
               locationData.city,
               locationData.country,
               locationData.timezone,
@@ -637,16 +691,28 @@ const CalendarDashboard = () => {
           alert(`Added ${locationSuccessCount} location event${locationSuccessCount !== 1 ? 's' : ''}. ${locationFailCount} failed.`);
         }
         break;
+      }
 
-      case 'flights-travel-blocks':
+      case 'flights-travel-blocks': {
         // Add travel blocks before/after selected flights
         let travelBlockSuccessCount = 0;
         let travelBlockFailCount = 0;
 
+        const travelHelper = requireHelper(
+          providerCreateTravelBlock,
+          'Travel buffer events are not supported for this calendar provider yet.'
+        );
+
+        if (!travelHelper) {
+          break;
+        }
+
         console.log('=== ADDING TRAVEL BLOCKS ===');
         console.log('Selected events:', selectedEvents);
 
-        for (const event of selectedEvents) {
+        const flightEvents = selectedEvents as FlightEvent[];
+
+        for (const event of flightEvents) {
           console.log(`Processing flight: "${event.summary}"`);
           console.log('needsTravelBlockBefore:', event.needsTravelBlockBefore);
           console.log('needsTravelBlockAfter:', event.needsTravelBlockAfter);
@@ -655,19 +721,17 @@ const CalendarDashboard = () => {
           const flightEnd = new Date(event.end?.dateTime || event.end?.date);
 
           try {
-            // Add travel block before if needed
             if (event.needsTravelBlockBefore) {
               const travelStartBefore = new Date(flightStart);
               travelStartBefore.setMinutes(travelStartBefore.getMinutes() - 90);
               console.log('Creating travel block before flight:', travelStartBefore);
-              await createTravelBlock(travelStartBefore, 90, '🚗 Travel to Airport');
+              await travelHelper(travelStartBefore, 90, '🚗 Travel to Airport');
               travelBlockSuccessCount++;
             }
 
-            // Add travel block after if needed
             if (event.needsTravelBlockAfter) {
               console.log('Creating travel block after flight:', flightEnd);
-              await createTravelBlock(flightEnd, 90, '🚗 Travel from Airport');
+              await travelHelper(flightEnd, 90, '🚗 Travel from Airport');
               travelBlockSuccessCount++;
             }
           } catch (error) {
@@ -685,15 +749,16 @@ const CalendarDashboard = () => {
           alert(`Added ${travelBlockSuccessCount} travel block${travelBlockSuccessCount !== 1 ? 's' : ''}. ${travelBlockFailCount} failed.`);
         }
         break;
+      }
 
-      case 'declined-meetings':
+      case 'declined-meetings': {
         // Delete selected meetings that have been declined
         let deleteSuccessCount = 0;
         let deleteFailCount = 0;
 
         for (const event of selectedEvents) {
           try {
-            await deleteEvent(event.id);
+            await deleteProviderEvent(event.id, event.calendarId || managedCalendarId);
             deleteSuccessCount++;
           } catch (error) {
             console.error(`Failed to delete event ${event.summary}:`, error);
@@ -707,15 +772,16 @@ const CalendarDashboard = () => {
           alert(`Deleted ${deleteSuccessCount} meeting${deleteSuccessCount !== 1 ? 's' : ''}. ${deleteFailCount} failed.`);
         }
         break;
+      }
 
-      case 'out-of-hours-foreign':
+      case 'out-of-hours-foreign': {
         // Delete selected out-of-hours meetings (decline and delete)
         let outOfHoursDeleteSuccessCount = 0;
         let outOfHoursDeleteFailCount = 0;
 
         for (const event of selectedEvents) {
           try {
-            await deleteEvent(event.id, managedCalendarId);
+            await deleteProviderEvent(event.id, managedCalendarId);
             outOfHoursDeleteSuccessCount++;
           } catch (error) {
             console.error(`Failed to delete event ${event.summary}:`, error);
@@ -729,8 +795,9 @@ const CalendarDashboard = () => {
           alert(`Declined and deleted ${outOfHoursDeleteSuccessCount} meeting${outOfHoursDeleteSuccessCount !== 1 ? 's' : ''}. ${outOfHoursDeleteFailCount} failed.`);
         }
         break;
+      }
 
-      case 'missing-video':
+      case 'missing-video': {
         // Add Google Meet links to selected events
         if (selectedEventIds.length === 0) {
           throw new Error('No events selected');
@@ -743,14 +810,43 @@ const CalendarDashboard = () => {
           throw new Error('Selected events not found');
         }
 
-        const meetResults = await batchAddGoogleMeetLinks(eventsToUpdate, managedCalendarId);
+        if (!providerCapabilities.supportsConferenceLinks) {
+          alert('Conference link automation is not supported for this calendar provider yet.');
+          break;
+        }
 
-        if (meetResults.failCount === 0) {
-          alert(`Successfully added Google Meet links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}!`);
+        if (providerBatchAddConferenceLinks) {
+          const meetResults = await providerBatchAddConferenceLinks(eventsToUpdate, managedCalendarId);
+
+          if (meetResults.failCount === 0) {
+            alert(`Successfully added video links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}!`);
+          } else {
+            alert(`Added video links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}. ${meetResults.failCount} failed.`);
+          }
+        } else if (providerAddConferenceLink) {
+          let successCount = 0;
+          let failCount = 0;
+
+          for (const event of eventsToUpdate) {
+            try {
+              await providerAddConferenceLink(event.id, event, managedCalendarId);
+              successCount++;
+            } catch (error) {
+              console.error('Failed to add conference link:', error);
+              failCount++;
+            }
+          }
+
+          if (failCount === 0) {
+            alert(`Successfully added video links to ${successCount} meeting${successCount !== 1 ? 's' : ''}!`);
+          } else {
+            alert(`Added video links to ${successCount} meeting${successCount !== 1 ? 's' : ''}. ${failCount} failed.`);
+          }
         } else {
-          alert(`Added Meet links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}. ${meetResults.failCount} failed.`);
+          alert('Conference link automation is not supported for this calendar provider yet.');
         }
         break;
+      }
 
       case 'double-booking':
         // For double bookings, show rescheduling options
@@ -764,7 +860,7 @@ const CalendarDashboard = () => {
         }
 
         try {
-          await deleteEvent(selectedEventIds[0], managedCalendarId);
+          await deleteProviderEvent(selectedEventIds[0], managedCalendarId);
           alert('Event declined and deleted successfully!');
         } catch (error) {
           console.error('Failed to delete event:', error);
@@ -781,8 +877,17 @@ const CalendarDashboard = () => {
   };
 
   // Delete placeholder and log to AI-Removed Events
-  const handleDeletePlaceholder = async (placeholderEvent, options: any = {}) => {
-    await deletePlaceholderAndLog(placeholderEvent);
+  const handleDeletePlaceholder = async (placeholderEvent: CalendarEvent, options: ActionOptions = {}) => {
+    const helper = requireHelper(
+      providerDeletePlaceholderAndLog,
+      'Placeholder cleanup is not supported for this calendar provider yet.'
+    );
+
+    if (!helper) {
+      return;
+    }
+
+    await helper(placeholderEvent);
 
     // Only refresh if not in bulk mode (bulk mode will refresh once at the end)
     if (!options.skipRefresh) {
@@ -808,8 +913,8 @@ const CalendarDashboard = () => {
   }
 
   // Show Google Calendar connection prompt if not connected
-  if (!isGoogleCalendarConnected) {
-    return <GoogleCalendarConnectPrompt />;
+  if (!isCalendarConnected) {
+    return <CalendarConnectPrompt />;
   }
 
   if (loading && events.length === 0) {
@@ -1138,7 +1243,7 @@ const CalendarDashboard = () => {
           onSchedule={async (holds, emailDraft) => {
             // Create calendar holds for team members on the managed calendar
             for (const hold of holds) {
-              await createEvent(hold, managedCalendarId);
+              await createProviderEvent(hold, managedCalendarId);
             }
 
             // Copy email draft to clipboard

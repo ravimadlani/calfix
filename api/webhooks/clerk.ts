@@ -2,6 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { Webhook } from 'svix';
 
+interface ClerkEmailAddress {
+  email_address?: string;
+}
+
+interface ClerkWebhookData {
+  id?: string;
+  email_addresses?: ClerkEmailAddress[];
+  user_id?: string;
+}
+
+interface ClerkWebhookEvent {
+  type: string;
+  data: ClerkWebhookData;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -25,13 +40,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const wh = new Webhook(webhookSecret);
 
-  let evt: any;
+  let evt: ClerkWebhookEvent;
   try {
     evt = wh.verify(JSON.stringify(req.body), {
       'svix-id': svix_id,
       'svix-timestamp': svix_timestamp,
       'svix-signature': svix_signature,
-    });
+    }) as ClerkWebhookEvent;
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
     return res.status(400).json({ error: 'Invalid signature' });
@@ -57,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     switch (type) {
-      case 'user.created':
+      case 'user.created': {
         // Create new user in Supabase
         const { error: createError } = await supabase
           .from('users')
@@ -75,8 +90,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`User created: ${data.id}`);
         break;
+      }
 
-      case 'user.updated':
+      case 'user.updated': {
         // Update user in Supabase
         const { error: updateError } = await supabase
           .from('users')
@@ -93,8 +109,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`User updated: ${data.id}`);
         break;
+      }
 
-      case 'user.deleted':
+      case 'user.deleted': {
         // Delete user from Supabase (CASCADE will handle related data)
         const { error: deleteError } = await supabase
           .from('users')
@@ -108,6 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`User deleted: ${data.id}`);
         break;
+      }
 
       case 'session.created':
       case 'session.ended':
