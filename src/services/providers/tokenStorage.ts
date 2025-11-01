@@ -1,17 +1,115 @@
 import type { CalendarProviderId } from '../../types';
 
 const STORAGE_PREFIX = 'calfix.provider';
+const USER_CONTEXT_STORAGE_KEY = `${STORAGE_PREFIX}.current_user`;
+const SESSION_EPHEMERAL_PREFIX = `${STORAGE_PREFIX}.session.ephemeral`;
+const SHARED_SEGMENT = 'shared';
 
 let currentUserId: string | null = null;
 
-const getUserSegment = () => (currentUserId ? `user.${currentUserId}` : 'shared');
+const getLocalStorage = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
-export const setTokenUserContext = (userId: string | null) => {
-  currentUserId = userId;
+  try {
+    return window.localStorage;
+  } catch (error) {
+    console.warn('Unable to access localStorage', error);
+    return null;
+  }
+};
+
+const getSessionStorage = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window.sessionStorage;
+  } catch (error) {
+    console.warn('Unable to access sessionStorage', error);
+    return null;
+  }
+};
+
+const localStorageRef = getLocalStorage();
+
+if (localStorageRef) {
+  try {
+    const storedContext = localStorageRef.getItem(USER_CONTEXT_STORAGE_KEY);
+    if (storedContext) {
+      currentUserId = storedContext;
+    }
+  } catch (error) {
+    console.warn('Unable to read stored token user context', error);
+  }
+}
+
+const getUserSegment = () => (currentUserId ? `user.${currentUserId}` : SHARED_SEGMENT);
+
+const buildSegmentKey = (segment: string, providerId: CalendarProviderId, suffix: string) => {
+  return `${STORAGE_PREFIX}.${segment}.${providerId}.${suffix}`;
 };
 
 const buildKey = (providerId: CalendarProviderId, suffix: string): string => {
-  return `${STORAGE_PREFIX}.${getUserSegment()}.${providerId}.${suffix}`;
+  return buildSegmentKey(getUserSegment(), providerId, suffix);
+};
+
+const buildSharedKey = (providerId: CalendarProviderId, suffix: string): string => {
+  return buildSegmentKey(SHARED_SEGMENT, providerId, suffix);
+};
+
+const buildSessionEphemeralKey = (providerId: CalendarProviderId, key: string): string => {
+  return `${SESSION_EPHEMERAL_PREFIX}.${providerId}.${key}`;
+};
+
+const migrateSharedEntriesToUser = (userId: string) => {
+  const storage = getLocalStorage();
+  if (!storage) {
+    return;
+  }
+
+  const sharedPrefix = `${STORAGE_PREFIX}.${SHARED_SEGMENT}.`;
+  const userPrefix = `${STORAGE_PREFIX}.user.${userId}.`;
+
+  const keysToMigrate: string[] = [];
+
+  for (let index = 0; index < storage.length; index++) {
+    const key = storage.key(index);
+    if (key && key.startsWith(sharedPrefix)) {
+      keysToMigrate.push(key);
+    }
+  }
+
+  keysToMigrate.forEach(key => {
+    const value = storage.getItem(key);
+    storage.removeItem(key);
+    if (value !== null) {
+      const userKey = key.replace(sharedPrefix, userPrefix);
+      storage.setItem(userKey, value);
+    }
+  });
+};
+
+export const setTokenUserContext = (userId: string | null) => {
+  currentUserId = userId;
+
+  const storage = getLocalStorage();
+  if (!storage) {
+    return;
+  }
+
+  try {
+    if (userId) {
+      storage.setItem(USER_CONTEXT_STORAGE_KEY, userId);
+      migrateSharedEntriesToUser(userId);
+    } else {
+      storage.removeItem(USER_CONTEXT_STORAGE_KEY);
+    }
+  } catch (error) {
+    console.warn('Unable to persist token user context', error);
+  }
 };
 
 export interface StoredTokenInfo {
@@ -75,20 +173,95 @@ export const clearTokens = (providerId: CalendarProviderId): void => {
 };
 
 export const setEphemeral = (providerId: CalendarProviderId, key: string, value: string): void => {
-  localStorage.setItem(buildKey(providerId, `ephemeral.${key}`), value);
+  const storage = getLocalStorage();
+  if (storage) {
+    storage.setItem(buildKey(providerId, `ephemeral.${key}`), value);
+  }
+
+  const sessionStorageRef = getSessionStorage();
+  if (sessionStorageRef) {
+    sessionStorageRef.setItem(buildSessionEphemeralKey(providerId, key), value);
+  }
 };
 
 export const getEphemeral = (providerId: CalendarProviderId, key: string): string | null => {
-  return localStorage.getItem(buildKey(providerId, `ephemeral.${key}`));
+  const storage = getLocalStorage();
+  const primaryKey = buildKey(providerId, `ephemeral.${key}`);
+  const fallbackSharedKey = buildSharedKey(providerId, `ephemeral.${key}`);
+
+  if (storage) {
+    const storedValue = storage.getItem(primaryKey);
+    if (storedValue !== null) {
+      return storedValue;
+    }
+
+    const sharedValue = storage.getItem(fallbackSharedKey);
+    if (sharedValue !== null) {
+      if (currentUserId) {
+        storage.setItem(primaryKey, sharedValue);
+        storage.removeItem(fallbackSharedKey);
+      }
+      return sharedValue;
+    }
+  }
+
+  const sessionStorageRef = getSessionStorage();
+  if (sessionStorageRef) {
+    const sessionValue = sessionStorageRef.getItem(buildSessionEphemeralKey(providerId, key));
+    if (sessionValue !== null) {
+      if (storage && currentUserId) {
+        storage.setItem(primaryKey, sessionValue);
+      }
+      return sessionValue;
+    }
+  }
+
+  return null;
 };
 
 export const clearEphemeral = (providerId: CalendarProviderId, key?: string): void => {
+  const storage = getLocalStorage();
+  const sessionStorageRef = getSessionStorage();
+
   if (key) {
-    localStorage.removeItem(buildKey(providerId, `ephemeral.${key}`));
+    if (storage) {
+      storage.removeItem(buildKey(providerId, `ephemeral.${key}`));
+      storage.removeItem(buildSharedKey(providerId, `ephemeral.${key}`));
+    }
+
+    if (sessionStorageRef) {
+      sessionStorageRef.removeItem(buildSessionEphemeralKey(providerId, key));
+    }
     return;
   }
 
-  Object.keys(localStorage)
-    .filter(storageKey => storageKey.startsWith(`${STORAGE_PREFIX}.${getUserSegment()}.${providerId}.ephemeral.`))
-    .forEach(storageKey => localStorage.removeItem(storageKey));
+  if (storage) {
+    const segmentPrefix = `${STORAGE_PREFIX}.${getUserSegment()}.${providerId}.ephemeral.`;
+    const sharedPrefix = `${STORAGE_PREFIX}.${SHARED_SEGMENT}.${providerId}.ephemeral.`;
+
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < storage.length; index++) {
+      const storageKey = storage.key(index);
+      if (
+        storageKey &&
+        (storageKey.startsWith(segmentPrefix) || storageKey.startsWith(sharedPrefix))
+      ) {
+        keysToRemove.push(storageKey);
+      }
+    }
+
+    keysToRemove.forEach(storageKey => storage.removeItem(storageKey));
+  }
+
+  if (sessionStorageRef) {
+    const sessionPrefix = `${SESSION_EPHEMERAL_PREFIX}.${providerId}.`;
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < sessionStorageRef.length; index++) {
+      const sessionKey = sessionStorageRef.key(index);
+      if (sessionKey && sessionKey.startsWith(sessionPrefix)) {
+        keysToRemove.push(sessionKey);
+      }
+    }
+    keysToRemove.forEach(sessionKey => sessionStorageRef.removeItem(sessionKey));
+  }
 };

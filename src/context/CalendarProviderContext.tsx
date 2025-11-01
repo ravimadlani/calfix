@@ -62,7 +62,7 @@ const INITIAL_PROVIDER_STATE: Record<CalendarProviderId, ProviderState> = {
 
 export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const providerMetadata = useMemo(() => getProviderMetadata(), []);
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
 
   const [activeProviderId, setActiveProviderId] = useState<CalendarProviderId>(() => {
     if (typeof window === 'undefined') {
@@ -230,6 +230,10 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
   }, [providerStates]);
 
   useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
     const previousUserId = previousUserIdRef.current;
     const nextUserId = user?.id ?? null;
 
@@ -262,7 +266,7 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
 
     setTokenUserContext(nextUserId);
     previousUserIdRef.current = nextUserId;
-  }, [providerMetadata, setActiveProviderId, user?.id]);
+  }, [isLoaded, providerMetadata, setActiveProviderId, user?.id]);
 
   const value = useMemo<CalendarProviderContextValue>(() => ({
     providerMetadata,
