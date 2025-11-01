@@ -8,6 +8,7 @@ import React from 'react';
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentTier?: 'basic' | 'ea' | 'ea_pro';
 }
 
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {

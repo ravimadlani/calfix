@@ -230,10 +230,10 @@ export const getDailySummary = (events: CalendarEvent[]) => {
   let latestMeeting = null;
 
   if (timedEvents.length > 0) {
-    const meetingTimes = timedEvents.map(event => getEventStartTime(event));
+    const meetingTimes = timedEvents.map(event => getEventStartTime(event).getTime());
     earliestMeeting = new Date(Math.min(...meetingTimes));
 
-    const endTimes = timedEvents.map(event => new Date(event.end.dateTime || event.end.date));
+    const endTimes = timedEvents.map(event => new Date(event.end.dateTime || event.end.date).getTime());
     latestMeeting = new Date(Math.max(...endTimes));
   }
 

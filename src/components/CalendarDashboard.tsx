@@ -258,7 +258,7 @@ const CalendarDashboard = () => {
     console.log('[loadEvents] typeof calendarToUse:', typeof calendarToUse);
 
     // Ensure we're using a string, not an object
-    const calendarIdString = typeof calendarToUse === 'object' ? (calendarToUse?.id || 'primary') : calendarToUse;
+    const calendarIdString = calendarToUse ?? 'primary';
 
     try {
       let timeRange;
@@ -412,8 +412,7 @@ const CalendarDashboard = () => {
 
   // Update managed calendar and persist to localStorage
   const updateManagedCalendar = useCallback(async (calendarId: string) => {
-    const idString = typeof calendarId === 'object' ? (calendarId?.id || 'primary') : calendarId;
-    const trimmedId = idString.trim() || 'primary';
+    const trimmedId = calendarId.trim() || 'primary';
     console.log(`[Calendar Switch] Starting switch from ${managedCalendarId} to ${trimmedId}`);
 
     setEvents([]);

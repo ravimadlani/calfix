@@ -146,7 +146,18 @@ npm run dev
 
 The application will open at [http://localhost:3001](http://localhost:3001)
 
-### Step 5: First-Time Authentication
+### Step 5: Pre-commit Verification
+
+Before pushing changes or declaring a feature complete, run the mandatory checks:
+
+```bash
+npm run lint
+npm run build
+```
+
+Both commands must succeed (no warnings/errors) to match the production build that Vercel runs.
+
+### Step 6: First-Time Authentication
 
 1. Choose your calendar provider from the connection prompt (Google is available now; Outlook is coming soon).
 2. If you're using a Google test OAuth app you'll see a warning: **"Google hasn't verified this app"**

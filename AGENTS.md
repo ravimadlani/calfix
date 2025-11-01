@@ -15,6 +15,7 @@
 - `npm run preview` — Preview the production build locally.
 - `npm run lint` — Lint TypeScript/React with ESLint.
 - E2E (optional): `npx playwright test` (install browsers first: `npx playwright install`).
+- **Before handing work back, run `npm run lint` and `npm run build` and confirm both succeed.**
 
 ## Coding Style & Naming Conventions
 - Language: TypeScript + React function components; hooks and ES modules.
@@ -37,4 +38,3 @@
 - Client env vars must be prefixed `VITE_` (e.g., `VITE_SUPABASE_URL`).
 - Keep secrets server-side only (e.g., `SUPABASE_SERVICE_ROLE_KEY`, `CLERK_WEBHOOK_SECRET` used by `api/webhooks/clerk.ts`).
 - For Vercel, set env vars in project settings; SPA routing handled by `vercel.json` rewrites.
-

@@ -1,4 +1,4 @@
-import type { CalendarEvent, TimeRange } from '../types';
+import type { CalendarEvent, EventWithGap, TimeRange } from '../types';
 
 /**
  * EventsTimeline Component
@@ -7,8 +7,10 @@ import type { CalendarEvent, TimeRange } from '../types';
 
 import EventCard from './EventCard';
 
+type TimelineEvent = EventWithGap | (CalendarEvent & { gapAfter?: unknown });
+
 interface EventsTimelineProps {
-  events: CalendarEvent[];
+  events: TimelineEvent[];
   showDayHeadings: boolean;
   onAddBufferBefore: (event: CalendarEvent) => Promise<void>;
   onAddBufferAfter: (event: CalendarEvent) => Promise<void>;
@@ -19,7 +21,7 @@ interface EventsTimelineProps {
 type EventsByDayEntry = {
   dayName: string;
   dateStr: string;
-  events: CalendarEvent[];
+  events: TimelineEvent[];
   date: Date;
 };
 

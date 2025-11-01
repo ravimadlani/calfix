@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserButton } from '@clerk/clerk-react';
 import type { CalendarProviderId, CalendarProviderMetadata } from '../types';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
+import googleCalendarLogo from '../assets/google-calendar.svg';
 
 const CalendarConnectPrompt: React.FC = () => {
   const [isModalOpen, setModalOpen] = useState(false);
@@ -127,6 +128,10 @@ interface ProviderSelectModalProps {
   onClose: () => void;
 }
 
+const providerBrandIcons: Partial<Record<CalendarProviderId, string>> = {
+  google: googleCalendarLogo
+};
+
 const ProviderSelectModal: React.FC<ProviderSelectModalProps> = ({
   implementedProviders,
   comingSoonProviders,
@@ -169,17 +174,21 @@ const ProviderSelectModal: React.FC<ProviderSelectModalProps> = ({
 
             return (
               <div key={provider.id} className="border border-slate-200 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">{provider.label}</h3>
                     <p className="text-sm text-slate-500">{provider.description}</p>
                   </div>
-                  <span className="text-3xl" role="img" aria-label={provider.label}>
-                    {provider.id === 'google' ? '🟦' : '📆'}
-                  </span>
+                  {providerBrandIcons[provider.id] ? (
+                    <img src={providerBrandIcons[provider.id]!} alt={`${provider.label} logo`} className="h-10 w-10" />
+                  ) : (
+                    <span className="text-3xl" role="img" aria-label={provider.label}>
+                      📆
+                    </span>
+                  )}
                 </div>
 
-                <div className="text-xs text-slate-500 space-y-1">
+                <div className="flex flex-wrap gap-2 text-xs text-slate-500">
                   <CapabilityBadge enabled={provider.capabilities.supportsConferenceLinks} label="Video links" />
                   <CapabilityBadge enabled={provider.capabilities.supportsFreeBusy} label="Free/busy" />
                   <CapabilityBadge enabled={provider.capabilities.supportsBuffers} label="Automation" />

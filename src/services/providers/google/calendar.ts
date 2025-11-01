@@ -250,7 +250,12 @@ export const findFreeBusy = async (
 
     await ensureGapiClient();
 
-    const response = await window.gapi.client.calendar.freebusy.query(requestBody);
+    const gapi = window.gapi;
+    if (!gapi?.client?.calendar) {
+      throw new Error('GAPI calendar client not available');
+    }
+
+    const response = await gapi.client.calendar.freebusy.query(requestBody);
     return response.result as FreeBusyResponse;
   } catch (error) {
     console.error('[Google Calendar] Error finding free/busy times', error);
@@ -259,20 +264,22 @@ export const findFreeBusy = async (
 };
 
 const ensureGapiClient = async () => {
-  if (!window.gapi) {
+  const gapi = window.gapi;
+
+  if (!gapi) {
     throw new Error('GAPI library not loaded');
   }
 
-  if (window.gapi.client?.calendar) {
+  if (gapi.client?.calendar) {
     return;
   }
 
   return new Promise<void>((resolve, reject) => {
-    window.gapi.load('client', async () => {
+    gapi.load('client', async () => {
       try {
         const accessToken = await googleAuth.getValidAccessToken();
-        window.gapi.client.setToken({ access_token: accessToken });
-        await window.gapi.client.load('calendar', 'v3');
+        gapi.client.setToken({ access_token: accessToken });
+        await gapi.client.load('calendar', 'v3');
         resolve();
       } catch (error) {
         reject(error);

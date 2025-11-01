@@ -35,13 +35,6 @@ const AdminPanel = () => {
   // Check if user is admin (you can customize this logic)
   const isAdmin = clerkUser?.primaryEmailAddress?.emailAddress === 'ravi@calfix.pro';
 
-  useEffect(() => {
-    if (isAdmin && clerkUser) {
-      loadUsers();
-      setIsCalendarConnected(isAuthenticated(activeProviderId));
-    }
-  }, [activeProviderId, isAdmin, clerkUser, isAuthenticated, loadUsers]);
-
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -69,6 +62,13 @@ const AdminPanel = () => {
       setLoading(false);
     }
   }, [clerkUser?.primaryEmailAddress?.emailAddress]);
+
+  useEffect(() => {
+    if (isAdmin && clerkUser) {
+      loadUsers();
+      setIsCalendarConnected(isAuthenticated(activeProviderId));
+    }
+  }, [activeProviderId, isAdmin, clerkUser, isAuthenticated, loadUsers]);
 
   const handleGenerateTestData = async () => {
     // First check if provider calendar is connected
