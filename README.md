@@ -1,6 +1,6 @@
 # 📅 Calendar Dashboard
 
-A professional calendar management dashboard application with full Google Calendar integration, intelligent analytics, and smart scheduling features.
+A professional calendar management dashboard application with multi-provider calendar integration (Google today, Outlook coming soon), intelligent analytics, and smart scheduling features.
 
 ![Calendar Dashboard](https://img.shields.io/badge/React-18.2.0-blue)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.3.5-38B2AC)
@@ -38,14 +38,23 @@ A professional calendar management dashboard application with full Google Calend
 - This Week (Monday-Sunday)
 - Next Week
 
+## 🔄 Provider Support
+
+| Provider | Status | Capabilities |
+| --- | --- | --- |
+| Google Calendar | ✅ Available | Buffers & focus blocks, travel automation, Meet links, free/busy lookup |
+| Microsoft Outlook | 🚧 In progress | Planned: Graph API calendar CRUD, Teams meeting links, multi-account selection |
+
+CalFix now uses a provider registry and context (`CalendarProviderContext`) so the UI can switch between calendar backends without code changes. The Google adapter implements the shared interface today; the Outlook adapter is scaffolded behind the scenes and will light up once credentials and API wiring are in place.
+
 ## 📋 Prerequisites
 
 Before you begin, ensure you have:
 
 - **Node.js** (v14 or higher)
 - **npm** (v6 or higher)
-- A **Google Cloud Platform** account
-- A **Google Calendar** with events
+- A **Google Cloud Platform** account (for Google provider)
+- A **Google Calendar** with events (Outlook / Microsoft 365 support coming soon)
 
 ## 🚀 Getting Started
 
@@ -114,10 +123,17 @@ This is the most critical step. Follow carefully:
 
 2. Open `.env` in a text editor
 
-3. Replace `your_client_id_here.apps.googleusercontent.com` with your actual Client ID:
+3. Replace the placeholders with your actual credentials:
    ```env
-   REACT_APP_GOOGLE_CLIENT_ID=123456789-abcdefghijklmnop.apps.googleusercontent.com
-   REACT_APP_REDIRECT_URI=http://localhost:3001
+   VITE_GOOGLE_CLIENT_ID=123456789-abcdefghijklmnop.apps.googleusercontent.com
+   VITE_GOOGLE_CLIENT_SECRET=your-google-client-secret
+   VITE_REDIRECT_URI=http://localhost:3001
+
+   # Optional: preconfigure Outlook provider
+   VITE_OUTLOOK_CLIENT_ID=your-outlook-client-id
+   VITE_OUTLOOK_TENANT_ID=common
+   VITE_OUTLOOK_REDIRECT_URI=http://localhost:3001
+   OUTLOOK_CLIENT_SECRET=your-outlook-client-secret
    ```
 
 4. Save the file
@@ -125,15 +141,15 @@ This is the most critical step. Follow carefully:
 ### Step 4: Run the Application
 
 ```bash
-npm start
+npm run dev
 ```
 
 The application will open at [http://localhost:3001](http://localhost:3001)
 
 ### Step 5: First-Time Authentication
 
-1. Click **"Sign in with Google"**
-2. You'll see a warning: **"Google hasn't verified this app"**
+1. Choose your calendar provider from the connection prompt (Google is available now; Outlook is coming soon).
+2. If you're using a Google test OAuth app you'll see a warning: **"Google hasn't verified this app"**
    - This is normal for development apps
    - Click **"Advanced"** → **"Go to Calendar Dashboard (unsafe)"**
 3. Review permissions and click **"Continue"**
@@ -157,8 +173,9 @@ calendar-dashboard/
 │   │   ├── ActionItemsPanel.jsx  # Recommendations panel
 │   │   └── QuickActions.jsx      # One-click actions
 │   ├── services/
-│   │   ├── googleAuth.js         # OAuth 2.0 handling
-│   │   ├── googleCalendar.js     # Calendar API calls
+│   │   ├── providers/            # Multi-provider calendar adapters
+│   │   ├── googleAuth.js         # OAuth 2.0 handling (legacy wrapper)
+│   │   ├── googleCalendar.js     # Calendar API calls (legacy wrapper)
 │   │   └── calendarAnalytics.js  # Analytics engine
 │   ├── utils/
 │   │   ├── dateHelpers.js        # Date formatting & parsing
@@ -174,6 +191,8 @@ calendar-dashboard/
 ├── tailwind.config.js             # Tailwind configuration
 └── README.md                      # This file
 ```
+
+> ℹ️  The new multi-provider architecture lives under `src/services/providers/` and is consumed through the `CalendarProviderContext` added in `src/context/CalendarProviderContext.tsx`.
 
 ## 🎨 Key Technologies
 

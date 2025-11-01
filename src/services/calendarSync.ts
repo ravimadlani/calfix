@@ -1,26 +1,38 @@
 /**
  * Calendar Sync Service
- * Syncs Google Calendar data to Supabase after OAuth connection
+ * Syncs calendar metadata to Supabase after provider connection
  */
 
-interface Calendar {
-  id: string;
-  summary: string;
-  primary?: boolean;
-  accessRole?: string;
+import type { CalendarListEntry, CalendarProviderId } from '../types';
+
+interface ProviderSyncPayload {
+  providerId: CalendarProviderId;
+  calendars: Array<Pick<CalendarListEntry,
+    'id' |
+    'summary' |
+    'primary' |
+    'isPrimary' |
+    'accessRole' |
+    'timeZone' |
+    'colorId' |
+    'backgroundColor' |
+    'foregroundColor'
+  >>;
 }
 
 /**
- * Sync user's Google Calendars to Supabase
+ * Sync user's calendars to Supabase
  */
 export const syncCalendarsToSupabase = async (
   userId: string,
-  calendars: Calendar[],
+  providerId: CalendarProviderId,
+  calendars: CalendarListEntry[],
   primaryCalendarId?: string
 ): Promise<void> => {
   console.log('[Client: Calendar Sync] Starting sync with:', {
     userId,
     calendarsCount: calendars.length,
+    providerId,
     primaryCalendarId,
     calendars: calendars.map(c => ({
       id: c.id,
@@ -31,9 +43,25 @@ export const syncCalendarsToSupabase = async (
   });
 
   try {
+    const payload: ProviderSyncPayload = {
+      providerId,
+      calendars: calendars.map(calendar => ({
+        id: calendar.id,
+        summary: calendar.summary,
+        primary: calendar.primary,
+        isPrimary: calendar.isPrimary,
+        accessRole: calendar.accessRole,
+        timeZone: calendar.timeZone,
+        colorId: calendar.colorId,
+        backgroundColor: calendar.backgroundColor,
+        foregroundColor: calendar.foregroundColor
+      }))
+    };
+
     const requestBody = {
       userId,
-      calendars,
+      providerId,
+      calendars: payload.calendars,
       primaryCalendarId: primaryCalendarId || calendars.find(c => c.primary)?.id,
     };
 

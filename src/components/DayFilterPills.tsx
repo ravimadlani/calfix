@@ -1,17 +1,16 @@
+import type { CalendarEvent, TimeRange } from '../types';
+
 /**
  * DayFilterPills Component
  * Shows individual day pills for week views to filter events by specific day
  */
-
-
-
 /**
  * Find the location event covering a specific date
  * @param {Date} date - The date to check
  * @param {Array} events - All events
  * @returns {Object|null} - Location event or null
  */
-const findLocationForDate = (date, events) => {
+const findLocationForDate = (date: Date, events: CalendarEvent[]) => {
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0);
 
@@ -37,7 +36,7 @@ const findLocationForDate = (date, events) => {
  * @param {string} summary - Event summary
  * @returns {Object} - Location details
  */
-const extractLocationDetails = (summary) => {
+const extractLocationDetails = (summary: string) => {
   // Format: "🇺🇸 Location: San Francisco, United States"
   const match = summary.match(/^(.+?)\s+Location:\s+([^,]+),\s+(.+)$/);
   if (match) {
@@ -50,7 +49,21 @@ const extractLocationDetails = (summary) => {
   return null;
 };
 
-const DayFilterPills = ({ events, selectedDay, onDaySelect, viewType, timeRange }) => {
+interface DayFilterPillsProps {
+  events: CalendarEvent[];
+  selectedDay: string | null;
+  onDaySelect: (dayKey: string | null) => void;
+  viewType: string;
+  timeRange: TimeRange | null;
+}
+
+type EventsByDateEntry = {
+  dayName: string;
+  date: Date;
+  events: CalendarEvent[];
+};
+
+const DayFilterPills: React.FC<DayFilterPillsProps> = ({ events, selectedDay, onDaySelect, viewType, timeRange }) => {
   // Only show for week and month views
   if (viewType !== 'week' && viewType !== 'nextWeek' && viewType !== 'thisMonth' && viewType !== 'nextMonth') {
     return null;
@@ -61,7 +74,7 @@ const DayFilterPills = ({ events, selectedDay, onDaySelect, viewType, timeRange 
   const rangeEnd = timeRange ? new Date(timeRange.timeMax) : null;
 
   // Group events by actual date (not just day name)
-  const eventsByDate = {};
+  const eventsByDate: Record<string, EventsByDateEntry> = {};
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   events.forEach(event => {
@@ -104,7 +117,7 @@ const DayFilterPills = ({ events, selectedDay, onDaySelect, viewType, timeRange 
   console.log('View type:', viewType);
   console.log('Total events:', events.length);
   console.log('Grouped dates:', sortedDates);
-  console.log('Events by date:', Object.entries(eventsByDate).map(([key, val]: [string, any]) => ({
+  console.log('Events by date:', Object.entries(eventsByDate).map(([key, val]) => ({
     dateKey: key,
     dayName: val.dayName,
     actualDate: val.date.toDateString(),

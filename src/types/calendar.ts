@@ -1,6 +1,52 @@
 /**
- * Google Calendar API Type Definitions
+ * Calendar domain types shared across providers.
+ *
+ * The goal is to keep existing Google-specific fields available while
+ * introducing provider-agnostic metadata so we can plug in additional
+ * calendar sources (e.g., Outlook) without breaking existing analytics or UI.
  */
+
+export type CalendarProviderId = 'google' | 'outlook';
+
+export interface CalendarProviderCapabilities {
+  supportsBuffers: boolean;
+  supportsTravelBlocks: boolean;
+  supportsFocusBlocks: boolean;
+  supportsConferenceLinks: boolean;
+  supportsBatchConferenceLinks: boolean;
+  supportsFreeBusy: boolean;
+  supportsColorMetadata: boolean;
+  supportsLocationTracking: boolean;
+}
+
+export interface CalendarProviderMetadata {
+  id: CalendarProviderId;
+  label: string;
+  description?: string;
+  icon?: string;
+  capabilities: CalendarProviderCapabilities;
+}
+
+export interface ProviderAccount {
+  providerId: CalendarProviderId;
+  accountId: string;
+  email?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  raw?: unknown;
+}
+
+export interface ProviderCalendar {
+  providerId: CalendarProviderId;
+  id: string;
+  name: string;
+  isPrimary?: boolean;
+  accessRole: 'freeBusyReader' | 'reader' | 'writer' | 'owner';
+  timeZone?: string;
+  colorHex?: string;
+  secondaryColorHex?: string;
+  raw?: unknown;
+}
 
 export interface CalendarDateTime {
   dateTime?: string;
@@ -47,6 +93,8 @@ export interface ConferenceData {
 }
 
 export interface CalendarEvent {
+  providerId: CalendarProviderId;
+  calendarId?: string;
   id: string;
   summary?: string;
   description?: string;
@@ -73,7 +121,11 @@ export interface CalendarEvent {
   recurringEventId?: string;
   created?: string;
   updated?: string;
+  meetingUrl?: string; // normalized entry point when available
+  raw?: unknown; // original provider payload for adapter-specific data
 }
+
+export type NormalizedEvent = CalendarEvent;
 
 export interface EventWithGap extends CalendarEvent {
   gapAfter?: GapInfo | null;
@@ -140,8 +192,7 @@ export interface MeetingOutsideHours extends CalendarEvent {
   outOfHoursInTimezone: string;
 }
 
-export interface CalendarListEntry {
-  id: string;
+export interface CalendarListEntry extends ProviderCalendar {
   summary: string;
   description?: string;
   location?: string;
@@ -158,6 +209,7 @@ export interface CalendarListEntry {
     minutes: number;
   }>;
   primary?: boolean;
+  raw?: unknown;
 }
 
 export interface TimeRange {

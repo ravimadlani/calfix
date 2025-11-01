@@ -567,7 +567,7 @@ export const findFlightsWithoutTravelBlocks = (events) => {
 
   const flightsNeedingTravelBlocks = [];
 
-  sortedEvents.forEach((event, index) => {
+  sortedEvents.forEach(event => {
     // Skip all-day events
     if (isAllDayEvent(event)) return;
 

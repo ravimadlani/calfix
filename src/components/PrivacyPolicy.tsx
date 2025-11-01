@@ -119,8 +119,8 @@ const PrivacyPolicy: React.FC = () => {
           </ul>
           <p className="text-gray-700">
             To exercise these rights, contact us at{' '}
-            <a href="mailto:privacy@madlanilabs.com" className="text-indigo-600 hover:underline">
-              privacy@madlanilabs.com
+            <a href="mailto:privacy@calfix.pro" className="text-indigo-600 hover:underline">
+              privacy@calfix.pro
             </a>
           </p>
         </section>
@@ -174,20 +174,20 @@ const PrivacyPolicy: React.FC = () => {
             </p>
             <p className="text-gray-700 mb-2">
               Email:{' '}
-              <a href="mailto:privacy@madlanilabs.com" className="text-indigo-600 hover:underline">
-                privacy@madlanilabs.com
+              <a href="mailto:privacy@calfix.pro" className="text-indigo-600 hover:underline">
+                privacy@calfix.pro
               </a>
             </p>
             <p className="text-gray-700 mb-2">
               General Inquiries:{' '}
-              <a href="mailto:ravi@madlanilabs.com" className="text-indigo-600 hover:underline">
-                ravi@madlanilabs.com
+              <a href="mailto:hello@calfix.pro" className="text-indigo-600 hover:underline">
+                hello@calfix.pro
               </a>
             </p>
             <p className="text-gray-700">
               Data Protection Officer:{' '}
-              <a href="mailto:dpo@madlanilabs.com" className="text-indigo-600 hover:underline">
-                dpo@madlanilabs.com
+              <a href="mailto:dpo@calfix.pro" className="text-indigo-600 hover:underline">
+                dpo@calfix.pro
               </a>
             </p>
           </div>

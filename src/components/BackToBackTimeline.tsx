@@ -111,7 +111,7 @@ const BackToBackTimeline = ({ backToBackPairs, onAddBuffer }) => {
     const roundedStart = new Date(start);
     roundedStart.setMinutes(Math.floor(start.getMinutes() / 15) * 15, 0, 0);
 
-    let current = new Date(roundedStart);
+    const current = new Date(roundedStart);
 
     while (current <= end) {
       markers.push(new Date(current));
@@ -165,8 +165,6 @@ const BackToBackTimeline = ({ backToBackPairs, onAddBuffer }) => {
         // beforeEvent is the first meeting (earlier in time)
         // afterEvent is the second meeting (later in time, back-to-back)
         const start1 = new Date(beforeEvent.start?.dateTime || beforeEvent.start?.date);
-        const end1 = new Date(beforeEvent.end?.dateTime || beforeEvent.end?.date);
-        const start2 = new Date(afterEvent.start?.dateTime || afterEvent.start?.date);
         const end2 = new Date(afterEvent.end?.dateTime || afterEvent.end?.date);
 
         const timelineStart = start1;

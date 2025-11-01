@@ -9,6 +9,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
+import { CalendarProviderContextProvider } from './context/CalendarProviderContext';
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -21,7 +22,9 @@ root.render(
   <StrictMode>
     <ClerkProvider publishableKey={clerkPubKey}>
       <BrowserRouter>
-        <App />
+        <CalendarProviderContextProvider>
+          <App />
+        </CalendarProviderContextProvider>
       </BrowserRouter>
     </ClerkProvider>
   </StrictMode>
