@@ -9,7 +9,6 @@ import { isMeeting } from '../utils/eventCategorizer';
 import {
   analyzeGaps,
   calculateHealthScore,
-  calculateTotalMeetingTime,
   countBackToBack,
   countFocusBlocks,
   countInsufficientBuffers,
@@ -22,6 +21,7 @@ import {
   findInternationalFlightsWithoutLocation,
   findMeetingsOutsideBusinessHours
 } from '../utils/healthCalculator';
+import { calculateMeetingAudienceBreakdown } from '../utils/meetingAudience';
 
 /**
  * Calculate comprehensive analytics for a set of events
@@ -29,12 +29,20 @@ import {
  * @param {Array} extendedEvents - Extended event range for flight analysis (optional)
  * @returns {Object} Analytics data
  */
-export const calculateAnalytics = (events: CalendarEvent[], extendedEvents: CalendarEvent[] | null = null) => {
+export const calculateAnalytics = (
+  events: CalendarEvent[],
+  extendedEvents: CalendarEvent[] | null = null,
+  calendarOwnerEmail?: string | null
+) => {
   if (!events || !events.length) {
     return {
       totalEvents: 0,
       totalMeetings: 0,
       totalMeetingHours: 0,
+      internalMeetingCount: 0,
+      externalMeetingCount: 0,
+      internalMeetingHours: 0,
+      externalMeetingHours: 0,
       backToBackCount: 0,
       insufficientBufferCount: 0,
       focusBlockCount: 0,
@@ -67,11 +75,20 @@ export const calculateAnalytics = (events: CalendarEvent[], extendedEvents: Cale
   // Filter out all-day events for certain calculations
   const timedEvents = sortedEvents.filter(event => !isAllDayEvent(event));
 
-  // Count meetings
-  const totalMeetings = timedEvents.filter(event => isMeeting(event)).length;
+  // Meeting audience breakdown
+  const {
+    internalCount,
+    externalCount,
+    internalMinutes,
+    externalMinutes
+  } = calculateMeetingAudienceBreakdown(timedEvents, calendarOwnerEmail);
+
+  const totalMeetings = internalCount + externalCount;
+  const internalMeetingHours = internalMinutes / 60;
+  const externalMeetingHours = externalMinutes / 60;
+  const totalMeetingHours = internalMeetingHours + externalMeetingHours;
 
   // Calculate metrics
-  const totalMeetingHours = calculateTotalMeetingTime(timedEvents);
   const backToBackCount = countBackToBack(timedEvents);
   const insufficientBufferCount = countInsufficientBuffers(timedEvents);
   const focusBlockCount = countFocusBlocks(timedEvents);
@@ -107,6 +124,10 @@ export const calculateAnalytics = (events: CalendarEvent[], extendedEvents: Cale
     totalEvents: events.length,
     totalMeetings,
     totalMeetingHours,
+    internalMeetingCount: internalCount,
+    externalMeetingCount: externalCount,
+    internalMeetingHours,
+    externalMeetingHours,
     backToBackCount,
     insufficientBufferCount,
     focusBlockCount,
@@ -220,8 +241,8 @@ export const getFocusOpportunities = (events: CalendarEvent[]) => {
  * @param {Array} events - Array of calendar events for the day
  * @returns {Object} Daily summary
  */
-export const getDailySummary = (events: CalendarEvent[]) => {
-  const analytics = calculateAnalytics(events);
+export const getDailySummary = (events: CalendarEvent[], calendarOwnerEmail?: string | null) => {
+  const analytics = calculateAnalytics(events, null, calendarOwnerEmail);
 
   // Calculate additional daily metrics
   const timedEvents = events.filter(event => !isAllDayEvent(event));
@@ -259,8 +280,8 @@ export const getDailySummary = (events: CalendarEvent[]) => {
  * @param {Array} events - Array of calendar events for the week
  * @returns {Object} Weekly summary
  */
-export const getWeeklySummary = (events: CalendarEvent[]) => {
-  const analytics = calculateAnalytics(events);
+export const getWeeklySummary = (events: CalendarEvent[], calendarOwnerEmail?: string | null) => {
+  const analytics = calculateAnalytics(events, null, calendarOwnerEmail);
 
   // Group events by day
   const eventsByDay: Record<string, CalendarEvent[]> = {};
@@ -304,8 +325,8 @@ export const getWeeklySummary = (events: CalendarEvent[]) => {
  * @param {Array} events - Array of calendar events
  * @returns {Array} Array of recommendation objects
  */
-export const getRecommendations = (events: CalendarEvent[]) => {
-  const analytics = calculateAnalytics(events);
+export const getRecommendations = (events: CalendarEvent[], calendarOwnerEmail?: string | null) => {
+  const analytics = calculateAnalytics(events, null, calendarOwnerEmail);
   const recommendations = [];
 
   // Back-to-back meeting recommendations

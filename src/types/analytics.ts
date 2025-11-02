@@ -23,6 +23,10 @@ export interface CalendarAnalytics {
   totalEvents: number;
   totalMeetings: number;
   totalMeetingHours: number;
+  internalMeetingCount: number;
+  externalMeetingCount: number;
+  internalMeetingHours: number;
+  externalMeetingHours: number;
   backToBackCount: number;
   insufficientBufferCount: number;
   focusBlockCount: number;

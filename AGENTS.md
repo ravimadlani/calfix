@@ -33,6 +33,7 @@
 - Commits: use Conventional Commits (`feat:`, `fix:`, `chore:`) as in Git history.
 - PRs: include clear description, linked issue(s), and screenshots/GIFs for UI changes.
 - Checks: ensure `npm run build` and `npm run lint` pass; note any env/config requirements.
+- Branching: before starting a feature branch, always `git checkout main` and `git pull` so the branch forks from the latest main.
 
 ## Security & Configuration Tips
 - Client env vars must be prefixed `VITE_` (e.g., `VITE_SUPABASE_URL`).
