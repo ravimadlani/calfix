@@ -170,7 +170,7 @@ const PrivacyPolicy: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">12. Contact Us</h2>
           <div className="bg-gray-50 p-6 rounded-lg">
             <p className="text-gray-700 mb-2">
-              <strong>CalFix by Madlani Labs</strong>
+              <strong>CalFix</strong>
             </p>
             <p className="text-gray-700 mb-2">
               Email:{' '}

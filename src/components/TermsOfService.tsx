@@ -19,7 +19,7 @@ const TermsOfService: React.FC = () => {
         <div className="bg-indigo-50 border-l-4 border-indigo-400 p-4 mb-8">
           <p className="text-indigo-900">
             <strong>Agreement to Terms</strong><br />
-            By accessing or using CalFix ("Service"), operated by Madlani Labs ("we", "us", "our", "Company"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of these terms, you may not access the Service.
+            By accessing or using CalFix ("Service"), operated by CalFix ("we", "us", "our", "Company"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of these terms, you may not access the Service.
           </p>
         </div>
 
@@ -106,7 +106,7 @@ const TermsOfService: React.FC = () => {
 
           <h3 className="text-xl font-semibold text-gray-800 mb-3">5.1 Our Property</h3>
           <p className="mb-4 text-gray-700">
-            The Service, including all content, features, and functionality, is owned by Madlani Labs and is protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
+            The Service, including all content, features, and functionality, is owned by CalFix and is protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
           </p>
 
           <h3 className="text-xl font-semibold text-gray-800 mb-3">5.2 Your Content</h3>
@@ -159,7 +159,7 @@ const TermsOfService: React.FC = () => {
 
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
             <p className="text-gray-700">
-              <strong>TO THE MAXIMUM EXTENT PERMITTED BY LAW</strong>, Madlani Labs shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, use, goodwill, or other intangible losses, resulting from your use or inability to use the Service.
+              <strong>TO THE MAXIMUM EXTENT PERMITTED BY LAW</strong>, CalFix shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, use, goodwill, or other intangible losses, resulting from your use or inability to use the Service.
             </p>
           </div>
 
@@ -171,7 +171,7 @@ const TermsOfService: React.FC = () => {
         <section className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Indemnification</h2>
           <p className="text-gray-700">
-            You agree to defend, indemnify, and hold harmless Madlani Labs, its officers, directors, employees, and agents from any claims, damages, obligations, losses, liabilities, costs, or expenses arising from:
+            You agree to defend, indemnify, and hold harmless CalFix, its officers, directors, employees, and agents from any claims, damages, obligations, losses, liabilities, costs, or expenses arising from:
           </p>
           <ul className="list-disc pl-6 mb-4 text-gray-700">
             <li>Your violation of these Terms</li>
@@ -231,7 +231,7 @@ const TermsOfService: React.FC = () => {
 
           <h3 className="text-xl font-semibold text-gray-800 mb-3">13.1 Entire Agreement</h3>
           <p className="mb-4 text-gray-700">
-            These Terms, together with our Privacy Policy, constitute the entire agreement between you and Madlani Labs regarding the Service.
+            These Terms, together with our Privacy Policy, constitute the entire agreement between you and CalFix regarding the Service.
           </p>
 
           <h3 className="text-xl font-semibold text-gray-800 mb-3">13.2 Severability</h3>
@@ -254,7 +254,7 @@ const TermsOfService: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">14. Contact Information</h2>
           <div className="bg-gray-50 p-6 rounded-lg">
             <p className="text-gray-700 mb-2">
-              <strong>CalFix by Madlani Labs</strong>
+              <strong>CalFix</strong>
             </p>
             <p className="text-gray-700 mb-2">
               Email:{' '}
