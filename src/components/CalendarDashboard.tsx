@@ -3,7 +3,7 @@
  * Main dashboard that orchestrates all calendar features
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ViewSelector from './ViewSelector';
 import StatsCard from './StatsCard';
 import DayActionsPanel from './DayActionsPanel';
@@ -20,6 +20,7 @@ import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type { CalendarEvent, CalendarProviderId } from '../types';
+import MeetingAudienceSummary from './MeetingAudienceSummary';
 
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
@@ -86,6 +87,39 @@ const CalendarDashboard = () => {
   });
   const [availableCalendars, setAvailableCalendars] = useState([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
+
+  const primaryClerkEmail =
+    clerkUser?.primaryEmailAddress?.emailAddress ||
+    clerkUser?.emailAddresses?.[0]?.emailAddress ||
+    null;
+
+  const calendarOwnerEmail = useMemo(() => {
+    const selectedCalendar =
+      availableCalendars.find((cal) => cal.id === managedCalendarId) ||
+      (managedCalendarId === 'primary'
+        ? availableCalendars.find(cal => cal.primary)
+        : undefined);
+
+    const candidateId = typeof selectedCalendar?.id === 'string'
+      ? selectedCalendar.id.toLowerCase()
+      : null;
+
+    const candidateLooksService = candidateId ? candidateId.includes('calendar.google.com') : false;
+
+    if (candidateId && candidateId.includes('@') && !candidateLooksService) {
+      return candidateId;
+    }
+
+    if (primaryClerkEmail) {
+      return primaryClerkEmail.toLowerCase();
+    }
+
+    if (candidateId && candidateId.includes('@')) {
+      return candidateId;
+    }
+
+    return null;
+  }, [availableCalendars, managedCalendarId, primaryClerkEmail]);
 
   const requireHelper = <T extends (...args: unknown[]) => unknown>(helper: T | undefined, message: string): T | null => {
     if (!helper) {
@@ -366,7 +400,7 @@ const CalendarDashboard = () => {
 
       // Calculate analytics using filtered events for the view,
       // but use extended events for international flight detection
-      const analyticsData = calculateAnalytics(filteredEvents, extendedEvents);
+      const analyticsData = calculateAnalytics(filteredEvents, extendedEvents, calendarOwnerEmail);
       setAnalytics(analyticsData);
 
       // Get events with gap information using filtered events
@@ -393,7 +427,7 @@ const CalendarDashboard = () => {
       setEventsWithGaps(eventsWithAllData);
 
       // Get recommendations using filtered events
-      const recs = getRecommendations(filteredEvents);
+      const recs = getRecommendations(filteredEvents, calendarOwnerEmail);
       setRecommendations(recs);
 
     } catch (err) {
@@ -408,7 +442,7 @@ const CalendarDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentView, fetchProviderEvents, managedCalendarId]);
+  }, [calendarOwnerEmail, currentView, fetchProviderEvents, managedCalendarId]);
 
   // Update managed calendar and persist to localStorage
   const updateManagedCalendar = useCallback(async (calendarId: string) => {
@@ -995,12 +1029,16 @@ const CalendarDashboard = () => {
 
   // Calculate analytics for the filtered view (day-specific if a day is selected)
   const displayAnalytics = selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-    ? calculateAnalytics(filteredEvents, extendedEventsForFlights.length > 0 ? extendedEventsForFlights : null)
+    ? calculateAnalytics(
+        filteredEvents,
+        extendedEventsForFlights.length > 0 ? extendedEventsForFlights : null,
+        calendarOwnerEmail
+      )
     : analytics;
 
   // Calculate recommendations for the filtered view
   const displayRecommendations = selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-    ? getRecommendations(filteredEvents)
+    ? getRecommendations(filteredEvents, calendarOwnerEmail)
     : recommendations;
 
   return (
@@ -1143,7 +1181,7 @@ const CalendarDashboard = () => {
 
       {/* Statistics Grid */}
       {displayAnalytics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           <StatsCard
             icon="📅"
             label="Total Events"
@@ -1152,11 +1190,19 @@ const CalendarDashboard = () => {
             color="indigo"
           />
           <StatsCard
-            icon="⏰"
-            label="Meeting Time"
-            value={formatHours(displayAnalytics.totalMeetingHours)}
-            subtext="Total hours"
+            icon="👥"
+            label="Total Meetings"
+            value={displayAnalytics.totalMeetings}
+            subtext={`${formatHours(displayAnalytics.totalMeetingHours)} hours`}
             color="blue"
+          />
+          <MeetingAudienceSummary
+            totalMeetings={displayAnalytics.totalMeetings}
+            totalMeetingHours={displayAnalytics.totalMeetingHours}
+            internalMeetingCount={displayAnalytics.internalMeetingCount}
+            internalMeetingHours={displayAnalytics.internalMeetingHours}
+            externalMeetingCount={displayAnalytics.externalMeetingCount}
+            externalMeetingHours={displayAnalytics.externalMeetingHours}
           />
           <StatsCard
             icon="🔴"
