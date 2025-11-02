@@ -15,6 +15,7 @@ import AdminPanel from './components/AdminPanel';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import { OAuthCallback } from './components/OAuthCallback';
+import RecurringPage from './components/RecurringPage';
 
 function App() {
   return (
@@ -52,6 +53,15 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminPanel />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/recurring"
+          element={
+            <ProtectedRoute>
+              <RecurringPage />
             </ProtectedRoute>
           }
         />
