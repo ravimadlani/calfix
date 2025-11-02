@@ -65,16 +65,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   Dashboard
                 </Link>
-                <Link
-                  to="/admin"
-                  className={`text-sm font-medium transition-colors ${
-                    isActive('/admin')
-                      ? 'text-indigo-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Admin
-                </Link>
               </div>
             )}
 
