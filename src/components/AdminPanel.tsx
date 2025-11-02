@@ -32,9 +32,6 @@ const AdminPanel = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
 
-  // Check if user is admin (you can customize this logic)
-  const isAdmin = clerkUser?.primaryEmailAddress?.emailAddress === 'ravi@calfix.pro';
-
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -64,11 +61,11 @@ const AdminPanel = () => {
   }, [clerkUser?.primaryEmailAddress?.emailAddress]);
 
   useEffect(() => {
-    if (isAdmin && clerkUser) {
+    if (clerkUser) {
       loadUsers();
       setIsCalendarConnected(isAuthenticated(activeProviderId));
     }
-  }, [activeProviderId, isAdmin, clerkUser, isAuthenticated, loadUsers]);
+  }, [activeProviderId, clerkUser, isAuthenticated, loadUsers]);
 
   const handleGenerateTestData = async () => {
     // First check if provider calendar is connected
@@ -142,18 +139,6 @@ const AdminPanel = () => {
       setError(`Failed to reconnect ${providerLabel}: ${message}`);
     }
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <span className="text-4xl block mb-3">🚫</span>
-          <h2 className="text-xl font-bold text-red-900 mb-2">Access Denied</h2>
-          <p className="text-red-700">You do not have permission to access the admin panel.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
