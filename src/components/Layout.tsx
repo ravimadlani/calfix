@@ -208,7 +208,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <div className="mt-8 pt-8 border-t border-gray-200">
             <p className="text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} CalFix by Madlani Labs. All rights reserved.
+              © {new Date().getFullYear()} CalFix. All rights reserved.
             </p>
           </div>
         </div>
