@@ -375,7 +375,14 @@ const RecurringPage: React.FC = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const isCalendarConnected = useMemo(
-    () => providerIsAuthenticated(activeProviderId),
+    () => {
+      const connected = providerIsAuthenticated(activeProviderId);
+      console.info('[Recurring] Provider auth state', {
+        activeProviderId,
+        connected
+      });
+      return connected;
+    },
     [providerIsAuthenticated, activeProviderId]
   );
 
@@ -421,6 +428,7 @@ const RecurringPage: React.FC = () => {
 
   const loadCalendarList = useCallback(async () => {
     if (!isCalendarConnected) {
+      console.info('[Recurring] Skipping calendar list load because provider is not connected');
       setAvailableCalendars([]);
       setAllManageableCalendars([]);
       return;
@@ -501,6 +509,11 @@ const RecurringPage: React.FC = () => {
     const fetchEnd = new Date(Math.max(filterEnd.getTime(), relationshipWindowEnd.getTime()));
 
     try {
+      console.info('[Recurring] Loading events', {
+        calendarIdToUse,
+        filterStart: filterStart.toISOString(),
+        filterEnd: filterEnd.toISOString()
+      });
       const events: CalendarEvent[] = await fetchProviderEvents({
         timeMin: fetchStart.toISOString(),
         timeMax: fetchEnd.toISOString(),
@@ -612,6 +625,7 @@ const RecurringPage: React.FC = () => {
   }
 
   if (!isCalendarConnected) {
+    console.info('[Recurring] Rendering CalendarConnectPrompt - provider not connected');
     return <CalendarConnectPrompt />;
   }
 
