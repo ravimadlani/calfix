@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import UpgradeModal from './UpgradeModal';
+import CalendarConnectPrompt from './CalendarConnectPrompt';
 import type {
   CalendarEvent,
   CalendarListEntry
@@ -310,7 +311,8 @@ const RecurringPage: React.FC = () => {
   const { user } = useUser();
   const {
     activeProvider,
-    activeProviderId
+    activeProviderId,
+    isAuthenticated: providerIsAuthenticated
   } = useCalendarProvider();
 
   const {
@@ -372,6 +374,11 @@ const RecurringPage: React.FC = () => {
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  const isCalendarConnected = useMemo(
+    () => providerIsAuthenticated(activeProviderId),
+    [providerIsAuthenticated, activeProviderId]
+  );
+
   const ownerEmail = useMemo(
     () => determineOwnerEmail(selectedCalendar, fallbackEmail),
     [selectedCalendar, fallbackEmail]
@@ -413,6 +420,11 @@ const RecurringPage: React.FC = () => {
   }, [checkSubscription]);
 
   const loadCalendarList = useCallback(async () => {
+    if (!isCalendarConnected) {
+      setAvailableCalendars([]);
+      setAllManageableCalendars([]);
+      return;
+    }
     try {
       const calendars = await fetchProviderCalendarList();
 
@@ -447,7 +459,7 @@ const RecurringPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch calendar list:', error);
     }
-  }, [fetchProviderCalendarList, hasMultiCalendarAccess, managedCalendarId, maxCalendars]);
+  }, [fetchProviderCalendarList, hasMultiCalendarAccess, isCalendarConnected, managedCalendarId, maxCalendars]);
 
   useEffect(() => {
     if (!subscriptionLoaded) return;
@@ -461,7 +473,7 @@ const RecurringPage: React.FC = () => {
   }, [includePlaceholders]);
 
   const loadRecurringData = useCallback(async () => {
-    if (!subscriptionLoaded) return;
+    if (!subscriptionLoaded || !isCalendarConnected) return;
     const calendarIdToUse = managedCalendarId || 'primary';
 
     setLoading(true);
@@ -514,7 +526,7 @@ const RecurringPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchProviderEvents, managedCalendarId, ownerEmail, rangeMode, subscriptionLoaded]);
+  }, [fetchProviderEvents, isCalendarConnected, managedCalendarId, ownerEmail, rangeMode, subscriptionLoaded]);
 
   useEffect(() => {
     if (!subscriptionLoaded) return;
@@ -587,6 +599,21 @@ const RecurringPage: React.FC = () => {
     const baseline = analytics.series.filter(item => includePlaceholders || !item.isPlaceholder);
     return summarizeRecurringSeries(baseline, 40);
   }, [analytics, includePlaceholders]);
+
+  if (!subscriptionLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isCalendarConnected) {
+    return <CalendarConnectPrompt />;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
