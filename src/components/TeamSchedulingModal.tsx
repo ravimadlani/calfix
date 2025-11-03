@@ -242,6 +242,31 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
 
   const hostParticipant = participants.find(person => person.role === 'host') ?? participants[0];
 
+  const getTimezoneLabel = (timezone: string) =>
+    suggestedTimezones.find(tz => tz.value === timezone)?.label ?? timezone;
+
+  const summarizeSlotTimezones = (slot: AvailabilitySlot) => {
+    const map = new Map<string, { range: string; hasFlex: boolean }>();
+    slot.participants.forEach(participant => {
+      const existing = map.get(participant.timezone);
+      if (!existing) {
+        map.set(participant.timezone, {
+          range: participant.localRange,
+          hasFlex: participant.status === 'flex'
+        });
+      } else if (participant.status === 'flex') {
+        existing.hasFlex = true;
+      }
+    });
+
+    return Array.from(map.entries()).map(([timezone, value]) => ({
+      timezone,
+      label: getTimezoneLabel(timezone),
+      range: value.range,
+      hasFlex: value.hasFlex
+    }));
+  };
+
   const addParticipant = () => {
     setParticipants(prev => [
       ...prev,
@@ -510,9 +535,9 @@ const buildGuardrailStatus = (slotStart: Date, slotEnd: Date): SlotGuardrailStat
     const slotText = selectedSlots
       .sort((a, b) => a.start.getTime() - b.start.getTime())
       .map((slot, index) => {
-        const participantLines = slot.participants.map(participant => {
-          const statusNote = participant.status === 'flex' ? ' (flex window)' : '';
-          return `   - ${participant.name}: ${participant.localRange}${statusNote}`;
+        const participantLines = summarizeSlotTimezones(slot).map(summary => {
+          const statusNote = summary.hasFlex ? ' (flex window)' : '';
+          return `   - ${summary.label}: ${summary.range}${statusNote}`;
         }).join('\n');
 
         const guardLines = slot.guardrails.map(guard => {
@@ -906,16 +931,16 @@ Thanks!`;
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs uppercase font-semibold text-slate-500">Teammates</p>
+          <p className="text-xs uppercase font-semibold text-slate-500">Timezones</p>
           <ul className="space-y-1">
-            {slot.participants.map(participant => (
-              <li key={participant.id} className="text-xs text-slate-600 flex items-center gap-2">
+            {summarizeSlotTimezones(slot).map(summary => (
+              <li key={summary.timezone} className="text-xs text-slate-600 flex items-center gap-2">
                 <span className="font-medium">
-                  {participant.name}
+                  {summary.label}
                 </span>
                 <span className="text-slate-400">·</span>
-                <span>{participant.localRange}</span>
-                {participant.status === 'flex' && (
+                <span>{summary.range}</span>
+                {summary.hasFlex && (
                   <span className="ml-2 inline-flex text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
                     flex window
                   </span>
@@ -1051,9 +1076,9 @@ Thanks!`;
                       }).format(slot.start)} · {formatTimeRangeBasic(slot.start, slot.end, hostParticipant?.timezone || defaultTimezone)}
                     </div>
                     <ul className="text-xs text-slate-500 mt-1 space-y-1">
-                      {slot.participants.map(participant => (
-                        <li key={participant.id}>
-                          {participant.name}: {participant.localRange}{participant.status === 'flex' ? ' (flex window)' : ''}
+                      {summarizeSlotTimezones(slot).map(summary => (
+                        <li key={summary.timezone}>
+                          {summary.label}: {summary.range}{summary.hasFlex ? ' (flex window)' : ''}
                         </li>
                       ))}
                     </ul>
