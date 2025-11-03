@@ -7,6 +7,7 @@ import React, {
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
+import UpgradeModal from './UpgradeModal';
 import type {
   CalendarEvent,
   CalendarListEntry
@@ -369,6 +370,8 @@ const RecurringPage: React.FC = () => {
     }
   }, [managedCalendarId]);
 
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const ownerEmail = useMemo(
     () => determineOwnerEmail(selectedCalendar, fallbackEmail),
     [selectedCalendar, fallbackEmail]
@@ -458,6 +461,7 @@ const RecurringPage: React.FC = () => {
   }, [includePlaceholders]);
 
   const loadRecurringData = useCallback(async () => {
+    if (!subscriptionLoaded) return;
     const calendarIdToUse = managedCalendarId || 'primary';
 
     setLoading(true);
@@ -510,11 +514,12 @@ const RecurringPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchProviderEvents, managedCalendarId, ownerEmail, rangeMode]);
+  }, [fetchProviderEvents, managedCalendarId, ownerEmail, rangeMode, subscriptionLoaded]);
 
   useEffect(() => {
+    if (!subscriptionLoaded) return;
     loadRecurringData();
-  }, [loadRecurringData]);
+  }, [loadRecurringData, subscriptionLoaded]);
 
   const toggleInternalQuickFilter = () => {
     setShowFlaggedOnly(false);
@@ -592,27 +597,70 @@ const RecurringPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
-            Calendar
-          </label>
-          <select
-            value={managedCalendarId}
-            onChange={(e) => setManagedCalendarId(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
-          >
-            {availableCalendars.map(calendar => (
-              <option key={calendar.id} value={calendar.id}>
-                {calendar.summary || calendar.id}
-              </option>
-            ))}
-          </select>
-        </div>
-        <p className="text-xs text-slate-500">
-          {selectedCalendar?.summary || selectedCalendar?.id || 'Select a calendar'}
-          {availableCalendars.length > 0 && ` • ${availableCalendars.length} calendar${availableCalendars.length !== 1 ? 's' : ''} available`}
-        </p>
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+        {hasMultiCalendarAccess ? (
+          <>
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Managing Calendar:
+              </label>
+              <select
+                value={managedCalendarId}
+                onChange={(e) => setManagedCalendarId(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
+              >
+                {availableCalendars.map((cal) => (
+                  <option key={cal.id} value={cal.id}>
+                    {cal.summary} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
+                  </option>
+                ))}
+              </select>
+              {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId) && (
+                <button
+                  onClick={() => {
+                    const primaryCal = availableCalendars.find(c => c.primary);
+                    setManagedCalendarId(primaryCal ? primaryCal.id : 'primary');
+                  }}
+                  className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  Reset to My Calendar
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
+              {' • '}
+              {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
+              {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId)
+                ? ' • Managing as delegate'
+                : ''}
+            </p>
+          </>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-gray-900">
+                📅 {availableCalendars[0]?.summary || 'Your Calendar'}
+              </span>
+              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded uppercase">
+                {isInTrial ? `${subscriptionTier || 'Loading'} Trial (${daysLeftInTrial} days left)` : (subscriptionTier || 'Loading')}
+              </span>
+            </div>
+            <p className="text-xs text-gray-600">
+              {hasMultiCalendarAccess
+                ? `${availableCalendars.length} calendar${availableCalendars.length !== 1 ? 's' : ''} available`
+                : 'Basic access • 1 calendar included'}
+            </p>
+            {allManageableCalendars.length > 1 && (
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                🔓 Unlock additional calendars
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -638,6 +686,13 @@ const RecurringPage: React.FC = () => {
           className="inline-flex items-center gap-2 rounded-lg border border-indigo-500 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
         >
           Refresh
+        </button>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          onClick={() => {/* TODO: Add preferences modal */}}
+        >
+          Preferences
         </button>
       </div>
 
@@ -674,6 +729,27 @@ const RecurringPage: React.FC = () => {
           </label>
         )}
       </div>
+
+      {subscriptionTier === 'basic' && allManageableCalendars.length > 1 && (
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                🎯 Unlock All Your Calendars
+              </p>
+              <p className="text-xs text-gray-600">
+                You have access to {allManageableCalendars.length} calendars but can only manage 1 with Basic plan
+              </p>
+            </div>
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-lg transition-all transform hover:scale-105 whitespace-nowrap"
+            >
+              Unlock All Calendars
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
@@ -957,6 +1033,12 @@ const RecurringPage: React.FC = () => {
             )}
         </div>
       )}
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentTier={(subscriptionTier || 'basic') as 'basic' | 'ea' | 'ea_pro'}
+      />
     </div>
   );
 };
