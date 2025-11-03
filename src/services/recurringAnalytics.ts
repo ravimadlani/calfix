@@ -19,6 +19,9 @@ interface RecurringAnalyticsOptions {
   filterStart: Date;
   filterEnd: Date;
   baselineWorkWeekHours?: number;
+  rangeMode: 'retro' | 'forward';
+  relationshipWindowStart: Date;
+  relationshipWindowEnd: Date;
 }
 
 const WORK_WEEK_DEFAULT = 40;
@@ -40,7 +43,7 @@ const isWithinRange = (date: Date, start: Date, end: Date) => date >= start && d
 
 const roundTwo = (value: number) => Math.round(value * 100) / 100;
 
-const getFrequencyLabel = (avgGapDays: number | null) => {
+const getFrequencyLabelFromAverage = (avgGapDays: number | null) => {
   if (!avgGapDays || avgGapDays <= 0) {
     return 'Irregular';
   }
@@ -50,6 +53,33 @@ const getFrequencyLabel = (avgGapDays: number | null) => {
   if (avgGapDays <= 17) return 'Bi-Weekly';
   if (avgGapDays <= 45) return 'Monthly';
   return 'Irregular';
+};
+
+const getFrequencyFromRecurrence = (event: CalendarEvent | undefined) => {
+  const recurrenceRule = event?.recurrence?.find(rule => rule.toUpperCase().startsWith('RRULE'));
+  if (!recurrenceRule) return null;
+
+  const [, ruleBodyRaw] = recurrenceRule.split(':');
+  const ruleBody = ruleBodyRaw || recurrenceRule;
+  const parts = ruleBody.split(';');
+
+  const freqPart = parts.find(part => part.startsWith('FREQ='));
+  if (!freqPart) return null;
+
+  const freqValue = freqPart.split('=')[1];
+  const intervalPart = parts.find(part => part.startsWith('INTERVAL='));
+  const interval = intervalPart ? Number(intervalPart.split('=')[1]) || 1 : 1;
+
+  switch (freqValue) {
+    case 'DAILY':
+      return 'Daily';
+    case 'WEEKLY':
+      return interval === 2 ? 'Bi-Weekly' : 'Weekly';
+    case 'MONTHLY':
+      return 'Monthly';
+    default:
+      return null;
+  }
 };
 
 const getSeriesFlags = (
@@ -204,15 +234,8 @@ const buildRecurringSeriesMetrics = (
     : 0;
 
   const averageGapDays = calculateAverageGapDays(eventsInWindow);
-  const frequencyLabel = getFrequencyLabel(averageGapDays);
-
-  const weeklyMinutes = averageGapDays && averageGapDays > 0
-    ? (averageDurationMinutes * (7 / averageGapDays))
-    : averageDurationMinutes;
-
-  const monthlyMinutes = averageGapDays && averageGapDays > 0
-    ? (averageDurationMinutes * (30 / averageGapDays))
-    : averageDurationMinutes * 4;
+  const recurrenceFrequencyLabel = getFrequencyFromRecurrence(eventsInWindow[0]);
+  const frequencyLabel = recurrenceFrequencyLabel || getFrequencyLabelFromAverage(averageGapDays);
 
   const ownerEmail = toLower(options.ownerEmail);
   const ownerDomain = getDomain(ownerEmail);
@@ -265,6 +288,33 @@ const buildRecurringSeriesMetrics = (
   const nextOccurrence = futureEvents.length > 0 ? getEventStartTime(futureEvents[0]) ?? null : null;
 
   const attendeeCount = internalAttendees + externalAttendees;
+
+  const measurementStart = new Date(now);
+  const measurementEnd = new Date(now);
+  if (options.rangeMode === 'retro') {
+    measurementStart.setDate(measurementStart.getDate() - 30);
+  } else {
+    measurementEnd.setDate(measurementEnd.getDate() + 30);
+  }
+
+  const actualMonthlyMinutes = events.reduce((sum, event) => {
+    const start = getEventStartTime(event);
+    if (!start) return sum;
+    if (start < measurementStart || start > measurementEnd) {
+      return sum;
+    }
+    const duration = calculateDuration(event.start?.dateTime || event.start?.date, event.end?.dateTime || event.end?.date);
+    return duration ? sum + duration : sum;
+  }, 0);
+
+  const weeklyMinutes = actualMonthlyMinutes > 0
+    ? actualMonthlyMinutes * (7 / 30)
+    : averageDurationMinutes;
+
+  const monthlyMinutes = actualMonthlyMinutes > 0
+    ? actualMonthlyMinutes
+    : averageDurationMinutes * 4;
+
   const peopleHoursPerMonth = getPeopleHourEstimate(
     attendeeCount || 1,
     monthlyMinutes
@@ -275,10 +325,11 @@ const buildRecurringSeriesMetrics = (
     title: eventsInWindow[0]?.summary || 'Untitled meeting',
     organizerEmail: eventsInWindow[0]?.organizer?.email,
     frequencyLabel,
-    averageGapDays: averageGapDays ? roundTwo(averageGapDays) : 0,
+    averageGapDays: averageGapDays ? roundTwo(averageGapDays) : null,
     durationMinutes: roundTwo(averageDurationMinutes),
     weeklyMinutes: roundTwo(weeklyMinutes),
     monthlyMinutes: roundTwo(monthlyMinutes),
+    actualMonthlyMinutes: roundTwo(actualMonthlyMinutes),
     peopleHoursPerMonth: roundTwo(peopleHoursPerMonth),
     internalAttendeeCount: internalAttendees,
     externalAttendeeCount: externalAttendees,
@@ -291,7 +342,8 @@ const buildRecurringSeriesMetrics = (
     nextOccurrence,
     totalInstances: eventsInWindow.length,
     flags: [],
-    sampleEvents: eventsInWindow.slice(0, 5)
+    sampleEvents: eventsInWindow.slice(0, 5),
+    isPlaceholder: attendeeCount === 0
   };
 
   const flags = getSeriesFlags(metricsBase, now);
@@ -305,8 +357,8 @@ const buildRecurringSeriesMetrics = (
 const buildRelationshipSnapshots = (
   events: CalendarEvent[],
   ownerEmail: string | undefined,
-  filterStart: Date,
-  filterEnd: Date
+  windowStart: Date,
+  windowEnd: Date
 ): RelationshipSnapshot[] => {
   const now = new Date();
   const ownerAddress = ownerEmail?.toLowerCase();
@@ -314,7 +366,7 @@ const buildRelationshipSnapshots = (
   const relevantEvents = events.filter(event => {
     if (!isMeeting(event) || isAllDayEvent(event)) return false;
     const start = getEventStartTime(event);
-    if (!start || !isWithinRange(start, filterStart, filterEnd)) return false;
+    if (!start || !isWithinRange(start, windowStart, windowEnd)) return false;
     if (!event.attendees || event.attendees.length === 0) return false;
     return true;
   });
@@ -413,7 +465,7 @@ const buildRelationshipSnapshots = (
   return sortedSnapshots;
 };
 
-const buildSummary = (
+export const summarizeRecurringSeries = (
   series: RecurringSeriesMetrics[],
   baselineWorkWeekHours: number
 ): RecurringSummary => {
@@ -423,15 +475,15 @@ const buildSummary = (
 
   let internalSeries = 0;
   let externalSeries = 0;
-  let mixedSeries = 0;
+  let placeholderSeries = 0;
   const flagCounts: Record<string, number> = {};
 
   series.forEach(item => {
-    if (item.internalAttendeeCount > 0 && item.externalAttendeeCount > 0) {
-      mixedSeries += 1;
-    } else if (item.externalAttendeeCount > 0) {
+    if (item.isPlaceholder) {
+      placeholderSeries += 1;
+    } else if (item.externalAttendeeCount > 0 && item.internalAttendeeCount === 0) {
       externalSeries += 1;
-    } else {
+    } else if (item.internalAttendeeCount > 0) {
       internalSeries += 1;
     }
 
@@ -454,7 +506,7 @@ const buildSummary = (
     percentOfWorkWeek: roundTwo(percentOfWorkWeek),
     internalSeries,
     externalSeries,
-    mixedSeries,
+    placeholderSeries,
     flagCounts
   };
 };
@@ -497,9 +549,14 @@ export const computeRecurringAnalytics = (
   });
 
   const baselineWorkWeekHours = options.baselineWorkWeekHours ?? WORK_WEEK_DEFAULT;
-  const summary = buildSummary(series, baselineWorkWeekHours);
+  const summary = summarizeRecurringSeries(series, baselineWorkWeekHours);
 
-  const relationships = buildRelationshipSnapshots(events, toLower(options.ownerEmail), filterStart, filterEnd);
+  const relationships = buildRelationshipSnapshots(
+    events,
+    toLower(options.ownerEmail),
+    options.relationshipWindowStart,
+    options.relationshipWindowEnd
+  );
 
   return {
     series,

@@ -16,7 +16,7 @@ import type {
   RecurringSeriesMetrics,
   RelationshipSnapshot
 } from '../types/recurring';
-import { computeRecurringAnalytics, buildRecurringCsv } from '../services/recurringAnalytics';
+import { computeRecurringAnalytics, buildRecurringCsv, summarizeRecurringSeries } from '../services/recurringAnalytics';
 import { getEventStartTime } from '../utils/dateHelpers';
 
 type TabKey = 'health' | 'relationships' | 'audit';
@@ -52,7 +52,7 @@ const relationshipStatusTheme: Record<string, { bg: string; text: string; label:
 
 const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
 
-const formatHours = (value: number) => `${Math.round(value * 10) / 10}h`;
+const formatHoursDisplay = (value: number) => `${Math.round(value * 10) / 10}h`;
 
 const renderFlagChip = (flag: string) => {
   const theme = statusTheme[flag] || 'bg-slate-100 text-slate-700';
@@ -160,6 +160,9 @@ const determineOwnerEmail = (
 };
 
 const audienceFilterMatches = (item: RecurringSeriesMetrics, filter: AudienceFilter) => {
+  if (item.isPlaceholder) {
+    return filter === 'all';
+  }
   switch (filter) {
     case 'internal':
       return item.externalAttendeeCount === 0;
@@ -205,10 +208,12 @@ const RecurringPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabKey>('health');
   const [timeRange, setTimeRange] = useState<number>(60);
+  const [rangeMode, setRangeMode] = useState<'retro' | 'forward'>('retro');
   const [audienceFilter, setAudienceFilter] = useState<AudienceFilter>('all');
   const [frequencyFilter, setFrequencyFilter] = useState<FrequencyFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('time-cost');
+  const [includePlaceholders, setIncludePlaceholders] = useState(false);
   const [calendars, setCalendars] = useState<CalendarListEntry[]>([]);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('primary');
   const [analytics, setAnalytics] = useState<RecurringAnalyticsResult | null>(null);
@@ -268,18 +273,31 @@ const RecurringPage: React.FC = () => {
     setError(null);
 
     const now = new Date();
-    const lookbackDays = Math.max(timeRange, 90);
-    const lookaheadDays = Math.max(timeRange, 60);
 
-    const filterStart = new Date(now);
-    filterStart.setDate(filterStart.getDate() - lookbackDays);
-    const filterEnd = new Date(now);
-    filterEnd.setDate(filterEnd.getDate() + lookaheadDays);
+    let filterStart: Date;
+    let filterEnd: Date;
+    if (rangeMode === 'retro') {
+      filterStart = new Date(now);
+      filterStart.setDate(filterStart.getDate() - timeRange);
+      filterEnd = new Date(now);
+    } else {
+      filterStart = new Date(now);
+      filterEnd = new Date(now);
+      filterEnd.setDate(filterEnd.getDate() + timeRange);
+    }
+
+    const relationshipWindowStart = new Date(now);
+    relationshipWindowStart.setDate(relationshipWindowStart.getDate() - 90);
+    const relationshipWindowEnd = new Date(now);
+    relationshipWindowEnd.setDate(relationshipWindowEnd.getDate() + 90);
+
+    const fetchStart = new Date(Math.min(filterStart.getTime(), relationshipWindowStart.getTime()));
+    const fetchEnd = new Date(Math.max(filterEnd.getTime(), relationshipWindowEnd.getTime()));
 
     try {
       const events: CalendarEvent[] = await fetchProviderEvents({
-        timeMin: filterStart.toISOString(),
-        timeMax: filterEnd.toISOString(),
+        timeMin: fetchStart.toISOString(),
+        timeMax: fetchEnd.toISOString(),
         maxResults: 2500,
         calendarId: selectedCalendarId
       });
@@ -288,7 +306,10 @@ const RecurringPage: React.FC = () => {
         ownerEmail: ownerEmail || undefined,
         filterStart,
         filterEnd,
-        baselineWorkWeekHours: 40
+        baselineWorkWeekHours: 40,
+        rangeMode,
+        relationshipWindowStart,
+        relationshipWindowEnd
       });
 
       setAnalytics(result);
@@ -299,7 +320,7 @@ const RecurringPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchProviderEvents, ownerEmail, selectedCalendarId, timeRange]);
+  }, [fetchProviderEvents, ownerEmail, rangeMode, selectedCalendarId, timeRange]);
 
   useEffect(() => {
     loadRecurringData();
@@ -319,8 +340,15 @@ const RecurringPage: React.FC = () => {
       }
       return true;
     });
-    return applySort(result, sortKey);
-  }, [analytics, audienceFilter, frequencyFilter, searchTerm, sortKey]);
+    const placeholderFiltered = result.filter(item => includePlaceholders || !item.isPlaceholder);
+    return applySort(placeholderFiltered, sortKey);
+  }, [analytics, audienceFilter, frequencyFilter, includePlaceholders, searchTerm, sortKey]);
+
+  const summaryForDisplay = useMemo(() => {
+    if (!analytics) return null;
+    const baseline = analytics.series.filter(item => includePlaceholders || !item.isPlaceholder);
+    return summarizeRecurringSeries(baseline, 40);
+  }, [analytics, includePlaceholders]);
 
   const handleExportCsv = useCallback(() => {
     if (!analytics || analytics.series.length === 0) return;
@@ -375,6 +403,17 @@ const RecurringPage: React.FC = () => {
               ))}
             </select>
           </label>
+          <label className="text-sm font-medium text-slate-700">
+            View
+            <select
+              value={rangeMode}
+              onChange={(e) => setRangeMode(e.target.value as 'retro' | 'forward')}
+              className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="retro">Past {timeRange} days</option>
+              <option value="forward">Upcoming {timeRange} days</option>
+            </select>
+          </label>
         </div>
 
         <div className="flex items-center gap-3">
@@ -426,26 +465,26 @@ const RecurringPage: React.FC = () => {
         </div>
       )}
 
-      {!loading && !error && analytics && (
+      {!loading && !error && analytics && summaryForDisplay && (
         <div className="space-y-6">
             {activeTab === 'health' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <SummaryCard
                     label="Recurring Series"
-                    value={analytics.summary.totalSeries.toString()}
+                    value={summaryForDisplay.totalSeries.toString()}
                     helper="Distinct recurring meeting series within the selected window."
                     icon="🔁"
                   />
                   <SummaryCard
-                    label="Weekly Load"
-                    value={formatHours(analytics.summary.weeklyHours)}
-                    helper={`≈ ${Math.round(analytics.summary.percentOfWorkWeek)}% of a 40h work week`}
+                    label="Monthly Load"
+                    value={formatHoursDisplay(summaryForDisplay.monthlyHours)}
+                    helper={`≈ ${Math.round(summaryForDisplay.percentOfWorkWeek)}% of a 40h work week`}
                     icon="⏱️"
                   />
                   <SummaryCard
                     label="People Hours (Monthly)"
-                    value={`${Math.round(analytics.summary.peopleHours)}h`}
+                    value={`${Math.round(summaryForDisplay.peopleHours)}h`}
                     helper="Attendee time invested across recurring meetings."
                     icon="🧑‍🤝‍🧑"
                   />
@@ -454,22 +493,24 @@ const RecurringPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <SummaryCard
                     label="Internal series"
-                    value={analytics.summary.internalSeries.toString()}
+                    value={summaryForDisplay.internalSeries.toString()}
                     helper="Only internal attendees."
                   />
                   <SummaryCard
                     label="External series"
-                    value={analytics.summary.externalSeries.toString()}
+                    value={summaryForDisplay.externalSeries.toString()}
                     helper="Only external attendees."
                   />
-                  <SummaryCard
-                    label="Mixed series"
-                    value={analytics.summary.mixedSeries.toString()}
-                    helper="Mix of internal and external."
-                  />
+                  {includePlaceholders && (
+                    <SummaryCard
+                      label="Placeholder series"
+                      value={summaryForDisplay.placeholderSeries.toString()}
+                      helper="Series without attendees (placeholders)."
+                    />
+                  )}
                   <SummaryCard
                     label="Flagged series"
-                    value={Object.values(analytics.summary.flagCounts).reduce((sum, value) => sum + value, 0).toString()}
+                    value={Object.values(summaryForDisplay.flagCounts).reduce((sum, value) => sum + value, 0).toString()}
                     helper="Series with ghost, zombie, or other flags."
                   />
                 </div>
@@ -526,6 +567,15 @@ const RecurringPage: React.FC = () => {
                       <option value="attendance">Attendee count</option>
                     </select>
                   </label>
+                  <label className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={includePlaceholders}
+                      onChange={(e) => setIncludePlaceholders(e.target.checked)}
+                    />
+                    Include placeholder series
+                  </label>
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
@@ -535,7 +585,7 @@ const RecurringPage: React.FC = () => {
                         <tr>
                           <th className="px-4 py-3">Series</th>
                           <th className="px-4 py-3">Cadence</th>
-                          <th className="px-4 py-3">Weekly Load</th>
+                          <th className="px-4 py-3">Monthly Load</th>
                           <th className="px-4 py-3">Attendees</th>
                           <th className="px-4 py-3">Engagement</th>
                           <th className="px-4 py-3">Flags</th>
@@ -568,9 +618,9 @@ const RecurringPage: React.FC = () => {
                             </td>
                             <td className="px-4 py-3 align-top">
                               <div className="flex flex-col text-sm text-slate-700">
-                                <span>{formatHours(item.weeklyMinutes / 60)}</span>
+                                <span>{formatHoursDisplay(item.monthlyMinutes / 60)}</span>
                                 <span className="text-xs text-slate-500">
-                                  {formatHours(item.monthlyMinutes / 60)} / month
+                                  People hours {Math.round(item.peopleHoursPerMonth)}h
                                 </span>
                               </div>
                             </td>
@@ -642,22 +692,22 @@ const RecurringPage: React.FC = () => {
                     <AuditFlagRow
                       label="Total recurring series"
                       helper="Series in scope for this audit."
-                      count={analytics.summary.totalSeries}
+                      count={summaryForDisplay.totalSeries}
                     />
                     <AuditFlagRow
                       label="Weekly hours committed"
                       helper="Time blocked by recurring commitments."
-                      count={Math.round(analytics.summary.weeklyHours)}
+                      count={Math.round(summaryForDisplay.weeklyHours)}
                     />
                     <AuditFlagRow
                       label="People-hours invested monthly"
                       helper="Aggregate attendee load."
-                      count={Math.round(analytics.summary.peopleHours)}
+                      count={Math.round(summaryForDisplay.peopleHours)}
                     />
                     <AuditFlagRow
                       label="Flagged series"
                       helper="Series worth review (ghost, zombie, hoarding, external traps)."
-                      count={Object.values(analytics.summary.flagCounts).reduce((sum, value) => sum + value, 0)}
+                      count={Object.values(summaryForDisplay.flagCounts).reduce((sum, value) => sum + value, 0)}
                     />
                   </div>
                 </div>
@@ -672,7 +722,7 @@ const RecurringPage: React.FC = () => {
                       >
                         <span className="font-medium capitalize">{flag.replace('-', ' ')}</span>
                         <span className="font-semibold">
-                          {analytics.summary.flagCounts[flag] || 0}
+                          {summaryForDisplay.flagCounts[flag] || 0}
                         </span>
                       </div>
                     ))}
