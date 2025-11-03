@@ -663,39 +663,38 @@ const RecurringPage: React.FC = () => {
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium w-fit">
-          <button
-            type="button"
-            onClick={() => setRangeMode('retro')}
-            className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'retro' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            Past {ANALYSIS_WINDOW_DAYS} days
-          </button>
-          <button
-            type="button"
-            onClick={() => setRangeMode('forward')}
-            className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'forward' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
-          >
-            Upcoming {ANALYSIS_WINDOW_DAYS} days
-          </button>
-        </div>
-        <div className="flex gap-2 pt-2 border-t border-slate-200">
-          <button
-            type="button"
-            onClick={loadRecurringData}
-            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
-          >
-            Refresh
-          </button>
-          <button
-            type="button"
-            onClick={() => {/* TODO: Add preferences modal */}}
-            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
-          >
-            Preferences
-          </button>
-        </div>
+      <div className="flex gap-2 pt-2 border-t border-slate-200">
+        <button
+          type="button"
+          onClick={loadRecurringData}
+          className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
+        >
+          Refresh
+        </button>
+        <button
+          type="button"
+          onClick={() => {/* TODO: Add preferences modal */}}
+          className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
+        >
+          Preferences
+        </button>
+      </div>
+
+      <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium w-fit">
+        <button
+          type="button"
+          onClick={() => setRangeMode('retro')}
+          className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'retro' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+        >
+          Past {ANALYSIS_WINDOW_DAYS} days
+        </button>
+        <button
+          type="button"
+          onClick={() => setRangeMode('forward')}
+          className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'forward' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+        >
+          Upcoming {ANALYSIS_WINDOW_DAYS} days
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
