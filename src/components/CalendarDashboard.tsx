@@ -1297,6 +1297,7 @@ const CalendarDashboard = () => {
         <TeamSchedulingModal
           onClose={() => setShowTeamScheduler(false)}
           managedCalendarId={managedCalendarId}
+          hostEmail={calendarOwnerEmail}
           onSchedule={async (holds, emailDraft) => {
             // Create calendar holds for team members on the managed calendar
             for (const hold of holds) {

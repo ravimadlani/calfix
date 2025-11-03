@@ -1,748 +1,1290 @@
-/**
- * Team Scheduling Modal
- * Find availability across team members and schedule meetings with customers
- */
-
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 
-const TeamSchedulingModal = ({ onClose, onSchedule, managedCalendarId = 'primary' }) => {
+type ParticipantRole = 'host' | 'required' | 'optional';
+
+interface Participant {
+  id: string;
+  displayName: string;
+  email: string;
+  timezone: string;
+  startHour: string;
+  endHour: string;
+  sendInvite: boolean;
+  role: ParticipantRole;
+  calendarId?: string;
+  flexibleHours: boolean;
+}
+
+interface TimezoneGuardrail {
+  id: string;
+  timezone: string;
+  label: string;
+}
+
+interface SlotParticipantStatus {
+  id: string;
+  name: string;
+  role: ParticipantRole;
+  timezone: string;
+  localRange: string;
+  status: 'inHours' | 'flex' | 'outside';
+  flexible: boolean;
+}
+
+interface SlotGuardrailStatus {
+  id: string;
+  timezone: string;
+  label: string;
+  localRange: string;
+  withinHours: boolean;
+}
+
+interface AvailabilitySlot {
+  id: string;
+  start: Date;
+  end: Date;
+  participants: SlotParticipantStatus[];
+  guardrails: SlotGuardrailStatus[];
+  summaryStatus: 'ideal' | 'flex';
+}
+
+const MEETING_DURATION_OPTIONS = [30, 45, 60, 75, 90];
+const SEARCH_WINDOW_OPTIONS = [7, 10, 14, 21, 30];
+
+const COMMON_TIMEZONES = [
+  { value: 'America/Los_Angeles', label: 'US Pacific (PT)' },
+  { value: 'America/Denver', label: 'US Mountain (MT)' },
+  { value: 'America/Chicago', label: 'US Central (CT)' },
+  { value: 'America/New_York', label: 'US Eastern (ET)' },
+  { value: 'America/Toronto', label: 'Toronto (ET)' },
+  { value: 'Europe/London', label: 'London (GMT/BST)' },
+  { value: 'Europe/Paris', label: 'Paris (CET)' },
+  { value: 'Europe/Berlin', label: 'Berlin (CET)' },
+  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+  { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
+  { value: 'Australia/Sydney', label: 'Sydney (AET)' }
+];
+
+const DEFAULT_GUARD_START = '09:00';
+const DEFAULT_GUARD_END = '17:00';
+const FLEX_MINUTES = 120;
+
+const createId = () => Math.random().toString(36).slice(2, 10);
+
+const timeStringToMinutes = (time: string) => {
+  if (!time || !time.includes(':')) {
+    return 0;
+  }
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + (Number.isFinite(m) ? m : 0);
+};
+
+const getMinutesInTimezone = (date: Date, timezone: string) => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: timezone
+  });
+
+  const parts = formatter.formatToParts(date);
+  const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find(part => part.type === 'minute')?.value ?? 0);
+  return hour * 60 + minute;
+};
+
+const formatLocalTimeRange = (start: Date, end: Date, timezone: string) => {
+  const dateLabel = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  }).format(start);
+  const startLabel = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(start);
+
+  const endLabel = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(end);
+
+  return `${dateLabel} · ${startLabel} — ${endLabel}`;
+};
+
+const formatTimeRangeBasic = (start: Date, end: Date, timezone: string) =>
+  `${new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(start)} – ${new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(end)}`;
+
+const normalizeForWindow = (startMinutes: number, endMinutes: number, windowStart: number, windowEnd: number) => {
+  let normalizedStart = startMinutes;
+  let normalizedEnd = endMinutes;
+  const normalizedWindowStart = windowStart;
+  let normalizedWindowEnd = windowEnd;
+
+  const windowCrossesMidnight = windowEnd < windowStart;
+
+  if (windowCrossesMidnight) {
+    normalizedWindowEnd = windowEnd + 1440;
+
+    if (normalizedStart < windowStart) {
+      normalizedStart += 1440;
+    }
+
+    if (normalizedEnd <= windowEnd) {
+      normalizedEnd += 1440;
+    } else if (normalizedEnd < normalizedStart) {
+      normalizedEnd += 1440;
+    }
+  } else if (normalizedEnd < normalizedStart) {
+    normalizedEnd += 1440;
+  }
+
+  return {
+    slotStart: normalizedStart,
+    slotEnd: normalizedEnd,
+    windowStart: normalizedWindowStart,
+    windowEnd: normalizedWindowEnd
+  };
+};
+
+const isWithinNormalizedWindow = (startMinutes: number, endMinutes: number, windowStart: number, windowEnd: number) => {
+  const { slotStart, slotEnd, windowStart: normalizedWindowStart, windowEnd: normalizedWindowEnd } = normalizeForWindow(startMinutes, endMinutes, windowStart, windowEnd);
+  return slotStart >= normalizedWindowStart && slotEnd <= normalizedWindowEnd;
+};
+
+const roundToNextHalfHour = (date: Date) => {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 30;
+  if (remainder !== 0) {
+    const diff = 30 - remainder;
+    rounded.setMinutes(minutes + diff);
+  }
+  if (rounded <= date) {
+    rounded.setMinutes(rounded.getMinutes() + 30);
+  }
+  return rounded;
+};
+
+interface TeamSchedulingModalProps {
+  onClose: () => void;
+  onSchedule: (holds: Array<Record<string, unknown>>, emailDraft: string) => Promise<void>;
+  managedCalendarId?: string;
+  hostEmail?: string | null;
+}
+
+const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
+  onClose,
+  onSchedule,
+  managedCalendarId = 'primary',
+  hostEmail = null
+}) => {
   const { activeProvider } = useCalendarProvider();
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
-  const [step, setStep] = useState(1); // 1: Input, 2: Availability, 3: Draft Email
-  const [teamEmails, setTeamEmails] = useState(['']);
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [meetingDuration, setMeetingDuration] = useState(60); // minutes
-  const [searchDays, setSearchDays] = useState(7); // how many days to search
-  const [loading, setLoading] = useState(false);
-  const [availability, setAvailability] = useState([]);
-  const [selectedSlots, setSelectedSlots] = useState([]);
-  const [emailDraft, setEmailDraft] = useState('');
-  const [selectedTimezones, setSelectedTimezones] = useState([
-    Intl.DateTimeFormat().resolvedOptions().timeZone // Default to user's timezone
-  ]);
-  const [viewTimezone, setViewTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone // Timezone for viewing slots
+
+  const defaultTimezone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
+    []
   );
-  const [utcStartHour, setUtcStartHour] = useState(14); // 14:00 UTC = 9 AM ET / 6 AM PT
-  const [utcEndHour, setUtcEndHour] = useState(22); // 22:00 UTC = 5 PM ET / 2 PM PT
-  const [includeTeamInHolds, setIncludeTeamInHolds] = useState(false); // Whether to add team as attendees to holds
 
-  // Common timezones
-  const commonTimezones = [
-    { value: 'America/New_York', label: 'Eastern Time (ET)' },
-    { value: 'America/Chicago', label: 'Central Time (CT)' },
-    { value: 'America/Denver', label: 'Mountain Time (MT)' },
-    { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-    { value: 'Europe/London', label: 'London (GMT/BST)' },
-    { value: 'Europe/Paris', label: 'Paris (CET)' },
-    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-    { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-    { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
-    { value: 'Australia/Sydney', label: 'Sydney (AEDT)' }
-  ];
-
-  // Add email input field
-  const addEmailField = () => {
-    setTeamEmails([...teamEmails, '']);
-  };
-
-  // Update email at index
-  const updateEmail = (index, value) => {
-    const updated = [...teamEmails];
-    updated[index] = value;
-    setTeamEmails(updated);
-  };
-
-  // Remove email field
-  const removeEmail = (index) => {
-    setTeamEmails(teamEmails.filter((_, i) => i !== index));
-  };
-
-  // Toggle timezone selection
-  const toggleTimezone = (timezone) => {
-    if (selectedTimezones.includes(timezone)) {
-      // Don't allow removing the last timezone
-      if (selectedTimezones.length > 1) {
-        setSelectedTimezones(selectedTimezones.filter(tz => tz !== timezone));
-      }
-    } else {
-      setSelectedTimezones([...selectedTimezones, timezone]);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [meetingPurpose, setMeetingPurpose] = useState('');
+  const [meetingDuration, setMeetingDuration] = useState<number>(60);
+  const [searchWindowDays, setSearchWindowDays] = useState<number>(10);
+  const [participants, setParticipants] = useState<Participant[]>(() => [
+    {
+      id: createId(),
+      displayName: 'Primary Calendar',
+      email: hostEmail ?? '',
+      timezone: defaultTimezone,
+      startHour: '08:30',
+      endHour: '17:30',
+      sendInvite: true,
+      role: 'host',
+      calendarId: managedCalendarId,
+      flexibleHours: false
     }
+  ]);
+  const [respectedTimezones, setRespectedTimezones] = useState<TimezoneGuardrail[]>([]);
+  const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
+  const [selectedSlots, setSelectedSlots] = useState<AvailabilitySlot[]>([]);
+  const [viewTimezone, setViewTimezone] = useState(defaultTimezone);
+  const [emailDraft, setEmailDraft] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const suggestedTimezones = useMemo(() => {
+    const existing = new Set(COMMON_TIMEZONES.map(tz => tz.value));
+    if (!existing.has(defaultTimezone)) {
+      return [{ value: defaultTimezone, label: `${defaultTimezone} (Current)` }, ...COMMON_TIMEZONES];
+    }
+    return COMMON_TIMEZONES;
+  }, [defaultTimezone]);
+
+  const hostParticipant = participants.find(person => person.role === 'host') ?? participants[0];
+
+  const addParticipant = () => {
+    setParticipants(prev => [
+      ...prev,
+      {
+        id: createId(),
+        displayName: '',
+      email: '',
+      timezone: defaultTimezone,
+      startHour: '09:00',
+      endHour: '17:30',
+      sendInvite: false,
+      role: 'required',
+      flexibleHours: false
+    }
+  ]);
   };
 
-  // Format time in multiple timezones
-  // Search for availability
-  const searchAvailability = async () => {
+  const updateParticipant = (id: string, updates: Partial<Participant>) => {
+    setParticipants(prev => prev.map(participant => (
+      participant.id === id
+        ? { ...participant, ...updates }
+        : participant
+    )));
+  };
+
+  const removeParticipant = (id: string) => {
+    setParticipants(prev => prev.filter(participant => participant.id !== id || participant.role === 'host'));
+  };
+
+  const addTimezoneGuardrail = () => {
+    setRespectedTimezones(prev => [
+      ...prev,
+      {
+        id: createId(),
+        timezone: defaultTimezone,
+        label: ''
+      }
+    ]);
+  };
+
+  const updateTimezoneGuardrail = (id: string, updates: Partial<TimezoneGuardrail>) => {
+    setRespectedTimezones(prev => prev.map(guard => (
+      guard.id === id
+        ? { ...guard, ...updates }
+        : guard
+    )));
+  };
+
+  const removeTimezoneGuardrail = (id: string) => {
+    setRespectedTimezones(prev => prev.filter(guard => guard.id !== id));
+  };
+
+  const calendarIdentifiers = useMemo(() => {
+    const identifiers = new Set<string>();
+    if (managedCalendarId) {
+      identifiers.add(managedCalendarId);
+    }
+    participants.forEach(participant => {
+      if (participant.calendarId) {
+        identifiers.add(participant.calendarId);
+      }
+      if (participant.email.trim()) {
+        identifiers.add(participant.email.trim());
+      }
+    });
+    return Array.from(identifiers);
+  }, [participants, managedCalendarId]);
+
+  const ensureStepOneValid = () => {
+    if (!providerCapabilities.supportsFreeBusy) {
+      setErrorMessage('Free/busy lookup is not supported for the selected calendar provider yet.');
+      return false;
+    }
+
+    if (participants.length === 0) {
+      setErrorMessage('Add at least one teammate to evaluate availability.');
+      return false;
+    }
+
+    if (calendarIdentifiers.length === 0) {
+      setErrorMessage('Provide at least one calendar email so availability can be checked.');
+      return false;
+    }
+
+    setErrorMessage(null);
+    return true;
+  };
+
+const buildSlotParticipantStatus = (slotStart: Date, slotEnd: Date): SlotParticipantStatus[] =>
+  participants.map(participant => {
+    const localStartMinutes = getMinutesInTimezone(slotStart, participant.timezone);
+    const localEndMinutes = getMinutesInTimezone(slotEnd, participant.timezone);
+    const workStart = timeStringToMinutes(participant.startHour);
+    const workEnd = timeStringToMinutes(participant.endHour);
+
+    const strictWithin = isWithinNormalizedWindow(localStartMinutes, localEndMinutes, workStart, workEnd);
+
+    let status: 'inHours' | 'flex' | 'outside' = 'outside';
+
+    if (strictWithin) {
+      status = 'inHours';
+    } else if (participant.flexibleHours) {
+      const flexStart = Math.max(0, workStart - FLEX_MINUTES);
+      const flexEnd = Math.min(1440, workEnd + FLEX_MINUTES);
+      if (isWithinNormalizedWindow(localStartMinutes, localEndMinutes, flexStart, flexEnd)) {
+        status = 'flex';
+      }
+    }
+
+    return {
+      id: participant.id,
+      name: participant.displayName || (participant.role === 'host' ? 'Host' : 'Teammate'),
+      role: participant.role,
+      timezone: participant.timezone,
+      localRange: formatTimeRangeBasic(slotStart, slotEnd, participant.timezone),
+      status,
+      flexible: participant.flexibleHours
+    };
+  });
+
+const buildGuardrailStatus = (slotStart: Date, slotEnd: Date): SlotGuardrailStatus[] =>
+  respectedTimezones.map(guard => {
+    const localStartMinutes = getMinutesInTimezone(slotStart, guard.timezone);
+    const localEndMinutes = getMinutesInTimezone(slotEnd, guard.timezone);
+    const windowStart = timeStringToMinutes(DEFAULT_GUARD_START);
+    const windowEnd = timeStringToMinutes(DEFAULT_GUARD_END);
+
+    return {
+      id: guard.id,
+      timezone: guard.timezone,
+      label: guard.label,
+      localRange: formatTimeRangeBasic(slotStart, slotEnd, guard.timezone),
+      withinHours: isWithinNormalizedWindow(localStartMinutes, localEndMinutes, windowStart, windowEnd)
+    };
+  });
+
+  const findCommonFreeSlots = async () => {
+    if (!ensureStepOneValid()) {
+      return;
+    }
+
+    const searchStart = roundToNextHalfHour(new Date());
+    const searchEnd = new Date(searchStart);
+    searchEnd.setDate(searchEnd.getDate() + searchWindowDays);
+
     setLoading(true);
+    setStep(1);
+    setSelectedSlots([]);
+
     try {
-      if (!providerCapabilities.supportsFreeBusy) {
-        alert('Free/busy lookup is not supported for the selected calendar provider yet.');
-        setLoading(false);
-        return;
-      }
-
-      // Filter out empty emails
-      const validEmails = teamEmails.filter(email => email.trim() !== '');
-
-      if (validEmails.length === 0) {
-        alert('Please add at least one team member email');
-        setLoading(false);
-        return;
-      }
-
-      // Search next N days
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setHours(9, 0, 0, 0); // Start at 9 AM today
-
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + searchDays);
-      endDate.setHours(17, 0, 0, 0); // End at 5 PM
-
-      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      console.log(`=== SEARCH PARAMETERS ===`);
-      console.log(`Search days requested: ${searchDays}`);
-      console.log(`Actual days to search: ${daysDiff}`);
-      console.log(`Start: ${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString()}`);
-      console.log(`End: ${endDate.toLocaleDateString()} ${endDate.toLocaleTimeString()}`);
-      console.log(`Searching availability from ${startDate.toISOString()} to ${endDate.toISOString()}`);
-      console.log(`Team members: ${managedCalendarId}, ${validEmails.join(', ')}`);
-
-      // Use Google Calendar Free/Busy API
       const freeBusyData = await providerFindFreeBusy(
-        startDate.toISOString(),
-        endDate.toISOString(),
-        [managedCalendarId, ...validEmails]
+        searchStart.toISOString(),
+        searchEnd.toISOString(),
+        calendarIdentifiers
       );
 
-      console.log('Free/Busy data received:', freeBusyData);
+      const durationMs = meetingDuration * 60 * 1000;
+      const proposedSlots: AvailabilitySlot[] = [];
+      const busyLookup = freeBusyData?.calendars ?? {};
 
-      // Find common free slots
-      const slots = findCommonFreeSlots(
-        freeBusyData,
-        [managedCalendarId, ...validEmails],
-        startDate,
-        endDate,
-        meetingDuration,
-        utcStartHour,
-        utcEndHour
-      );
+      const dayCursor = new Date(searchStart);
 
-      console.log(`Found ${slots.length} common free slots`);
-      setAvailability(slots);
+      while (dayCursor < searchEnd && proposedSlots.length < 80) {
+        const day = dayCursor.getDay();
+        if (day === 0 || day === 6) {
+          dayCursor.setDate(dayCursor.getDate() + 1);
+          dayCursor.setHours(0, 0, 0, 0);
+          continue;
+        }
+
+        const dayStart = new Date(dayCursor);
+        dayStart.setHours(0, 0, 0, 0);
+
+        for (let minutes = 0; minutes < 24 * 60; minutes += 30) {
+          const slotStart = new Date(dayStart.getTime() + minutes * 60 * 1000);
+          if (slotStart < searchStart || slotStart >= searchEnd) {
+            continue;
+          }
+
+          const slotEnd = new Date(slotStart.getTime() + durationMs);
+          if (slotEnd > searchEnd) {
+            continue;
+          }
+
+          let hasConflict = false;
+
+          for (const calendarId of calendarIdentifiers) {
+            const calendar = busyLookup[calendarId];
+            if (!calendar?.busy) {
+              continue;
+            }
+
+            const conflict = calendar.busy.some((busy: { start: string; end: string }) => {
+              const busyStart = new Date(busy.start);
+              const busyEnd = new Date(busy.end);
+              return slotStart < busyEnd && slotEnd > busyStart;
+            });
+
+            if (conflict) {
+              hasConflict = true;
+              break;
+            }
+          }
+
+          if (hasConflict) {
+            continue;
+          }
+
+          const participantStatus = buildSlotParticipantStatus(slotStart, slotEnd);
+          const guardrailStatus = buildGuardrailStatus(slotStart, slotEnd);
+
+          const guardrailsValid = guardrailStatus.every(item => item.withinHours);
+          const participantsValid = participantStatus.every(item => item.status !== 'outside');
+
+          if (!guardrailsValid || !participantsValid) {
+            continue;
+          }
+
+          const summaryStatus: 'ideal' | 'flex' = participantStatus.some(item => item.status === 'flex')
+            ? 'flex'
+            : 'ideal';
+
+          proposedSlots.push({
+            id: `${slotStart.toISOString()}_${slotEnd.toISOString()}`,
+            start: slotStart,
+            end: slotEnd,
+            participants: participantStatus,
+            guardrails: guardrailStatus,
+            summaryStatus
+          });
+        }
+
+        dayCursor.setDate(dayCursor.getDate() + 1);
+        dayCursor.setHours(0, 0, 0, 0);
+      }
+
+      setAvailability(proposedSlots);
       setStep(2);
+      setErrorMessage(proposedSlots.length === 0 ? 'No slots found in the selected window.' : null);
     } catch (error) {
-      console.error('Error searching availability:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      alert('Error finding availability: ' + message);
+      console.error('Error searching availability', error);
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to find availability. Try again later.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // Find common free slots across all team members
-  const findCommonFreeSlots = (freeBusyData, emails, startDate, endDate, duration, startHourUTC, endHourUTC) => {
-    const slots = [];
-    const durationMs = duration * 60 * 1000;
-
-    console.log('=== Finding Common Free Slots ===');
-    console.log('Duration:', duration, 'minutes');
-    console.log('UTC Hours:', `${startHourUTC}:00 - ${endHourUTC}:00`);
-    console.log('Date range:', startDate.toLocaleString(), 'to', endDate.toLocaleString());
-    console.log('Checking calendars for:', emails);
-
-    // Debug: show busy periods for each calendar
-    emails.forEach(email => {
-      const calendar = freeBusyData.calendars?.[email];
-      if (calendar?.busy) {
-        console.log(`${email} has ${calendar.busy.length} busy periods:`);
-        calendar.busy.forEach(busy => {
-          console.log(`  - ${new Date(busy.start).toLocaleString()} to ${new Date(busy.end).toLocaleString()}`);
-        });
-      } else {
-        console.log(`${email}: No busy periods (completely free or no data)`);
+  const toggleSlotSelection = (slot: AvailabilitySlot) => {
+    setSelectedSlots(prev => {
+      const exists = prev.find(existing => existing.id === slot.id);
+      if (exists) {
+        return prev.filter(existing => existing.id !== slot.id);
       }
+      return [...prev, slot];
     });
-
-    // Iterate through each day
-    const currentDate = new Date(startDate);
-    let totalSlotsChecked = 0;
-    let slotsInPast = 0;
-    let slotsAfterHours = 0;
-    let slotsWithConflicts = 0;
-    const datesChecked: string[] = [];
-
-    while (currentDate < endDate) {
-      // Skip weekends
-      if (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        continue;
-      }
-
-      datesChecked.push(currentDate.toLocaleDateString());
-
-      // Check each 30-minute slot during specified UTC hours
-      for (let hour = startHourUTC; hour < endHourUTC; hour++) {
-        for (let minute = 0; minute < 60; minute += 30) {
-          const slotStart = new Date(currentDate);
-          slotStart.setUTCHours(hour, minute, 0, 0);
-
-          const slotEnd = new Date(slotStart.getTime() + durationMs);
-          totalSlotsChecked++;
-
-          // Check if slot is in the past
-          if (slotStart < new Date()) {
-            slotsInPast++;
-            continue;
-          }
-
-          // Check if slot end goes beyond specified UTC hours
-          if (slotEnd.getUTCHours() >= endHourUTC ||
-              (slotEnd.getUTCHours() === endHourUTC && slotEnd.getUTCMinutes() > 0)) {
-            slotsAfterHours++;
-            continue;
-          }
-
-          // Check if all team members are free during this slot
-          const conflicts: Array<{ email: string; busyStart: Date; busyEnd: Date }> = [];
-          const allFree = emails.every(email => {
-            const calendar = freeBusyData.calendars?.[email];
-            if (!calendar || !calendar.busy) return true;
-
-            // Check if slot overlaps with any busy periods
-            const hasConflict = calendar.busy.some(busyPeriod => {
-              const busyStart = new Date(busyPeriod.start);
-              const busyEnd = new Date(busyPeriod.end);
-
-              // Check for overlap
-              const overlaps = slotStart < busyEnd && slotEnd > busyStart;
-              if (overlaps) {
-                conflicts.push({ email, busyStart, busyEnd });
-              }
-              return overlaps;
-            });
-
-            return !hasConflict;
-          });
-
-          if (allFree) {
-            // Mark if slot is outside standard business hours (14-22 UTC = 9 AM - 5 PM ET)
-            const isOutsideStandardHours = hour < 14 || hour >= 22;
-            console.log(`✓ FREE SLOT FOUND: ${slotStart.toISOString()} - ${slotEnd.toISOString()}`);
-            slots.push({
-              start: slotStart,
-              end: slotEnd,
-              duration: duration,
-              outsideBusinessHours: isOutsideStandardHours
-            });
-          } else {
-            slotsWithConflicts++;
-            // Log first few conflicts for debugging
-            if (slotsWithConflicts <= 5) {
-              console.log(`✗ Conflict at ${slotStart.toISOString()}:`, conflicts);
-            }
-          }
-        }
-      }
-
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    console.log('=== Slot Search Summary ===');
-    console.log('Total slots checked:', totalSlotsChecked);
-    console.log('Slots in past:', slotsInPast);
-    console.log('Slots after hours:', slotsAfterHours);
-    console.log('Slots with conflicts:', slotsWithConflicts);
-    console.log('Free slots found:', slots.length);
-
-    return slots;
   };
 
-  // Toggle slot selection
-  const toggleSlot = (slot) => {
-    const slotKey = slot.start.toISOString();
-    const exists = selectedSlots.find(s => s.start.toISOString() === slotKey);
-
-    if (exists) {
-      setSelectedSlots(selectedSlots.filter(s => s.start.toISOString() !== slotKey));
-    } else {
-      setSelectedSlots([...selectedSlots, slot]);
-    }
-  };
-
-  // Generate email draft
-  const generateEmailDraft = () => {
+  const moveToSummary = () => {
     if (selectedSlots.length === 0) {
-      alert('Please select at least one time slot');
+      setErrorMessage('Select at least one slot to continue.');
       return;
     }
 
-    // Sort slots by date
-    const sorted = [...selectedSlots].sort((a, b) => a.start.getTime() - b.start.getTime());
+    const slotText = selectedSlots
+      .sort((a, b) => a.start.getTime() - b.start.getTime())
+      .map((slot, index) => {
+        const participantLines = slot.participants.map(participant => {
+          const statusNote = participant.status === 'flex' ? ' (flex window)' : '';
+          return `   - ${participant.name}: ${participant.localRange}${statusNote}`;
+        }).join('\n');
 
-    // Format slots for email with multiple timezones
-    const slotText = sorted.map((slot, index) => {
-      const date = slot.start.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric'
-      });
+        const guardLines = slot.guardrails.map(guard => {
+          const label = guard.label ? `${guard.label} (${guard.timezone})` : guard.timezone;
+          const status = guard.withinHours ? 'within working hours' : 'outside normal hours';
+          return `   - ${label}: ${guard.localRange} • ${status}`;
+        }).join('\n');
 
-      const timeRanges = selectedTimezones.map(tz => {
-        const startTime = slot.start.toLocaleTimeString('en-US', {
-          timeZone: tz,
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
-        const endTime = slot.end.toLocaleTimeString('en-US', {
-          timeZone: tz,
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
-        const tzLabel = commonTimezones.find(t => t.value === tz)?.label || tz;
-        return `${startTime} - ${endTime} ${tzLabel}`;
-      }).join(' / ');
+        const guardSection = guardLines ? `\n   Guardrails:\n${guardLines}` : '';
 
-      return `${index + 1}. ${date}\n   ${timeRanges}`;
-    }).join('\n\n');
+        return `${index + 1}. ${new Intl.DateTimeFormat('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric'
+        }).format(slot.start)}\n${participantLines}${guardSection}`;
+      }).join('\n\n');
 
-    const draft = `Hi,
+    const draft = `Hi there,
 
-Thank you for your interest in meeting with our team. We have availability at the following times:
+Thanks for taking the time to connect. Here are a couple of options that keep the team within their working hours:
 
 ${slotText}
 
-Please let me know which time works best for you, and I'll send a calendar invitation.
+Let me know which works best and I’ll confirm the invite.
 
-Best regards`;
+Thanks!`;
 
     setEmailDraft(draft);
+    setErrorMessage(null);
     setStep(3);
   };
 
-  // Create calendar holds for team
   const createCalendarHolds = async () => {
     try {
       setLoading(true);
 
-      // This would create "hold" events on team calendars
-      // For now, we'll just prepare the data
+      const hostTimezone = hostParticipant?.timezone || defaultTimezone;
+      const attendees = participants
+        .filter(person => person.sendInvite && person.email.trim())
+        .map(person => ({ email: person.email.trim() }));
+
       const holds = selectedSlots.map(slot => ({
-        summary: `🔒 Hold for ${customerEmail || 'Customer'} Meeting`,
-        description: 'Calendar hold - pending customer confirmation',
+        summary: meetingPurpose
+          ? `Hold: ${meetingPurpose}`
+          : 'Hold: Team Meeting',
+        description: [
+          'Calendar hold created from CalFix scheduler.',
+          meetingPurpose ? `Purpose: ${meetingPurpose}` : null,
+          respectedTimezones.length > 0
+            ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
+            : null
+        ].filter(Boolean).join('\n'),
         start: {
           dateTime: slot.start.toISOString(),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          timeZone: hostTimezone
         },
         end: {
           dateTime: slot.end.toISOString(),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          timeZone: hostTimezone
         },
-        attendees: includeTeamInHolds ? teamEmails.filter(e => e.trim()).map(email => ({ email })) : [],
-        colorId: '11', // Red color for holds
+        attendees,
+        colorId: '11',
         transparency: 'opaque'
       }));
 
-      // Call the onSchedule callback with the holds data
-      if (onSchedule) {
-        await onSchedule(holds, emailDraft);
-      }
-
-      alert('Calendar holds created! Email draft is ready to send.');
+      await onSchedule(holds, emailDraft);
       onClose();
     } catch (error) {
-      console.error('Error creating calendar holds:', error);
-      alert('Error creating calendar holds: ' + error.message);
+      console.error('Error creating calendar holds', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to create holds.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Format date/time for display in selected timezone
-  const formatSlotTime = (slot) => {
-    const date = slot.start.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      timeZone: viewTimezone
-    });
-    const startTime = slot.start.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: viewTimezone
-    });
-    const endTime = slot.end.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: viewTimezone
+  const buildTimezoneOptions = (current?: string) => {
+    const seen = new Set<string>();
+    const options = suggestedTimezones.map(timezone => {
+      seen.add(timezone.value);
+      return timezone;
     });
 
-    return `${date} • ${startTime} - ${endTime}`;
+    if (current && !seen.has(current)) {
+      options.push({ value: current, label: current });
+    }
+
+    return options;
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-6 text-white">
-          <div className="flex items-center justify-between">
+  const renderParticipantCard = (participant: Participant) => (
+    <div key={participant.id} className="border border-slate-200 rounded-xl p-4 bg-white shadow-sm space-y-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-semibold text-slate-700">
+            {participant.role === 'host' ? 'Host (Managed Calendar)' : 'Teammate'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Provide working hours and timezone so suggestions stay fair.
+          </p>
+        </div>
+        {participant.role !== 'host' && (
+          <button
+            type="button"
+            onClick={() => removeParticipant(participant.id)}
+            className="text-xs text-red-500 hover:text-red-600"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">
+            Name or label
+          </label>
+          <input
+            type="text"
+            value={participant.displayName}
+            onChange={(event) => updateParticipant(participant.id, { displayName: event.target.value })}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+            placeholder={participant.role === 'host' ? 'Executive / Host' : 'Name'}
+          />
+        </div>
+        {participant.role === 'host' ? (
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">
+              Calendar email
+            </label>
+            <div className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 text-slate-700">
+              {participant.email || hostEmail || managedCalendarId || 'primary'}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">
+              Calendar email (optional)
+            </label>
+            <input
+              type="email"
+              value={participant.email}
+              onChange={(event) => updateParticipant(participant.id, {
+                email: event.target.value,
+                calendarId: event.target.value.trim() ? event.target.value.trim() : participant.calendarId
+              })}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+              placeholder="name@company.com"
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">
+            Timezone
+          </label>
+          <select
+            value={participant.timezone}
+            onChange={(event) => updateParticipant(participant.id, { timezone: event.target.value })}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500 bg-white"
+          >
+            {buildTimezoneOptions(participant.timezone).map(timezone => (
+              <option key={timezone.value} value={timezone.value}>
+                {timezone.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">
+            Working hours start
+          </label>
+          <input
+            type="time"
+            value={participant.startHour}
+            onChange={(event) => updateParticipant(participant.id, { startHour: event.target.value })}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">
+            Working hours end
+          </label>
+          <input
+            type="time"
+            value={participant.endHour}
+            onChange={(event) => updateParticipant(participant.id, { endHour: event.target.value })}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center gap-3 text-xs text-slate-600">
+        <label className="inline-flex items-center gap-2 font-medium">
+          <input
+            type="checkbox"
+            checked={participant.sendInvite}
+            onChange={(event) => updateParticipant(participant.id, { sendInvite: event.target.checked })}
+          />
+          Send calendar invite when confirmed
+        </label>
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={participant.flexibleHours}
+            onChange={(event) => updateParticipant(participant.id, { flexibleHours: event.target.checked })}
+          />
+          Flexible hours (+/- 2h window)
+        </label>
+      </div>
+    </div>
+  );
+
+  const renderStepOne = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-slate-700">
+            Meeting purpose
+          </label>
+          <input
+            type="text"
+            value={meetingPurpose}
+            onChange={(event) => setMeetingPurpose(event.target.value)}
+            placeholder="Executive intro with renewal stakeholders"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-slate-700">
+            Search window
+          </label>
+          <select
+            value={searchWindowDays}
+            onChange={(event) => setSearchWindowDays(Number(event.target.value))}
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+          >
+            {SEARCH_WINDOW_OPTIONS.map(option => (
+              <option key={option} value={option}>
+                Next {option} days
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium text-slate-700 mb-2">Meeting duration</p>
+        <div className="flex flex-wrap gap-2">
+          {MEETING_DURATION_OPTIONS.map(option => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setMeetingDuration(option)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition border ${
+                meetingDuration === option
+                  ? 'border-slate-600 bg-slate-700 text-white'
+                  : 'border-slate-200 text-slate-600 hover:border-slate-400'
+              }`}
+            >
+              {option} minutes
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border border-slate-200 rounded-2xl bg-slate-50/60 p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">
+              Timezones to respect
+            </h3>
+            <p className="text-xs text-slate-500">
+              Add locations that should receive fair meeting windows even without inviting attendees.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={addTimezoneGuardrail}
+            className="text-xs font-semibold text-slate-700 hover:text-slate-900"
+          >
+            ＋ Add timezone
+          </button>
+        </div>
+
+        {respectedTimezones.length === 0 && (
+          <p className="text-sm text-slate-500">
+            No additional guardrails yet. Add one to account for a customer HQ or travel location.
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 gap-3">
+          {respectedTimezones.map(guard => (
+            <div
+              key={guard.id}
+              className="border border-slate-200 rounded-xl bg-white p-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Timezone
+                  </label>
+                  <select
+                    value={guard.timezone}
+                    onChange={(event) => updateTimezoneGuardrail(guard.id, { timezone: event.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-600 focus:border-slate-600 bg-white"
+                  >
+                    {buildTimezoneOptions(guard.timezone).map(timezone => (
+                      <option key={timezone.value} value={timezone.value}>
+                        {timezone.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Optional label
+                  </label>
+                  <input
+                    type="text"
+                    value={guard.label}
+                    onChange={(event) => updateTimezoneGuardrail(guard.id, { label: event.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+                    placeholder="Customer HQ, Travel week, ..."
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeTimezoneGuardrail(guard.id)}
+                className="text-xs text-red-500 hover:text-red-600 self-start"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-700">Participants</h3>
+          <button
+            type="button"
+            onClick={addParticipant}
+            className="text-xs font-semibold text-slate-700 hover:text-slate-900"
+          >
+            ＋ Add teammate
+          </button>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          {participants.map(renderParticipantCard)}
+        </div>
+      </div>
+
+    </div>
+  );
+
+  const renderSlotCard = (slot: AvailabilitySlot) => {
+    const isSelected = selectedSlots.some(existing => existing.id === slot.id);
+    const statusLabel = slot.summaryStatus === 'ideal'
+      ? 'All in working hours'
+      : 'Includes flexibility';
+
+    const statusClasses = slot.summaryStatus === 'ideal'
+      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+      : 'bg-amber-50 text-amber-700 border border-amber-200';
+
+    const primaryViewTimes = formatLocalTimeRange(slot.start, slot.end, viewTimezone);
+
+    return (
+      <button
+        key={slot.id}
+        type="button"
+        onClick={() => toggleSlotSelection(slot)}
+        className={`text-left border rounded-xl p-4 transition shadow-sm hover:shadow-md ${
+          isSelected ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-slate-200'
+        } bg-white space-y-3`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-slate-700">{primaryViewTimes}</p>
+            <p className="text-xs text-slate-500 mt-1">
+              {slot.participants.length} teammates · {slot.guardrails.length} guardrails
+            </p>
+          </div>
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusClasses}`}>
+            {statusLabel}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs uppercase font-semibold text-slate-500">Teammates</p>
+          <ul className="space-y-1">
+            {slot.participants.map(participant => (
+              <li key={participant.id} className="text-xs text-slate-600 flex items-center gap-2">
+                <span className="font-medium">
+                  {participant.name}
+                </span>
+                <span className="text-slate-400">·</span>
+                <span>{participant.localRange}</span>
+                {participant.status === 'flex' && (
+                  <span className="ml-2 inline-flex text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    flex window
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {slot.guardrails.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs uppercase font-semibold text-slate-500">Respected timezones</p>
+            <ul className="space-y-1">
+              {slot.guardrails.map((guard) => (
+                <li key={guard.id} className="text-xs text-slate-600 flex items-center gap-2">
+                  <span className="font-medium">
+                    {guard.label || guard.timezone}
+                  </span>
+                  <span className="text-slate-400">·</span>
+                  <span>{guard.localRange}</span>
+                  {!guard.withinHours && (
+                    <span className="ml-2 inline-flex text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                      outside hours
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {isSelected && (
+          <div className="text-xs font-semibold text-emerald-600">
+            ✓ Selected
+          </div>
+        )}
+      </button>
+    );
+  };
+
+  const renderStepTwo = () => (
+    <div className="flex flex-col gap-5 h-full min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">
+            {availability.length} slots where calendars are free
+          </h3>
+          <p className="text-xs text-slate-500">
+            Toggle a primary timezone to view slots in another locale.
+          </p>
+        </div>
+        <select
+          value={viewTimezone}
+          onChange={(event) => setViewTimezone(event.target.value)}
+          className="border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+        >
+          {[viewTimezone, ...suggestedTimezones.map(tz => tz.value)]
+            .filter((value, index, array) => array.indexOf(value) === index)
+            .map(timezone => {
+              const label = suggestedTimezones.find(tz => tz.value === timezone)?.label ?? timezone;
+              return (
+                <option key={timezone} value={timezone}>
+                  {label}
+                </option>
+              );
+            })}
+        </select>
+      </div>
+
+      {availability.length === 0 ? (
+        <div className="text-center border border-dashed border-slate-300 rounded-2xl p-10 bg-white text-slate-500 space-y-2">
+          <p className="text-sm font-semibold text-slate-600">No availability matched the current working-hour rules.</p>
+          <p className="text-xs">
+            Consider enabling <span className="font-semibold">Flexible hours</span> for specific teammates, removing guardrails that have no overlap, or widening the search window.
+          </p>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div
+            className="h-full overflow-y-auto pr-1"
+            style={{ maxHeight: '44vh' }}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+              {availability.map(renderSlotCard)}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderStepThree = () => (
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
+        <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Participants &amp; guardrails</h3>
+            <ul className="mt-2 space-y-2 text-sm text-slate-600">
+              {participants.map(person => (
+                <li key={person.id}>
+                  <span className="font-semibold">{person.displayName || (person.role === 'host' ? 'Host' : 'Participant')}</span>
+                  <span className="text-slate-400"> · </span>
+                  <span>{person.timezone}</span>
+                  <span className="text-slate-400"> · </span>
+                  <span>{person.startHour} - {person.endHour}</span>
+                  {!person.sendInvite && (
+                    <span className="ml-1 text-[11px] text-slate-500">(hold only)</span>
+                  )}
+                </li>
+              ))}
+              {respectedTimezones.map(guard => (
+                <li key={guard.id} className="text-slate-500 text-sm">
+                  Guardrail: <span className="font-semibold">{guard.label || guard.timezone}</span>
+                  <span className="text-slate-400"> · </span>
+                  <span>{guard.timezone}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Selected windows</h3>
+            <ul className="mt-2 space-y-2 text-sm text-slate-600">
+              {selectedSlots
+                .sort((a, b) => a.start.getTime() - b.start.getTime())
+                .map(slot => (
+                  <li key={slot.id} className="border border-slate-200 rounded-lg px-3 py-2 bg-slate-50">
+                    <div className="font-semibold text-slate-700">
+                      {new Intl.DateTimeFormat('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                      }).format(slot.start)} · {formatTimeRangeBasic(slot.start, slot.end, hostParticipant?.timezone || defaultTimezone)}
+                    </div>
+                    <ul className="text-xs text-slate-500 mt-1 space-y-1">
+                      {slot.participants.map(participant => (
+                        <li key={participant.id}>
+                          {participant.name}: {participant.localRange}{participant.status === 'flex' ? ' (flex window)' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3">
+          <h3 className="text-sm font-semibold text-slate-700">Message to send</h3>
+          <textarea
+            value={emailDraft}
+            onChange={(event) => setEmailDraft(event.target.value)}
+            rows={14}
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const stepItems = [
+    {
+      id: 1,
+      label: 'Team & working hours',
+      description: 'Capture context, teammates, and guardrails.'
+    },
+    {
+      id: 2,
+      label: 'Select availability',
+      description: 'Pick fair options to propose.'
+    },
+    {
+      id: 3,
+      label: 'Review & send',
+      description: 'Confirm holds and outreach.'
+    }
+  ];
+
+  const renderStepper = () => (
+    <ol className="flex flex-col md:flex-row md:items-stretch md:justify-between gap-3 mb-6">
+      {stepItems.map(stepItem => {
+        const isActive = stepItem.id === step;
+        const isComplete = stepItem.id < step;
+
+        return (
+          <li
+            key={stepItem.id}
+            className={`flex-1 border rounded-2xl px-4 py-3 transition ${
+              isActive
+                ? 'border-slate-700 bg-white shadow-md'
+                : isComplete
+                  ? 'border-emerald-200 bg-emerald-50'
+                  : 'border-slate-200 bg-white'
+            }`}
+          >
             <div className="flex items-center gap-3">
-              <span className="text-4xl">📅</span>
+              <span
+                className="text-sm font-semibold text-slate-500"
+                style={{
+                  borderRadius: '999px',
+                  padding: '3px 8px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid rgba(148, 163, 184, 0.4)',
+                  color: isActive ? '#1f2937' : isComplete ? '#047857' : '#475569'
+                }}
+              >
+                {stepItem.id}
+              </span>
               <div>
-                <h2 className="text-2xl font-bold">Meeting Scheduler</h2>
-                <p className="text-sm opacity-90 mt-1">
-                  Step {step} of 3: {
-                    step === 1 ? 'Team & Settings' :
-                    step === 2 ? 'Select Time Slots' :
-                    'Email Draft & Send'
-                  }
+                <p className={`text-sm font-semibold ${isActive ? 'text-slate-800' : 'text-slate-600'}`}>
+                  {stepItem.label}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {stepItem.description}
                 </p>
               </div>
             </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-slate-900/10">
+        <div
+          className="px-6 py-5"
+          style={{
+            background: 'linear-gradient(135deg, #1e293b 0%, #334155 55%, #475569 100%)',
+            color: '#f8fafc'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold">Meeting Scheduler</h2>
+              <p className="text-xs text-slate-200 mt-1">
+                Step {step} of 3 · {
+                  step === 1 ? 'Team & working hours' :
+                  step === 2 ? 'Select availability' :
+                  'Review & send'
+                }
+              </p>
+            </div>
             <button
+              type="button"
               onClick={onClose}
-              className="text-white/80 hover:text-white text-3xl leading-none"
+              className="text-2xl leading-none"
+              style={{
+                color: '#cbd5f5'
+              }}
+              onMouseEnter={(event) => { event.currentTarget.style.color = '#ffffff'; }}
+              onMouseLeave={(event) => { event.currentTarget.style.color = '#cbd5f5'; }}
             >
               ×
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {step === 1 && (
-            <div className="space-y-6">
-              {/* Customer Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Email (optional)
-                </label>
-                <input
-                  type="email"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  placeholder="customer@example.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                />
-              </div>
-
-              {/* Team Members */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Team Members (enter their Gmail addresses)
-                </label>
-                <div className="space-y-2">
-                  {teamEmails.map((email, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => updateEmail(index, e.target.value)}
-                        placeholder="teammate@example.com"
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                      />
-                      {teamEmails.length > 1 && (
-                        <button
-                          onClick={() => removeEmail(index)}
-                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={addEmailField}
-                  className="mt-2 text-sm text-slate-700 hover:text-slate-900 font-medium"
-                >
-                  + Add another team member
-                </button>
-              </div>
-
-              {/* Meeting Settings */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meeting Duration
-                  </label>
-                  <select
-                    value={meetingDuration}
-                    onChange={(e) => setMeetingDuration(Number(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                  >
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>60 minutes</option>
-                    <option value={90}>90 minutes</option>
-                    <option value={120}>2 hours</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Search Next
-                  </label>
-                  <select
-                    value={searchDays}
-                    onChange={(e) => setSearchDays(Number(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                  >
-                    <option value={3}>3 days</option>
-                    <option value={7}>7 days</option>
-                    <option value={14}>14 days</option>
-                    <option value={30}>30 days</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* UTC Working Hours */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  UTC Working Hours (time window to search for slots)
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Start Hour (UTC)</label>
-                    <select
-                      value={utcStartHour}
-                      onChange={(e) => setUtcStartHour(Number(e.target.value))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                    >
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <option key={i} value={i}>
-                          {i.toString().padStart(2, '0')}:00 UTC
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">End Hour (UTC)</label>
-                    <select
-                      value={utcEndHour}
-                      onChange={(e) => setUtcEndHour(Number(e.target.value))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                    >
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {(i + 1).toString().padStart(2, '0')}:00 UTC
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Current: {utcStartHour}:00-{utcEndHour}:00 UTC
-                  {' = '}
-                  {new Date().toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZone: 'America/New_York',
-                    hour12: true
-                  }).replace(/\d+:\d+/, `${((utcStartHour - 5 + 24) % 24)}:00`)} -
-                  {new Date().toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZone: 'America/New_York',
-                    hour12: true
-                  }).replace(/\d+:\d+/, `${((utcEndHour - 5 + 24) % 24)}:00`)} ET
-                </p>
-              </div>
-
-              {/* Timezone Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Timezones to Include in Email ({selectedTimezones.length} selected)
-                </label>
-                <p className="text-xs text-gray-500 mb-3">
-                  Select timezones to show in the email. Times will be displayed in all selected zones.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {commonTimezones.map((tz) => (
-                    <button
-                      key={tz.value}
-                      onClick={() => toggleTimezone(tz.value)}
-                      className={`px-3 py-2 rounded-lg border-2 text-left text-sm transition-all ${
-                        selectedTimezones.includes(tz.value)
-                          ? 'border-green-500 bg-green-50 text-green-900 font-medium'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{tz.label}</span>
-                        {selectedTimezones.includes(tz.value) && (
-                          <span className="text-green-600">✓</span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+        <div className="flex-1 px-6 py-6 bg-slate-50 flex flex-col">
+          {errorMessage && (
+            <div className="mb-4 border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">
+              {errorMessage}
             </div>
           )}
 
-          {step === 2 && (
-            <div className="space-y-4">
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-700">
-                    <strong>{availability.length}</strong> time slots found where all team members are available.
-                    Select the options you want to offer to the customer.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600 font-medium">View in:</label>
-                    <select
-                      value={viewTimezone}
-                      onChange={(e) => setViewTimezone(e.target.value)}
-                      className="text-sm px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                    >
-                      {commonTimezones.map((tz) => (
-                        <option key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+          {renderStepper()}
+
+          <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+            {step === 1 && (
+              <div className="pb-4">
+                {renderStepOne()}
               </div>
-
-              {availability.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <p className="text-lg font-medium">No availability found</p>
-                  <p className="text-sm mt-2">Try extending the search period or checking fewer team members.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {availability.slice(0, 20).map((slot, index) => {
-                    const isSelected = selectedSlots.some(s =>
-                      s.start.toISOString() === slot.start.toISOString()
-                    );
-
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => toggleSlot(slot)}
-                        className={`p-4 rounded-lg border-2 text-left transition-all ${
-                          isSelected
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 hover:border-slate-400 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {formatSlotTime(slot)}
-                              {slot.outsideBusinessHours && (
-                                <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
-                                  Outside 9-5
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {slot.duration} minutes
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <span className="text-green-600 text-2xl">✓</span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Draft for Customer
-                </label>
-                <textarea
-                  value={emailDraft}
-                  onChange={(e) => setEmailDraft(e.target.value)}
-                  rows={12}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 font-mono text-sm"
-                />
+            )}
+            {step === 2 && (
+              <div className="h-full">
+                {renderStepTwo()}
               </div>
-
-              {/* Calendar Hold Options */}
-              <div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={includeTeamInHolds}
-                    onChange={(e) => setIncludeTeamInHolds(e.target.checked)}
-                    className="w-4 h-4 text-slate-600 border-gray-300 rounded focus:ring-slate-500"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">
-                      Add team members as attendees to calendar holds
-                    </span>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      If unchecked, holds will only be created on your calendar. If checked, team members will receive calendar invitations.
-                    </p>
-                  </div>
-                </label>
+            )}
+            {step === 3 && (
+              <div className="pb-4">
+                {renderStepThree()}
               </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-900">
-                  <strong>Next steps:</strong> Copy this email and send it to your customer.
-                  Calendar holds will be created {includeTeamInHolds ? 'for you and your team members' : 'on your calendar only'}.
-                </p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-200 p-6 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={step > 1 ? () => setStep(step - 1) : onClose}
-              className="px-6 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium"
-            >
-              {step > 1 ? 'Back' : 'Cancel'}
-            </button>
-
-            <div className="flex gap-3">
-              {step === 1 && (
-                <button
-                  onClick={searchAvailability}
-                  disabled={loading}
-                  className="px-6 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Searching...' : 'Find Availability'}
-                </button>
-              )}
-
-              {step === 2 && (
-                <button
-                  onClick={generateEmailDraft}
-                  disabled={selectedSlots.length === 0}
-                  className="px-6 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Continue ({selectedSlots.length} selected)
-                </button>
-              )}
-
-              {step === 3 && (
-                <button
-                  onClick={createCalendarHolds}
-                  disabled={loading}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Creating Holds...' : 'Create Calendar Holds & Copy Email'}
-                </button>
-              )}
-            </div>
+        <div
+          className="border-t border-slate-200 px-6 py-4 flex items-center justify-between backdrop-blur"
+          style={{ background: 'rgba(226,232,240,0.9)' }}
+        >
+          <button
+            type="button"
+            onClick={step === 1 ? onClose : () => setStep(step === 3 ? 2 : 1)}
+            className="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-300"
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#1f2937'
+            }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.backgroundColor = '#e2e8f0';
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.backgroundColor = '#ffffff';
+            }}
+          >
+            {step === 1 ? 'Cancel' : 'Back'}
+          </button>
+          <div className="flex items-center gap-3">
+            {step === 1 && (
+              <button
+                type="button"
+                onClick={findCommonFreeSlots}
+                disabled={loading}
+                className="px-6 py-3 rounded-xl text-sm font-semibold shadow-md shadow-slate-900/20 focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                style={{
+                  backgroundColor: '#1e293b',
+                  color: '#ffffff'
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.backgroundColor = '#111827';
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.backgroundColor = '#1e293b';
+                }}
+              >
+                {loading ? 'Searching…' : 'Find availability'}
+              </button>
+            )}
+            {step === 2 && (
+              <button
+                type="button"
+                onClick={moveToSummary}
+                disabled={selectedSlots.length === 0}
+                className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#1e293b',
+                  color: '#ffffff'
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.backgroundColor = '#111827';
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.backgroundColor = '#1e293b';
+                }}
+              >
+                Continue ({selectedSlots.length} selected)
+              </button>
+            )}
+            {step === 3 && (
+              <button
+                type="button"
+                onClick={createCalendarHolds}
+                disabled={loading}
+                className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#047857',
+                  color: '#ffffff'
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.backgroundColor = '#065f46';
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.backgroundColor = '#047857';
+                }}
+              >
+                {loading ? 'Saving…' : 'Create holds & copy email'}
+              </button>
+            )}
           </div>
         </div>
       </div>
