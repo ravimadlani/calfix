@@ -24,6 +24,7 @@ type FrequencyFilter = 'all' | 'Daily' | 'Weekly' | 'Bi-Weekly' | 'Monthly' | 'I
 type SortKey = 'time-cost' | 'alphabetical' | 'acceptance' | 'attendance';
 
 const ANALYSIS_WINDOW_DAYS = 60;
+const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
 const TABS: { key: TabKey; label: string; description: string }[] = [
   { key: 'health', label: 'Health Check', description: 'See recurring series with load, flags, and opportunities.' },
   { key: 'relationships', label: '1:1s', description: 'Track relationship cadence and catch overdue connections.' },
@@ -327,8 +328,24 @@ const RecurringPage: React.FC = () => {
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const [relationshipFilter, setRelationshipFilter] = useState<'all' | 'recurring' | 'one-off'>('all');
   const [relationshipDaysFilter, setRelationshipDaysFilter] = useState<'any' | 'overdue' | 'due-soon'>('any');
-  const [calendars, setCalendars] = useState<CalendarListEntry[]>([]);
-  const [selectedCalendarId, setSelectedCalendarId] = useState<string>('primary');
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const [maxCalendars, setMaxCalendars] = useState(1);
+  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
+  const [isInTrial, setIsInTrial] = useState(false);
+  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
+  const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([]);
+  const [allManageableCalendars, setAllManageableCalendars] = useState<CalendarListEntry[]>([]);
+  const [managedCalendarId, setManagedCalendarId] = useState<string>(() => {
+    if (typeof window === 'undefined') {
+      return 'primary';
+    }
+    const storedId = window.localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY);
+    if (storedId && storedId !== '[object Object]') {
+      return storedId;
+    }
+    return 'primary';
+  });
   const [analytics, setAnalytics] = useState<RecurringAnalyticsResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -339,45 +356,100 @@ const RecurringPage: React.FC = () => {
     null;
 
   const selectedCalendar = useMemo(
-    () => calendars.find(cal => cal.id === selectedCalendarId) || calendars[0],
-    [calendars, selectedCalendarId]
+    () => availableCalendars.find(cal => cal.id === managedCalendarId) || availableCalendars[0],
+    [availableCalendars, managedCalendarId]
   );
 
   useEffect(() => {
-    if (!selectedCalendar && calendars.length > 0) {
-      setSelectedCalendarId(calendars[0].id);
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
+    } catch (error) {
+      console.warn('Unable to persist calendar selection', error);
     }
-  }, [selectedCalendar, calendars]);
+  }, [managedCalendarId]);
 
   const ownerEmail = useMemo(
     () => determineOwnerEmail(selectedCalendar, fallbackEmail),
     [selectedCalendar, fallbackEmail]
   );
 
-  const loadCalendars = useCallback(async () => {
-    try {
-      const list = await fetchProviderCalendarList();
-      const manageable = list.filter(cal => {
-        const hasWrite = cal.accessRole === 'owner' || cal.accessRole === 'writer';
-        const notResource = !cal.id.includes('resource.calendar.google.com');
-        return hasWrite && notResource;
-      });
-      if (manageable.length > 0) {
-        setCalendars(manageable);
-        if (!manageable.find(cal => cal.id === selectedCalendarId)) {
-          setSelectedCalendarId(manageable[0].id);
-        }
-      } else {
-        setCalendars(list);
-      }
-    } catch (err) {
-      console.error('Failed to fetch calendars', err);
+  const checkSubscription = useCallback(async () => {
+    const userId = user?.id;
+    if (!userId) {
+      setSubscriptionLoaded(true);
+      return;
     }
-  }, [fetchProviderCalendarList, selectedCalendarId]);
+
+    try {
+      const response = await fetch(`/api/user/subscription?userId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionTier(data.subscriptionTier);
+        setMaxCalendars(data.maxCalendars);
+        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
+        setIsInTrial(data.isInTrial);
+        setDaysLeftInTrial(data.daysLeftInTrial);
+      } else {
+        setSubscriptionTier('basic');
+        setMaxCalendars(1);
+        setHasMultiCalendarAccess(false);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      setSubscriptionTier('basic');
+      setMaxCalendars(1);
+      setHasMultiCalendarAccess(false);
+    } finally {
+      setSubscriptionLoaded(true);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
-    loadCalendars();
-  }, [loadCalendars, activeProviderId]);
+    checkSubscription();
+  }, [checkSubscription]);
+
+  const loadCalendarList = useCallback(async () => {
+    try {
+      const calendars = await fetchProviderCalendarList();
+
+      const manageable = calendars.filter(cal => {
+        const hasWriteAccess = cal.accessRole === 'owner' || cal.accessRole === 'writer';
+        const isNotResource = !cal.id.includes('resource.calendar.google.com');
+        const isUserCalendar = cal.id.includes('@') && (
+          cal.primary ||
+          (!cal.id.includes('@group.') && !cal.id.includes('@resource.'))
+        );
+        return hasWriteAccess && isNotResource && (isUserCalendar || cal.primary);
+      });
+
+      setAllManageableCalendars(manageable);
+
+      let calendarsToShow = manageable;
+      if (!hasMultiCalendarAccess) {
+        calendarsToShow = manageable.filter(cal => cal.primary);
+      } else {
+        calendarsToShow = manageable.slice(0, maxCalendars);
+      }
+
+      if (calendarsToShow.length === 0) {
+        calendarsToShow = calendars;
+      }
+
+      setAvailableCalendars(calendarsToShow);
+
+      if (!calendarsToShow.find(cal => cal.id === managedCalendarId) && calendarsToShow.length > 0) {
+        setManagedCalendarId(calendarsToShow[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch calendar list:', error);
+    }
+  }, [fetchProviderCalendarList, hasMultiCalendarAccess, managedCalendarId, maxCalendars]);
+
+  useEffect(() => {
+    if (!subscriptionLoaded) return;
+    loadCalendarList();
+  }, [loadCalendarList, subscriptionLoaded, activeProviderId]);
 
   useEffect(() => {
     if (!includePlaceholders) {
@@ -386,7 +458,7 @@ const RecurringPage: React.FC = () => {
   }, [includePlaceholders]);
 
   const loadRecurringData = useCallback(async () => {
-    if (!selectedCalendarId) return;
+    const calendarIdToUse = managedCalendarId || 'primary';
 
     setLoading(true);
     setError(null);
@@ -417,7 +489,7 @@ const RecurringPage: React.FC = () => {
         timeMin: fetchStart.toISOString(),
         timeMax: fetchEnd.toISOString(),
         maxResults: 2500,
-        calendarId: selectedCalendarId
+        calendarId: calendarIdToUse
       });
 
       const result = computeRecurringAnalytics(events, {
@@ -438,7 +510,7 @@ const RecurringPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchProviderEvents, ownerEmail, rangeMode, selectedCalendarId]);
+  }, [fetchProviderEvents, managedCalendarId, ownerEmail, rangeMode]);
 
   useEffect(() => {
     loadRecurringData();
@@ -526,11 +598,11 @@ const RecurringPage: React.FC = () => {
             Calendar
           </label>
           <select
-            value={selectedCalendarId}
-            onChange={(e) => setSelectedCalendarId(e.target.value)}
+            value={managedCalendarId}
+            onChange={(e) => setManagedCalendarId(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
           >
-            {calendars.map(calendar => (
+            {availableCalendars.map(calendar => (
               <option key={calendar.id} value={calendar.id}>
                 {calendar.summary || calendar.id}
               </option>
@@ -539,7 +611,7 @@ const RecurringPage: React.FC = () => {
         </div>
         <p className="text-xs text-slate-500">
           {selectedCalendar?.summary || selectedCalendar?.id || 'Select a calendar'}
-          {calendars.length > 0 && ` • ${calendars.length} calendar${calendars.length !== 1 ? 's' : ''} available`}
+          {availableCalendars.length > 0 && ` • ${availableCalendars.length} calendar${availableCalendars.length !== 1 ? 's' : ''} available`}
         </p>
       </div>
 
