@@ -663,8 +663,8 @@ const RecurringPage: React.FC = () => {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium">
+      <div className="flex flex-col gap-3">
+        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium w-fit">
           <button
             type="button"
             onClick={() => setRangeMode('retro')}
@@ -680,20 +680,22 @@ const RecurringPage: React.FC = () => {
             Upcoming {ANALYSIS_WINDOW_DAYS} days
           </button>
         </div>
-        <button
-          type="button"
-          onClick={loadRecurringData}
-          className="inline-flex items-center gap-2 rounded-lg border border-indigo-500 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
-        >
-          Refresh
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-          onClick={() => {/* TODO: Add preferences modal */}}
-        >
-          Preferences
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={loadRecurringData}
+            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
+          >
+            Refresh
+          </button>
+          <button
+            type="button"
+            onClick={() => {/* TODO: Add preferences modal */}}
+            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
+          >
+            Preferences
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
