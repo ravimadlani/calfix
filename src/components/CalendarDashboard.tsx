@@ -497,6 +497,10 @@ const CalendarDashboard = () => {
     }
 
     const authenticated = isProviderAuthenticated(targetProviderId);
+    console.info('[CalendarDashboard] Provider auth state', {
+      targetProviderId,
+      authenticated
+    });
     setIsCalendarConnected(authenticated);
     setCheckingAuth(false);
   }, [activeProviderId, isProviderAuthenticated, setActiveProvider]);
@@ -511,6 +515,12 @@ const CalendarDashboard = () => {
   // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {
     if (isCalendarConnected && subscriptionLoaded && maxCalendars > 0) {
+      console.info('[CalendarDashboard] Loading calendar list', {
+        isCalendarConnected,
+        subscriptionLoaded,
+        maxCalendars,
+        hasMultiCalendarAccess
+      });
       loadCalendarList();
     }
   }, [isCalendarConnected, subscriptionLoaded, maxCalendars, hasMultiCalendarAccess, loadCalendarList]);
@@ -518,6 +528,7 @@ const CalendarDashboard = () => {
   // Load events when view changes (only after subscription is loaded)
   useEffect(() => {
     if (isCalendarConnected && subscriptionLoaded) {
+      console.info('[CalendarDashboard] Loading events after view change', { currentView });
       setEvents([]);
       setEventsWithGaps([]);
       loadEvents();
