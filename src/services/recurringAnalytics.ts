@@ -88,22 +88,15 @@ const getSeriesFlags = (
 ): string[] => {
   const flags: string[] = [];
 
-  if (metrics.acceptanceRate < 0.5 || metrics.cancellationRate > 0.3) {
-    flags.push('ghost');
-  }
-
   const lastUpdated = metrics.lastUpdated ? new Date(metrics.lastUpdated) : null;
   const monthsSinceUpdate = lastUpdated ? differenceInCalendarDays(now, lastUpdated) / 30 : null;
-  if (metrics.agendaMissing && monthsSinceUpdate !== null && monthsSinceUpdate >= 6) {
-    flags.push('zombie');
+
+  if (metrics.attendeeCount * metrics.actualMonthlyMinutes >= 2400) {
+    flags.push('high-people-hours');
   }
 
-  if (metrics.attendeeCount >= 8 && metrics.durationMinutes >= 60) {
-    flags.push('hoarding');
-  }
-
-  if (metrics.externalAttendeeCount > 0 && (!metrics.sampleEvents[0]?.recurrence || metrics.cancellationRate > 0.2)) {
-    flags.push('external-trap');
+  if (metrics.externalAttendeeCount > 0 && (!metrics.sampleEvents[0]?.recurrence || metrics.nextOccurrence === null)) {
+    flags.push('external-no-end');
   }
 
   if (monthsSinceUpdate !== null && monthsSinceUpdate >= 6) {

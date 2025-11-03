@@ -32,10 +32,8 @@ const TABS: { key: TabKey; label: string; description: string }[] = [
 ];
 
 const statusTheme: Record<string, string> = {
-  ghost: 'bg-red-100 text-red-700',
-  zombie: 'bg-orange-100 text-orange-700',
-  hoarding: 'bg-yellow-100 text-yellow-700',
-  'external-trap': 'bg-purple-100 text-purple-700',
+  'high-people-hours': 'bg-yellow-100 text-yellow-700',
+  'external-no-end': 'bg-purple-100 text-purple-700',
   stale: 'bg-slate-100 text-slate-700'
 };
 
@@ -52,10 +50,8 @@ const formatHoursDisplay = (value: number) => `${Math.round(value * 10) / 10}h`;
 const renderFlagChip = (flag: string) => {
   const theme = statusTheme[flag] || 'bg-slate-100 text-slate-700';
   const labelMap: Record<string, string> = {
-    ghost: 'Ghost Meeting',
-    zombie: 'Zombie Series',
-    hoarding: 'Calendar Hoarding',
-    'external-trap': 'External Trap',
+    'high-people-hours': 'High people hours',
+    'external-no-end': 'External - No end date',
     stale: 'Stale'
   };
   return (
@@ -575,7 +571,7 @@ const RecurringPage: React.FC = () => {
                     <SummaryCard
                       label="Flagged series"
                       value={summaryForDisplay.flaggedSeries.toString()}
-                      helper="Series with ghost, zombie, or other flags."
+                    helper="Series marked with warnings."
                       onClick={toggleFlaggedQuickFilter}
                       isActive={showFlaggedOnly}
                     />
@@ -770,8 +766,8 @@ const RecurringPage: React.FC = () => {
                     />
                     <AuditFlagRow
                       label="Flagged series"
-                      helper="Series worth review (ghost, zombie, hoarding, external traps)."
-                      count={Object.values(summaryForDisplay.flagCounts).reduce((sum, value) => sum + value, 0)}
+                      helper="Series worth review based on warning signals."
+                      count={summaryForDisplay.flaggedSeries}
                     />
                   </div>
                 </div>
@@ -796,7 +792,7 @@ const RecurringPage: React.FC = () => {
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-3">
                   <h3 className="text-md font-semibold text-slate-900">Recommended next steps</h3>
                   <ul className="list-disc pl-5 text-sm text-slate-600 space-y-2">
-                    <li>Review flagged series for cancellation or cadence changes, prioritising ghost/zombie meetings.</li>
+                    <li>Review flagged series for cancellation or cadence changes, focusing on high-impact meetings.</li>
                     <li>Share the CSV report with stakeholders to align on adjustments.</li>
                     <li>Check overdue 1:1 relationships and schedule catch-ups where needed.</li>
                   </ul>
