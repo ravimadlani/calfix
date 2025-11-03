@@ -520,53 +520,54 @@ const RecurringPage: React.FC = () => {
         </p>
       </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm font-medium text-slate-700">
-              Calendar
-              <select
-                value={selectedCalendarId}
-                onChange={(e) => setSelectedCalendarId(e.target.value)}
-                className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {calendars.map(calendar => (
-                  <option key={calendar.id} value={calendar.id}>
-                    {calendar.summary || calendar.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">View</span>
-              <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium">
-                <button
-                  type="button"
-                  onClick={() => setRangeMode('retro')}
-                  className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'retro' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
-                >
-                  Past {ANALYSIS_WINDOW_DAYS} days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRangeMode('forward')}
-                  className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'forward' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
-                >
-                  Upcoming {ANALYSIS_WINDOW_DAYS} days
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={loadRecurringData}
-              className="inline-flex items-center gap-2 rounded-lg border border-indigo-500 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
-            >
-              Refresh
-            </button>
-          </div>
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium text-slate-700 whitespace-nowrap">
+            Calendar
+          </label>
+          <select
+            value={selectedCalendarId}
+            onChange={(e) => setSelectedCalendarId(e.target.value)}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
+          >
+            {calendars.map(calendar => (
+              <option key={calendar.id} value={calendar.id}>
+                {calendar.summary || calendar.id}
+              </option>
+            ))}
+          </select>
         </div>
+        <p className="text-xs text-slate-500">
+          {selectedCalendar?.summary || selectedCalendar?.id || 'Select a calendar'}
+          {calendars.length > 0 && ` • ${calendars.length} calendar${calendars.length !== 1 ? 's' : ''} available`}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setRangeMode('retro')}
+            className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'retro' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            Past {ANALYSIS_WINDOW_DAYS} days
+          </button>
+          <button
+            type="button"
+            onClick={() => setRangeMode('forward')}
+            className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'forward' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            Upcoming {ANALYSIS_WINDOW_DAYS} days
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={loadRecurringData}
+          className="inline-flex items-center gap-2 rounded-lg border border-indigo-500 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
+        >
+          Refresh
+        </button>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {TABS.map(tab => (
@@ -589,15 +590,17 @@ const RecurringPage: React.FC = () => {
         <p className="text-xs text-slate-500">
           Showing {rangeMode === 'retro' ? 'historic' : 'upcoming'} recurring activity over {ANALYSIS_WINDOW_DAYS} days.
         </p>
-        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            checked={includePlaceholders}
-            onChange={(e) => setIncludePlaceholders(e.target.checked)}
-          />
-          Include placeholder series (no attendees)
-        </label>
+        {activeTab === 'health' && (
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              checked={includePlaceholders}
+              onChange={(e) => setIncludePlaceholders(e.target.checked)}
+            />
+            Include placeholder series (no attendees)
+          </label>
+        )}
       </div>
 
       {loading && (
@@ -795,7 +798,6 @@ const RecurringPage: React.FC = () => {
                                   <span className="text-xs text-slate-400">No flags</span>
                                 )}
                                 {item.flags.map(renderFlagChip)}
-                                {item.agendaMissing && renderFlagChip('zombie')}
                               </div>
                             </td>
                             <td className="px-4 py-3 align-top text-sm text-slate-600">
