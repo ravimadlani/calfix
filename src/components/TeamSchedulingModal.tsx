@@ -227,6 +227,7 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   const [respectedTimezones, setRespectedTimezones] = useState<TimezoneGuardrail[]>([]);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [selectedSlots, setSelectedSlots] = useState<AvailabilitySlot[]>([]);
+  const [holdTitles, setHoldTitles] = useState<string[]>([]);
   const [viewTimezone, setViewTimezone] = useState(defaultTimezone);
   const [emailDraft, setEmailDraft] = useState('');
   const [loading, setLoading] = useState(false);
@@ -267,21 +268,29 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
     }));
   };
 
+  const updateHoldTitle = (index: number, value: string) => {
+    setHoldTitles(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
   const addParticipant = () => {
     setParticipants(prev => [
       ...prev,
       {
         id: createId(),
         displayName: '',
-      email: '',
-      timezone: defaultTimezone,
-      startHour: '09:00',
-      endHour: '17:30',
-      sendInvite: false,
-      role: 'required',
-      flexibleHours: false
-    }
-  ]);
+        email: '',
+        timezone: defaultTimezone,
+        startHour: '09:00',
+        endHour: '17:30',
+        sendInvite: false,
+        role: 'required',
+        flexibleHours: false
+      }
+    ]);
   };
 
   const updateParticipant = (id: string, updates: Partial<Participant>) => {
@@ -336,6 +345,11 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   }, [participants, managedCalendarId]);
 
   const ensureStepOneValid = () => {
+    if (!meetingPurpose.trim()) {
+      setErrorMessage('Please enter an event title before searching for availability.');
+      return false;
+    }
+
     if (!providerCapabilities.supportsFreeBusy) {
       setErrorMessage('Free/busy lookup is not supported for the selected calendar provider yet.');
       return false;
@@ -532,10 +546,16 @@ const buildGuardrailStatus = (slotStart: Date, slotEnd: Date): SlotGuardrailStat
       return;
     }
 
-    const slotText = selectedSlots
-      .sort((a, b) => a.start.getTime() - b.start.getTime())
+    const sortedSlots = [...selectedSlots].sort((a, b) => a.start.getTime() - b.start.getTime());
+    setSelectedSlots(sortedSlots);
+
+    const trimmedPurpose = meetingPurpose.trim();
+    const generatedHoldTitles = sortedSlots.map((_, index) => `[Hold] ${trimmedPurpose} ${index + 1}`);
+    setHoldTitles(generatedHoldTitles);
+
+    const slotText = sortedSlots
       .map((slot, index) => {
-        const participantLines = summarizeSlotTimezones(slot).map(summary => {
+        const timezoneLines = summarizeSlotTimezones(slot).map(summary => {
           const statusNote = summary.hasFlex ? ' (flex window)' : '';
           return `   - ${summary.label}: ${summary.range}${statusNote}`;
         }).join('\n');
@@ -552,7 +572,7 @@ const buildGuardrailStatus = (slotStart: Date, slotEnd: Date): SlotGuardrailStat
           weekday: 'long',
           month: 'long',
           day: 'numeric'
-        }).format(slot.start)}\n${participantLines}${guardSection}`;
+        }).format(slot.start)}\n${timezoneLines}${guardSection}`;
       }).join('\n\n');
 
     const draft = `Hi there,
@@ -579,29 +599,34 @@ Thanks!`;
         .filter(person => person.sendInvite && person.email.trim())
         .map(person => ({ email: person.email.trim() }));
 
-      const holds = selectedSlots.map(slot => ({
-        summary: meetingPurpose
-          ? `Hold: ${meetingPurpose}`
-          : 'Hold: Team Meeting',
-        description: [
-          'Calendar hold created from CalFix scheduler.',
-          meetingPurpose ? `Purpose: ${meetingPurpose}` : null,
-          respectedTimezones.length > 0
-            ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
-            : null
-        ].filter(Boolean).join('\n'),
-        start: {
-          dateTime: slot.start.toISOString(),
-          timeZone: hostTimezone
-        },
-        end: {
-          dateTime: slot.end.toISOString(),
-          timeZone: hostTimezone
-        },
-        attendees,
-        colorId: '11',
-        transparency: 'opaque'
-      }));
+      const trimmedPurpose = meetingPurpose.trim();
+
+      const holds = selectedSlots.map((slot, index) => {
+        const fallbackTitle = `[Hold] ${trimmedPurpose} ${index + 1}`;
+        const summary = holdTitles[index]?.trim() || fallbackTitle;
+
+        return ({
+          summary,
+          description: [
+            'Calendar hold created from CalFix scheduler.',
+            trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
+            respectedTimezones.length > 0
+              ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
+              : null
+          ].filter(Boolean).join('\n'),
+          start: {
+            dateTime: slot.start.toISOString(),
+            timeZone: hostTimezone
+          },
+          end: {
+            dateTime: slot.end.toISOString(),
+            timeZone: hostTimezone
+          },
+          attendees,
+          colorId: '11',
+          transparency: 'opaque'
+        });
+      });
 
       await onSchedule(holds, emailDraft);
       onClose();
@@ -757,7 +782,7 @@ Thanks!`;
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="block text-sm font-medium text-slate-700">
-            Meeting purpose
+            Event title <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -1063,27 +1088,40 @@ Thanks!`;
 
           <div>
             <h3 className="text-sm font-semibold text-slate-700">Selected windows</h3>
-            <ul className="mt-2 space-y-2 text-sm text-slate-600">
-              {selectedSlots
-                .sort((a, b) => a.start.getTime() - b.start.getTime())
-                .map(slot => (
-                  <li key={slot.id} className="border border-slate-200 rounded-lg px-3 py-2 bg-slate-50">
-                    <div className="font-semibold text-slate-700">
-                      {new Intl.DateTimeFormat('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric'
-                      }).format(slot.start)} · {formatTimeRangeBasic(slot.start, slot.end, hostParticipant?.timezone || defaultTimezone)}
+            <ul className="mt-2 space-y-3 text-sm text-slate-600">
+              {selectedSlots.map((slot, index) => {
+                const timezoneSummaries = summarizeSlotTimezones(slot);
+                const defaultTitle = `[Hold] ${meetingPurpose.trim()} ${index + 1}`;
+                const titleValue = holdTitles[index] ?? defaultTitle;
+
+                return (
+                  <li key={slot.id} className="border border-slate-200 rounded-lg px-3 py-3 bg-slate-50 space-y-2">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div className="font-semibold text-slate-700">
+                        {new Intl.DateTimeFormat('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric'
+                        }).format(slot.start)} · {formatTimeRangeBasic(slot.start, slot.end, hostParticipant?.timezone || defaultTimezone)}
+                      </div>
+                      <input
+                        type="text"
+                        value={titleValue}
+                        onChange={(event) => updateHoldTitle(index, event.target.value)}
+                        className="w-full md:w-1/2 border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+                        placeholder={defaultTitle}
+                      />
                     </div>
-                    <ul className="text-xs text-slate-500 mt-1 space-y-1">
-                      {summarizeSlotTimezones(slot).map(summary => (
+                    <ul className="text-xs text-slate-500 space-y-1">
+                      {timezoneSummaries.map(summary => (
                         <li key={summary.timezone}>
                           {summary.label}: {summary.range}{summary.hasFlex ? ' (flex window)' : ''}
                         </li>
                       ))}
                     </ul>
                   </li>
-                ))}
+                );
+              })}
             </ul>
           </div>
         </div>
