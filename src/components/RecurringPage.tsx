@@ -16,7 +16,7 @@ import type {
   RecurringSeriesMetrics,
   RelationshipSnapshot
 } from '../types/recurring';
-import { computeRecurringAnalytics, buildRecurringCsv, summarizeRecurringSeries } from '../services/recurringAnalytics';
+import { computeRecurringAnalytics, summarizeRecurringSeries } from '../services/recurringAnalytics';
 import { getEventStartTime } from '../utils/dateHelpers';
 
 type TabKey = 'health' | 'relationships' | 'audit';
@@ -24,12 +24,7 @@ type AudienceFilter = 'all' | 'internal' | 'external' | 'mixed';
 type FrequencyFilter = 'all' | 'Daily' | 'Weekly' | 'Bi-Weekly' | 'Monthly' | 'Irregular';
 type SortKey = 'time-cost' | 'alphabetical' | 'acceptance' | 'attendance';
 
-const TIME_RANGE_OPTIONS = [
-  { label: 'Last 30 days', value: 30 },
-  { label: 'Last 60 days', value: 60 },
-  { label: 'Last 90 days', value: 90 }
-];
-
+const ANALYSIS_WINDOW_DAYS = 60;
 const TABS: { key: TabKey; label: string; description: string }[] = [
   { key: 'health', label: 'Health Check', description: 'See recurring series with load, flags, and opportunities.' },
   { key: 'relationships', label: '1:1s', description: 'Track relationship cadence and catch overdue connections.' },
@@ -207,7 +202,6 @@ const RecurringPage: React.FC = () => {
   } = activeProvider.calendar;
 
   const [activeTab, setActiveTab] = useState<TabKey>('health');
-  const [timeRange, setTimeRange] = useState<number>(60);
   const [rangeMode, setRangeMode] = useState<'retro' | 'forward'>('retro');
   const [audienceFilter, setAudienceFilter] = useState<AudienceFilter>('all');
   const [frequencyFilter, setFrequencyFilter] = useState<FrequencyFilter>('all');
@@ -273,17 +267,16 @@ const RecurringPage: React.FC = () => {
     setError(null);
 
     const now = new Date();
-
     let filterStart: Date;
     let filterEnd: Date;
     if (rangeMode === 'retro') {
       filterStart = new Date(now);
-      filterStart.setDate(filterStart.getDate() - timeRange);
+      filterStart.setDate(filterStart.getDate() - ANALYSIS_WINDOW_DAYS);
       filterEnd = new Date(now);
     } else {
       filterStart = new Date(now);
       filterEnd = new Date(now);
-      filterEnd.setDate(filterEnd.getDate() + timeRange);
+      filterEnd.setDate(filterEnd.getDate() + ANALYSIS_WINDOW_DAYS);
     }
 
     const relationshipWindowStart = new Date(now);
@@ -320,7 +313,7 @@ const RecurringPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchProviderEvents, ownerEmail, rangeMode, selectedCalendarId, timeRange]);
+  }, [fetchProviderEvents, ownerEmail, rangeMode, selectedCalendarId]);
 
   useEffect(() => {
     loadRecurringData();
@@ -350,20 +343,6 @@ const RecurringPage: React.FC = () => {
     return summarizeRecurringSeries(baseline, 40);
   }, [analytics, includePlaceholders]);
 
-  const handleExportCsv = useCallback(() => {
-    if (!analytics || analytics.series.length === 0) return;
-    const csv = buildRecurringCsv(analytics.series);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `calfix-recurring-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [analytics]);
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       <div className="flex flex-col gap-3">
@@ -373,68 +352,53 @@ const RecurringPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="text-sm font-medium text-slate-700">
-            Calendar
-            <select
-              value={selectedCalendarId}
-              onChange={(e) => setSelectedCalendarId(e.target.value)}
-              className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {calendars.map(calendar => (
-                <option key={calendar.id} value={calendar.id}>
-                  {calendar.summary || calendar.id}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-slate-700">
-            Time window
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(Number(e.target.value))}
-              className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {TIME_RANGE_OPTIONS.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-slate-700">
-            View
-            <select
-              value={rangeMode}
-              onChange={(e) => setRangeMode(e.target.value as 'retro' | 'forward')}
-              className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="retro">Past {timeRange} days</option>
-              <option value="forward">Upcoming {timeRange} days</option>
-            </select>
-          </label>
-        </div>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-sm font-medium text-slate-700">
+              Calendar
+              <select
+                value={selectedCalendarId}
+                onChange={(e) => setSelectedCalendarId(e.target.value)}
+                className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {calendars.map(calendar => (
+                  <option key={calendar.id} value={calendar.id}>
+                    {calendar.summary || calendar.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">View</span>
+              <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium">
+                <button
+                  type="button"
+                  onClick={() => setRangeMode('retro')}
+                  className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'retro' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  Past {ANALYSIS_WINDOW_DAYS} days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRangeMode('forward')}
+                  className={`px-3 py-1 rounded-md transition-colors ${rangeMode === 'forward' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  Upcoming {ANALYSIS_WINDOW_DAYS} days
+                </button>
+              </div>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            disabled={!analytics || analytics.series.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span aria-hidden>⬇️</span>
-            Export CSV
-          </button>
-          <button
-            type="button"
-            onClick={loadRecurringData}
-            className="inline-flex items-center gap-2 rounded-lg border border-indigo-500 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
-          >
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={loadRecurringData}
+              className="inline-flex items-center gap-2 rounded-lg border border-indigo-500 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
-      </div>
 
       <div className="flex flex-wrap gap-2">
         {TABS.map(tab => (
@@ -451,6 +415,21 @@ const RecurringPage: React.FC = () => {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-slate-500">
+          Showing {rangeMode === 'retro' ? 'historic' : 'upcoming'} recurring activity over {ANALYSIS_WINDOW_DAYS} days.
+        </p>
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            checked={includePlaceholders}
+            onChange={(e) => setIncludePlaceholders(e.target.checked)}
+          />
+          Include placeholder series (no attendees)
+        </label>
       </div>
 
       {loading && (
@@ -566,15 +545,6 @@ const RecurringPage: React.FC = () => {
                       <option value="acceptance">Acceptance</option>
                       <option value="attendance">Attendee count</option>
                     </select>
-                  </label>
-                  <label className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      checked={includePlaceholders}
-                      onChange={(e) => setIncludePlaceholders(e.target.checked)}
-                    />
-                    Include placeholder series
                   </label>
                 </div>
 
