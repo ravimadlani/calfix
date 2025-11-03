@@ -647,7 +647,9 @@ const RecurringPage: React.FC = () => {
                           <th className="px-4 py-3">Attendees</th>
                           <th className="px-4 py-3">Engagement</th>
                           <th className="px-4 py-3">Flags</th>
-                          <th className="px-4 py-3">Last seen</th>
+                          <th className="px-4 py-3">
+                            {rangeMode === 'retro' ? 'Last Occurrence' : 'Next Occurrence'}
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -706,9 +708,13 @@ const RecurringPage: React.FC = () => {
                               </div>
                             </td>
                             <td className="px-4 py-3 align-top text-sm text-slate-600">
-                              {item.lastOccurrence
-                                ? `${formatDistanceToNow(item.lastOccurrence, { addSuffix: true })}`
-                                : 'No past instances'}
+                              {rangeMode === 'retro'
+                                ? item.lastOccurrence
+                                  ? `${formatDistanceToNow(item.lastOccurrence, { addSuffix: true })}`
+                                  : 'No past instances'
+                                : item.nextOccurrence
+                                  ? `${formatDistanceToNow(item.nextOccurrence, { addSuffix: true })}`
+                                  : 'No upcoming instances'}
                             </td>
                           </tr>
                         ))}
