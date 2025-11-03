@@ -35,6 +35,7 @@ export interface RecurringSummary {
   internalSeries: number;
   externalSeries: number;
   placeholderSeries: number;
+  flaggedSeries: number;
   flagCounts: Record<string, number>;
 }
 

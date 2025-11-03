@@ -476,6 +476,7 @@ export const summarizeRecurringSeries = (
   let internalSeries = 0;
   let externalSeries = 0;
   let placeholderSeries = 0;
+  let flaggedSeries = 0;
   const flagCounts: Record<string, number> = {};
 
   series.forEach(item => {
@@ -485,6 +486,10 @@ export const summarizeRecurringSeries = (
       externalSeries += 1;
     } else if (item.internalAttendeeCount > 0) {
       internalSeries += 1;
+    }
+
+    if (item.flags.length > 0) {
+      flaggedSeries += 1;
     }
 
     item.flags.forEach(flag => {
@@ -507,6 +512,7 @@ export const summarizeRecurringSeries = (
     internalSeries,
     externalSeries,
     placeholderSeries,
+    flaggedSeries,
     flagCounts
   };
 };

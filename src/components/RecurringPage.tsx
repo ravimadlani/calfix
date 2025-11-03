@@ -65,16 +65,42 @@ const renderFlagChip = (flag: string) => {
   );
 };
 
-const SummaryCard: React.FC<{ label: string; value: string; helper?: string; icon?: string }> = ({ label, value, helper, icon }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col gap-2">
-    <div className="flex items-center gap-2">
-      {icon && <span className="text-xl">{icon}</span>}
-      <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-    </div>
-    <p className="text-2xl font-semibold text-slate-900">{value}</p>
-    {helper && <p className="text-sm text-slate-500">{helper}</p>}
-  </div>
-);
+interface SummaryCardProps {
+  label: string;
+  value: string;
+  helper?: string;
+  icon?: string;
+  onClick?: () => void;
+  isActive?: boolean;
+  disabled?: boolean;
+}
+
+const SummaryCard: React.FC<SummaryCardProps> = ({ label, value, helper, icon, onClick, isActive = false, disabled = false }) => {
+  const interactive = typeof onClick === 'function';
+  return (
+    <button
+      type={interactive ? 'button' : undefined}
+      onClick={interactive ? onClick : undefined}
+      disabled={disabled}
+      className={`w-full text-left ${
+        interactive
+          ? `transition transform ${
+              isActive
+                ? 'border-indigo-500 shadow-md'
+                : 'border-slate-200 hover:-translate-y-0.5 hover:shadow'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`
+          : 'border-slate-200'
+      } bg-white rounded-xl border p-5 flex flex-col gap-2`}
+    >
+      <div className="flex items-center gap-2">
+        {icon && <span className="text-xl">{icon}</span>}
+        <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+      </div>
+      <p className="text-2xl font-semibold text-slate-900">{value}</p>
+      {helper && <p className="text-sm text-slate-500">{helper}</p>}
+    </button>
+  );
+};
 
 const RelationshipCard: React.FC<{ snapshot: RelationshipSnapshot }> = ({ snapshot }) => {
   const theme = relationshipStatusTheme[snapshot.status];
@@ -208,6 +234,8 @@ const RecurringPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('time-cost');
   const [includePlaceholders, setIncludePlaceholders] = useState(false);
+  const [showPlaceholderOnly, setShowPlaceholderOnly] = useState(false);
+  const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const [calendars, setCalendars] = useState<CalendarListEntry[]>([]);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('primary');
   const [analytics, setAnalytics] = useState<RecurringAnalyticsResult | null>(null);
@@ -259,6 +287,12 @@ const RecurringPage: React.FC = () => {
   useEffect(() => {
     loadCalendars();
   }, [loadCalendars, activeProviderId]);
+
+  useEffect(() => {
+    if (!includePlaceholders) {
+      setShowPlaceholderOnly(false);
+    }
+  }, [includePlaceholders]);
 
   const loadRecurringData = useCallback(async () => {
     if (!selectedCalendarId) return;
@@ -319,10 +353,45 @@ const RecurringPage: React.FC = () => {
     loadRecurringData();
   }, [loadRecurringData]);
 
+  const toggleInternalQuickFilter = () => {
+    setShowFlaggedOnly(false);
+    setShowPlaceholderOnly(false);
+    setAudienceFilter(prev => (prev === 'internal' ? 'all' : 'internal'));
+  };
+
+  const toggleExternalQuickFilter = () => {
+    setShowFlaggedOnly(false);
+    setShowPlaceholderOnly(false);
+    setAudienceFilter(prev => (prev === 'external' ? 'all' : 'external'));
+  };
+
+  const togglePlaceholderQuickFilter = () => {
+    setShowFlaggedOnly(false);
+    if (!includePlaceholders) {
+      setIncludePlaceholders(true);
+      setShowPlaceholderOnly(true);
+      setAudienceFilter('all');
+      return;
+    }
+    setShowPlaceholderOnly(prev => {
+      const next = !prev;
+      if (!next) {
+        setAudienceFilter('all');
+      }
+      return next;
+    });
+  };
+
+  const toggleFlaggedQuickFilter = () => {
+    setShowPlaceholderOnly(false);
+    setShowFlaggedOnly(prev => !prev);
+    setAudienceFilter('all');
+  };
+
   const filteredSeries = useMemo(() => {
     if (!analytics) return [];
     const searchLower = searchTerm.toLowerCase();
-    const result = analytics.series.filter(item => {
+    let result = analytics.series.filter(item => {
       if (!audienceFilterMatches(item, audienceFilter)) return false;
       if (!appliesFrequencyFilter(item, frequencyFilter)) return false;
       if (searchLower) {
@@ -333,9 +402,17 @@ const RecurringPage: React.FC = () => {
       }
       return true;
     });
-    const placeholderFiltered = result.filter(item => includePlaceholders || !item.isPlaceholder);
-    return applySort(placeholderFiltered, sortKey);
-  }, [analytics, audienceFilter, frequencyFilter, includePlaceholders, searchTerm, sortKey]);
+    if (!includePlaceholders) {
+      result = result.filter(item => !item.isPlaceholder);
+    }
+    if (showPlaceholderOnly) {
+      result = result.filter(item => item.isPlaceholder);
+    }
+    if (showFlaggedOnly) {
+      result = result.filter(item => item.flags.length > 0);
+    }
+    return applySort(result, sortKey);
+  }, [analytics, audienceFilter, frequencyFilter, includePlaceholders, showFlaggedOnly, showPlaceholderOnly, searchTerm, sortKey]);
 
   const summaryForDisplay = useMemo(() => {
     if (!analytics) return null;
@@ -469,29 +546,40 @@ const RecurringPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <SummaryCard
-                    label="Internal series"
-                    value={summaryForDisplay.internalSeries.toString()}
-                    helper="Only internal attendees."
-                  />
-                  <SummaryCard
-                    label="External series"
-                    value={summaryForDisplay.externalSeries.toString()}
-                    helper="Only external attendees."
-                  />
-                  {includePlaceholders && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Quick Filters</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <SummaryCard
-                      label="Placeholder series"
-                      value={summaryForDisplay.placeholderSeries.toString()}
-                      helper="Series without attendees (placeholders)."
+                      label="Internal series"
+                      value={summaryForDisplay.internalSeries.toString()}
+                      helper="Only internal attendees."
+                      onClick={toggleInternalQuickFilter}
+                      isActive={audienceFilter === 'internal'}
                     />
-                  )}
-                  <SummaryCard
-                    label="Flagged series"
-                    value={Object.values(summaryForDisplay.flagCounts).reduce((sum, value) => sum + value, 0).toString()}
-                    helper="Series with ghost, zombie, or other flags."
-                  />
+                    <SummaryCard
+                      label="External series"
+                      value={summaryForDisplay.externalSeries.toString()}
+                      helper="Only external attendees."
+                      onClick={toggleExternalQuickFilter}
+                      isActive={audienceFilter === 'external'}
+                    />
+                    {includePlaceholders && (
+                      <SummaryCard
+                        label="Placeholder series"
+                        value={summaryForDisplay.placeholderSeries.toString()}
+                        helper="Series without attendees (placeholders)."
+                        onClick={togglePlaceholderQuickFilter}
+                        isActive={showPlaceholderOnly}
+                      />
+                    )}
+                    <SummaryCard
+                      label="Flagged series"
+                      value={summaryForDisplay.flaggedSeries.toString()}
+                      helper="Series with ghost, zombie, or other flags."
+                      onClick={toggleFlaggedQuickFilter}
+                      isActive={showFlaggedOnly}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 bg-white border border-slate-200 rounded-xl p-4">
