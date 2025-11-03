@@ -48,6 +48,8 @@ export interface RelationshipSnapshot {
   nextMeetings: CalendarEvent[];
   averageGapDays: number | null;
   daysSinceLast: number | null;
+  daysUntilNext: number | null;
+  isRecurring: boolean;
   status: RelationshipHealthStatus;
 }
 

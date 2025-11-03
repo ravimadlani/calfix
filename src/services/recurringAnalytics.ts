@@ -431,6 +431,9 @@ const buildRelationshipSnapshots = (
 
     const lastMeetingDate = lastMeetings.length > 0 ? getEventStartTime(lastMeetings[lastMeetings.length - 1]) : null;
     const daysSinceLast = lastMeetingDate ? (now.getTime() - lastMeetingDate.getTime()) / MILLIS_IN_DAY : null;
+    const nextMeetingDate = nextMeetings.length > 0 ? getEventStartTime(nextMeetings[0]) : null;
+    const daysUntilNext = nextMeetingDate ? (nextMeetingDate.getTime() - now.getTime()) / MILLIS_IN_DAY : null;
+    const isRecurring = relationshipEvents.some(event => event.recurringEventId || (event.recurrence && event.recurrence.length > 0));
     const status = getRelationshipStatus(averageGap, daysSinceLast);
 
     const attendeeInfo = relationshipEvents[0]?.attendees?.find(att => att.email && att.email.toLowerCase() === email);
@@ -442,6 +445,8 @@ const buildRelationshipSnapshots = (
       nextMeetings,
       averageGapDays: averageGap ? roundTwo(averageGap) : null,
       daysSinceLast: daysSinceLast !== null ? roundTwo(daysSinceLast) : null,
+      daysUntilNext: daysUntilNext !== null ? roundTwo(daysUntilNext) : null,
+      isRecurring,
       status
     });
   });

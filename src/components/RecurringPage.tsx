@@ -4,7 +4,7 @@ import React, {
   useMemo,
   useState
 } from 'react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type {
@@ -17,7 +17,6 @@ import type {
   RelationshipSnapshot
 } from '../types/recurring';
 import { computeRecurringAnalytics, summarizeRecurringSeries } from '../services/recurringAnalytics';
-import { getEventStartTime } from '../utils/dateHelpers';
 
 type TabKey = 'health' | 'relationships' | 'audit';
 type AudienceFilter = 'all' | 'internal' | 'external' | 'mixed';
@@ -98,55 +97,149 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ label, value, helper, icon, o
   );
 };
 
-const RelationshipCard: React.FC<{ snapshot: RelationshipSnapshot }> = ({ snapshot }) => {
-  const theme = relationshipStatusTheme[snapshot.status];
+const RelationshipsSection: React.FC<{
+  relationships: RelationshipSnapshot[];
+  filterMode: 'all' | 'recurring' | 'one-off';
+  onFilterModeChange: (value: 'all' | 'recurring' | 'one-off') => void;
+  daysFilter: 'any' | 'overdue' | 'due-soon';
+  onDaysFilterChange: (value: 'any' | 'overdue' | 'due-soon') => void;
+}> = ({ relationships, filterMode, onFilterModeChange, daysFilter, onDaysFilterChange }) => {
+  const filtered = relationships.filter(snapshot => {
+    if (filterMode === 'recurring' && !snapshot.isRecurring) return false;
+    if (filterMode === 'one-off' && snapshot.isRecurring) return false;
+    if (daysFilter === 'overdue') {
+      return snapshot.daysSinceLast !== null && snapshot.daysSinceLast > (snapshot.averageGapDays ? snapshot.averageGapDays * 2 : 60);
+    }
+    if (daysFilter === 'due-soon') {
+      return snapshot.daysUntilNext !== null && snapshot.daysUntilNext <= (snapshot.averageGapDays || 30);
+    }
+    return true;
+  });
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-900">{snapshot.personName || snapshot.personEmail}</p>
-          <p className="text-xs text-slate-500">{snapshot.personEmail}</p>
+          <h2 className="text-lg font-semibold text-slate-900">1:1 Relationship Tracker</h2>
+          <p className="text-sm text-slate-500">
+            Showing contacts from true 1:1s in the selected window.
+          </p>
         </div>
-        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${theme.bg} ${theme.text}`}>
-          {theme.label}
-        </span>
-      </div>
-      <div className="flex flex-col gap-1 text-sm text-slate-600">
-        <p>
-          <strong>Average cadence:</strong>{' '}
-          {snapshot.averageGapDays ? `${Math.round(snapshot.averageGapDays)} days` : 'Not enough data'}
-        </p>
-        <p>
-          <strong>Last met:</strong>{' '}
-          {snapshot.daysSinceLast !== null ? `${Math.round(snapshot.daysSinceLast)} days ago` : 'No recent meeting'}
-        </p>
-        <div className="flex flex-col gap-1">
-          <p className="font-medium text-slate-700">Last two meetings</p>
-          {snapshot.lastMeetings.length === 0 && <p className="text-xs text-slate-500">No recent meetings recorded.</p>}
-          {snapshot.lastMeetings.map(event => {
-            const start = getEventStartTime(event);
-            if (!start) return null;
-            return (
-              <p key={event.id} className="text-xs text-slate-500">
-                {format(start, 'EEE d MMM yyyy • HH:mm')}
-              </p>
-            );
-          })}
-        </div>
-        <div className="flex flex-col gap-1 pt-1">
-          <p className="font-medium text-slate-700">Next two meetings</p>
-          {snapshot.nextMeetings.length === 0 && <p className="text-xs text-slate-500">No upcoming meetings scheduled.</p>}
-          {snapshot.nextMeetings.map(event => {
-            const start = getEventStartTime(event);
-            if (!start) return null;
-            return (
-              <p key={event.id} className="text-xs text-slate-500">
-                {format(start, 'EEE d MMM yyyy • HH:mm')}
-              </p>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-sm font-medium text-slate-700">
+            Relationship type
+            <select
+              value={filterMode}
+              onChange={(e) => onFilterModeChange(e.target.value as 'all' | 'recurring' | 'one-off')}
+              className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all">All</option>
+              <option value="recurring">Recurring</option>
+              <option value="one-off">One-off</option>
+            </select>
+          </label>
+          <label className="text-sm font-medium text-slate-700">
+            Upcoming status
+            <select
+              value={daysFilter}
+              onChange={(e) => onDaysFilterChange(e.target.value as 'any' | 'overdue' | 'due-soon')}
+              className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="any">All</option>
+              <option value="overdue">Overdue</option>
+              <option value="due-soon">Due soon</option>
+            </select>
+          </label>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard
+          label="Relationships"
+          value={filtered.length.toString()}
+          helper="Total 1:1 counterparts in view."
+        />
+        <SummaryCard
+          label="Recurring"
+          value={filtered.filter(r => r.isRecurring).length.toString()}
+          helper="Series-based 1:1s."
+          onClick={() => onFilterModeChange(filterMode === 'recurring' ? 'all' : 'recurring')}
+          isActive={filterMode === 'recurring'}
+        />
+        <SummaryCard
+          label="One-off"
+          value={filtered.filter(r => !r.isRecurring).length.toString()}
+          helper="Single-instance 1:1s."
+          onClick={() => onFilterModeChange(filterMode === 'one-off' ? 'all' : 'one-off')}
+          isActive={filterMode === 'one-off'}
+        />
+        <SummaryCard
+          label="Due soon"
+          value={filtered.filter(r => r.daysUntilNext !== null && r.daysUntilNext <= (r.averageGapDays || 30)).length.toString()}
+          helper="Upcoming within cadence window."
+          onClick={() => onDaysFilterChange(daysFilter === 'due-soon' ? 'any' : 'due-soon')}
+          isActive={daysFilter === 'due-soon'}
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+          No 1:1 relationships match the current filters.
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="max-h-[560px] overflow-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Person</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Average cadence</th>
+                  <th className="px-4 py-3">Last meeting</th>
+                  <th className="px-4 py-3">Next meeting</th>
+                  <th className="px-4 py-3">Cadence type</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map(snapshot => {
+                  const statusThemeEntry = relationshipStatusTheme[snapshot.status];
+                  return (
+                    <tr key={snapshot.personEmail} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-slate-900">{snapshot.personName || snapshot.personEmail}</p>
+                        <p className="text-xs text-slate-500">{snapshot.personEmail}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${statusThemeEntry.bg} ${statusThemeEntry.text}`}>
+                          {statusThemeEntry.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        {snapshot.averageGapDays ? `${Math.round(snapshot.averageGapDays)} days` : 'Not enough data'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        {snapshot.daysSinceLast !== null
+                          ? `${Math.round(snapshot.daysSinceLast)} days ago`
+                          : 'No recent meeting'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        {snapshot.daysUntilNext !== null
+                          ? snapshot.daysUntilNext >= 0
+                            ? `In ${Math.round(snapshot.daysUntilNext)} days`
+                            : `${Math.abs(Math.round(snapshot.daysUntilNext))} days overdue`
+                          : 'Not scheduled'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        {snapshot.isRecurring ? 'Recurring' : 'One-off'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -232,6 +325,8 @@ const RecurringPage: React.FC = () => {
   const [includePlaceholders, setIncludePlaceholders] = useState(false);
   const [showPlaceholderOnly, setShowPlaceholderOnly] = useState(false);
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
+  const [relationshipFilter, setRelationshipFilter] = useState<'all' | 'recurring' | 'one-off'>('all');
+  const [relationshipDaysFilter, setRelationshipDaysFilter] = useState<'any' | 'overdue' | 'due-soon'>('any');
   const [calendars, setCalendars] = useState<CalendarListEntry[]>([]);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('primary');
   const [analytics, setAnalytics] = useState<RecurringAnalyticsResult | null>(null);
@@ -722,26 +817,13 @@ const RecurringPage: React.FC = () => {
             )}
 
             {activeTab === 'relationships' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-slate-900">1:1 Relationship Tracker</h2>
-                  <p className="text-sm text-slate-500">
-                    Showing contacts from true 1:1s in the selected window.
-                  </p>
-                </div>
-
-                {analytics.relationships.length === 0 ? (
-                  <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
-                    No 1:1 relationships detected in this time window. Schedule a 1:1 to build the relationship tracker.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {analytics.relationships.map(snapshot => (
-                      <RelationshipCard key={snapshot.personEmail} snapshot={snapshot} />
-                    ))}
-                  </div>
-                )}
-              </div>
+              <RelationshipsSection
+                relationships={analytics.relationships}
+                filterMode={relationshipFilter}
+                onFilterModeChange={setRelationshipFilter}
+                daysFilter={relationshipDaysFilter}
+                onDaysFilterChange={setRelationshipDaysFilter}
+              />
             )}
 
             {activeTab === 'audit' && (
