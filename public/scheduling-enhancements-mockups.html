@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scheduling Enhancements — UX Mockups</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #f5f7fb;
+        color: #1f2937;
+      }
+
+      body {
+        margin: 0;
+        padding: 0 0 80px;
+      }
+
+      header {
+        background: linear-gradient(120deg, #1e293b, #334155, #475569);
+        color: #f8fafc;
+        padding: 48px 32px 40px;
+      }
+
+      header h1 {
+        margin: 0 0 16px;
+        font-size: 36px;
+      }
+
+      header p {
+        margin: 8px 0;
+        max-width: 720px;
+        line-height: 1.5;
+      }
+
+      .page {
+        max-width: 1080px;
+        margin: -48px auto 0;
+        padding: 0 24px;
+      }
+
+      .pill-tray {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 32px;
+      }
+
+      .pill {
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.16);
+        color: #0f172a;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      section {
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 32px;
+        margin-bottom: 32px;
+        box-shadow: 0 24px 60px -32px rgba(15, 23, 42, 0.45);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+      }
+
+      section h2 {
+        margin-top: 0;
+        font-size: 28px;
+        margin-bottom: 16px;
+      }
+
+      section p {
+        margin: 8px 0 24px;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: #f8fafc;
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+      }
+
+      .card h3 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+
+      .card p {
+        margin: 8px 0;
+        line-height: 1.5;
+      }
+
+      .modal-demo {
+        background: #ffffff;
+        border-radius: 30px;
+        overflow: hidden;
+        box-shadow: 0 30px 80px -40px rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+      }
+
+      .modal-header {
+        background: linear-gradient(120deg, #1e293b, #334155, #475569);
+        color: #e2e8f0;
+        padding: 28px 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 26px;
+        color: #f8fafc;
+      }
+
+      .modal-meta {
+        font-size: 14px;
+        opacity: 0.75;
+        margin-top: 6px;
+      }
+
+      .step-pill {
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.2);
+        font-weight: 600;
+        color: #f8fafc;
+        font-size: 14px;
+      }
+
+      .modal-body {
+        padding: 32px 36px 28px;
+        background: radial-gradient(circle at top right, rgba(226, 232, 240, 0.42), rgba(248, 250, 252, 0.8));
+      }
+
+      .modal-body-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+
+      .modal-column {
+        display: grid;
+        gap: 20px;
+        align-content: start;
+      }
+
+      .form-card {
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        padding: 22px;
+        box-shadow: 0 14px 40px -28px rgba(15, 23, 42, 0.6);
+      }
+
+      .form-card h3 {
+        margin: 0 0 12px;
+        font-size: 17px;
+        color: #0f172a;
+      }
+
+      .form-card label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 6px;
+      }
+
+      .form-card input,
+      .form-card select,
+      .form-card textarea {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        padding: 10px 14px;
+        font-size: 14px;
+        color: #0f172a;
+        background: #f8fafc;
+      }
+
+      .fake-input,
+      .fake-select,
+      .fake-textarea {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        padding: 12px 14px;
+        font-size: 14px;
+        color: #0f172a;
+        background: #ffffff;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      }
+
+      .fake-select {
+        position: relative;
+        padding-right: 40px;
+      }
+
+      .fake-select::after {
+        content: '▾';
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        color: #475569;
+      }
+
+      .fake-textarea {
+        min-height: 120px;
+        line-height: 1.6;
+        white-space: pre-line;
+      }
+
+      .radio-group,
+      .flex-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .radio-chip {
+        padding: 10px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(59, 130, 246, 0.5);
+        background: rgba(59, 130, 246, 0.12);
+        color: #1d4ed8;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .radio-chip.inactive {
+        border-color: rgba(148, 163, 184, 0.45);
+        background: rgba(148, 163, 184, 0.12);
+        color: #475569;
+      }
+
+      .participant-card {
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        border-radius: 16px;
+        padding: 16px;
+        background: linear-gradient(160deg, #ffffff 0%, rgba(241, 245, 249, 0.62) 100%);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .participant-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .participant-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .badge-soft {
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.15);
+        color: #0284c7;
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        color: #475569;
+      }
+
+      .toggle-row .chip {
+        font-weight: 600;
+        padding: 8px 14px;
+      }
+
+      .input-inline {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(30, 64, 175, 0.12);
+        color: #1d4ed8;
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      .chip.inactive {
+        background: rgba(148, 163, 184, 0.16);
+        color: #475569;
+        font-weight: 500;
+      }
+
+      .add-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #1d4ed8;
+        margin-top: 10px;
+      }
+
+      .modal-footer {
+        padding: 22px 36px 32px;
+        background: #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid rgba(148, 163, 184, 0.28);
+      }
+
+      .modal-footer .hint {
+        font-size: 13px;
+        color: #64748b;
+      }
+
+      .footer-actions {
+        display: flex;
+        gap: 12px;
+      }
+
+      .btn {
+        border-radius: 12px;
+        padding: 10px 18px;
+        font-weight: 600;
+        font-size: 14px;
+        border: none;
+        cursor: pointer;
+      }
+
+      .btn.secondary {
+        background: #e2e8f0;
+        color: #1f2937;
+      }
+
+      .btn.primary {
+        background: linear-gradient(120deg, #1e293b, #334155);
+        color: #f8fafc;
+      }
+
+      .overlap-panel {
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: #ffffff;
+        padding: 22px;
+        margin-bottom: 22px;
+        box-shadow: 0 14px 40px -28px rgba(15, 23, 42, 0.6);
+      }
+
+      .overlap-grid {
+        display: grid;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .overlap-row {
+        display: grid;
+        grid-template-columns: 120px 1fr 60px;
+        align-items: center;
+        gap: 14px;
+        font-size: 13px;
+        color: #475569;
+      }
+
+      .overlap-bar {
+        height: 12px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(148, 163, 184, 0.35), rgba(148, 163, 184, 0.15));
+        position: relative;
+        overflow: hidden;
+      }
+
+      .overlap-bar span {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(14, 165, 233, 0.25), rgba(59, 130, 246, 0.7));
+      }
+
+      .slot-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+
+      .slot-card {
+        border-radius: 18px;
+        border: 1px solid rgba(30, 64, 175, 0.35);
+        background: linear-gradient(160deg, rgba(30, 64, 175, 0.08), rgba(56, 189, 248, 0.08) 60%, #ffffff 100%);
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        position: relative;
+      }
+
+      .slot-card.selected {
+        border-color: rgba(22, 163, 74, 0.6);
+        box-shadow: 0 18px 38px -24px rgba(22, 163, 74, 0.7);
+      }
+
+      .slot-card h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #0f172a;
+      }
+
+      .slot-card .slot-meta {
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .slot-card ul {
+        margin: 0;
+        padding-left: 16px;
+        font-size: 13px;
+        color: #1f2937;
+      }
+
+      .slot-card ul li {
+        margin: 4px 0;
+      }
+
+      .slot-flag {
+        align-self: flex-start;
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+        background: rgba(249, 115, 22, 0.12);
+        color: #c2410c;
+      }
+
+      .summary-panel {
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: #ffffff;
+        padding: 24px;
+        display: grid;
+        gap: 18px;
+        box-shadow: 0 18px 44px -30px rgba(15, 23, 42, 0.6);
+      }
+
+      .summary-group h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        color: #0f172a;
+      }
+
+      .summary-list {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 13px;
+        color: #1f2937;
+      }
+
+      .message-preview {
+        border-radius: 16px;
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 18px;
+        font-size: 13px;
+        line-height: 1.6;
+        font-family: 'Menlo', 'SFMono-Regular', Consolas, monospace;
+      }
+
+      .swimlane {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 32px;
+      }
+
+      .lane {
+        background: #f1f5f9;
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px solid rgba(100, 116, 139, 0.2);
+      }
+
+      .lane h4 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #475569;
+      }
+
+      .lane ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .lane li {
+        margin-bottom: 10px;
+        line-height: 1.4;
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .badge {
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.14);
+        color: #1d4ed8;
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      .timeline {
+        position: relative;
+        margin: 32px 0 16px;
+        padding-left: 28px;
+        border-left: 2px dashed rgba(148, 163, 184, 0.5);
+      }
+
+      .timeline-step {
+        margin-bottom: 24px;
+      }
+
+      .timeline-step::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #38bdf8;
+        box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25);
+      }
+
+      .timeline-step h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .timeline-step p {
+        margin: 6px 0 0;
+        line-height: 1.45;
+      }
+
+      .caption {
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 16px;
+      }
+
+      @media (max-width: 720px) {
+        header {
+          padding: 40px 24px 64px;
+        }
+
+        header h1 {
+          font-size: 28px;
+        }
+
+        .page {
+          padding: 0 18px;
+        }
+
+        section {
+          padding: 24px;
+          border-radius: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Scheduling Enhancements</h1>
+      <p>
+        Exploration of how the scheduling modal and workflow can evolve to respect multi-timezone
+        working hours, remove provider-specific language, and improve the flow from gathering
+        participant details to sending suggested meeting windows.
+      </p>
+      <p>
+        Each section below represents a distinct UX flow with the core interactions highlighted.
+        Use this document as a conversation starter before investing in high-fidelity designs.
+      </p>
+    </header>
+    <main class="page">
+      <nav class="pill-tray">
+        <a class="pill" href="#flow-1">1. Participant Setup</a>
+        <a class="pill" href="#flow-2">2. Availability Suggestions</a>
+        <a class="pill" href="#flow-3">3. Review &amp; Share</a>
+      </nav>
+
+      <section id="flow-1">
+        <h2>Flow 1 · Participant &amp; Working Hours Setup</h2>
+        <p>
+          First touchpoint where schedulers capture meeting context, participant roles, and the
+          timezones that must be respected even when no invite will be sent.
+        </p>
+
+        <div class="modal-demo">
+          <div class="modal-header">
+            <div>
+              <h2>Meeting Scheduler</h2>
+              <div class="modal-meta">Step 1 of 3 · Team &amp; Working Hours</div>
+            </div>
+            <span class="step-pill">Setup</span>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-body-columns">
+              <div class="modal-column">
+                <div class="form-card">
+                  <h3>Meeting Context</h3>
+                  <label>Purpose</label>
+                  <div class="fake-input">Executive intro with EMEA renewal stakeholders</div>
+                  <label>Duration</label>
+                  <div class="radio-group">
+                    <span class="radio-chip">45 min</span>
+                    <span class="radio-chip inactive">30 min</span>
+                    <span class="radio-chip inactive">60 min</span>
+                    <span class="radio-chip inactive">Custom…</span>
+                  </div>
+                  <label>Scheduling window</label>
+                  <div class="fake-select">Next 10 business days</div>
+                </div>
+
+                <div class="form-card">
+                  <h3>Timezones to Respect</h3>
+                  <p style="font-size:13px; color:#475569; margin-bottom:14px;">
+                    Include regions that should influence suggested times even without attendee
+                    invitations.
+                  </p>
+                  <div class="chips">
+                    <span class="chip">US Pacific · Host</span>
+                    <span class="chip">US Eastern · Finance</span>
+                    <span class="chip">Europe/London · Customer HQ</span>
+                    <span class="chip">Asia/Singapore · Travel Week</span>
+                  </div>
+                  <div class="input-inline" style="margin-top:16px;">
+                    <div class="fake-select">Search timezone…</div>
+                    <div class="fake-select">Mark as (Customer HQ)</div>
+                  </div>
+                  <a class="add-link" href="#">＋ Add another timezone</a>
+                </div>
+              </div>
+
+              <div class="modal-column">
+                <div class="form-card">
+                  <h3>Team Members &amp; Working Hours</h3>
+                  <div class="participant-card">
+                    <div class="participant-header">
+                      <div>
+                        <div class="participant-name">Alex Morgan</div>
+                        <div class="slot-meta">Chief of Staff · Required</div>
+                      </div>
+                      <span class="badge-soft">Host</span>
+                    </div>
+                    <div class="input-inline">
+                      <div class="fake-input">alex@acme.com</div>
+                      <div class="fake-select">US Pacific (PDT)</div>
+                    </div>
+                    <div class="input-inline">
+                      <div class="fake-select">Start · 8:30 AM</div>
+                      <div class="fake-select">End · 5:00 PM</div>
+                    </div>
+                    <div class="toggle-row">
+                      <span class="chip">Send invite</span>
+                      <span class="chip inactive">Hold only</span>
+                    </div>
+                  </div>
+
+                  <div class="participant-card">
+                    <div class="participant-header">
+                      <div>
+                        <div class="participant-name">Priya Nair</div>
+                        <div class="slot-meta">Sales Lead · Required</div>
+                      </div>
+                      <span class="badge-soft" style="background:rgba(236,72,153,0.18); color:#be185d;">Required</span>
+                    </div>
+                    <div class="input-inline">
+                      <div class="fake-input">priya@acme.com</div>
+                      <div class="fake-select">Europe/London (BST)</div>
+                    </div>
+                    <div class="input-inline">
+                      <div class="fake-select">Start · 9:00 AM</div>
+                      <div class="fake-select">End · 5:30 PM</div>
+                    </div>
+                    <div class="toggle-row">
+                      <span class="chip inactive">Send invite</span>
+                      <span class="chip">Hold only</span>
+                      <span style="font-size:12px; color:#475569;">Block internal time; invite once customer confirms.</span>
+                    </div>
+                  </div>
+
+                  <a class="add-link" href="#">＋ Add teammate</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <div class="hint">
+              Working hours overlap: <strong>3h 15m</strong> across all participants and respected timezones.
+            </div>
+            <div class="footer-actions">
+              <button class="btn secondary">Cancel</button>
+              <button class="btn primary">Find Availability</button>
+            </div>
+          </div>
+        </div>
+        <p class="caption">
+          Removing the “Gmail only” language clarifies that participants can be added without
+          sending invites, while timezone guardrails capture customer regions or travel locations.
+        </p>
+      </section>
+
+      <section id="flow-2">
+        <h2>Flow 2 · Availability Suggestions</h2>
+        <p>
+          Multi-timezone overlap view highlights fair meeting windows, calling out when respected
+          regions fall outside working hours so schedulers can weigh trade-offs quickly.
+        </p>
+
+        <div class="modal-demo">
+          <div class="modal-header">
+            <div>
+              <h2>Meeting Scheduler</h2>
+              <div class="modal-meta">Step 2 of 3 · Select Availability</div>
+            </div>
+            <span class="step-pill">Availability</span>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-body-columns">
+              <div class="modal-column">
+                <div class="overlap-panel">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; font-size:17px; color:#0f172a;">Working Hour Overlap</h3>
+                    <span class="badge-soft" style="background:rgba(34,197,94,0.18); color:#15803d;">3h 15m</span>
+                  </div>
+                  <p style="font-size:13px; color:#475569; margin:8px 0 16px;">
+                    Visual reference of each participant’s preferred hours in local time. Respected
+                    timezones appear as guidelines and factor into slot scoring.
+                  </p>
+                  <div class="overlap-grid">
+                    <div class="overlap-row">
+                      <strong style="color:#0f172a;">Alex · PDT</strong>
+                      <div class="overlap-bar"><span style="left:12%; right:38%;"></span></div>
+                      <span>08:30-17:00</span>
+                    </div>
+                    <div class="overlap-row">
+                      <strong style="color:#0f172a;">Priya · BST</strong>
+                      <div class="overlap-bar"><span style="left:52%; right:4%;"></span></div>
+                      <span>09:00-17:30</span>
+                    </div>
+                    <div class="overlap-row">
+                      <strong style="color:#0f172a;">Respected · SGT</strong>
+                      <div class="overlap-bar"><span style="left:80%; right:-5%; background:rgba(249,115,22,0.35);"></span></div>
+                      <span>21:00-03:00</span>
+                    </div>
+                    <div class="overlap-row">
+                      <strong style="color:#0f172a;">Customer HQ · GMT</strong>
+                      <div class="overlap-bar"><span style="left:48%; right:8%;"></span></div>
+                      <span>09:00-17:00</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-card">
+                  <h3>Filters &amp; View</h3>
+                  <label>Primary view timezone</label>
+                  <div class="fake-select">Europe/London (BST)</div>
+                  <label style="margin-top:14px;">Include slots where</label>
+                  <div class="radio-group">
+                    <span class="radio-chip">All within hours</span>
+                    <span class="radio-chip">1 flexibility allowed</span>
+                    <span class="radio-chip inactive">Show all candidates</span>
+                  </div>
+                  <label style="margin-top:14px;">Respecting</label>
+                  <div class="chips">
+                    <span class="chip">US Pacific</span>
+                    <span class="chip">US Eastern</span>
+                    <span class="chip">Europe/London</span>
+                    <span class="chip inactive">Asia/Singapore</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-column">
+                <div class="form-card">
+                  <h3>Suggested Windows</h3>
+                  <p style="font-size:13px; color:#475569; margin:0 0 14px;">
+                    Pick up to three options to send. Each card lists the local time for teammates
+                    and respected zones.
+                  </p>
+                  <div class="slot-grid">
+                    <div class="slot-card selected">
+                      <div class="slot-meta">Tue · Sep 03</div>
+                      <h4>08:30 – 09:15 PT</h4>
+                      <ul>
+                        <li>Alex · US Pacific: 08:30 – 09:15</li>
+                        <li>Priya · Europe/London: 16:30 – 17:15</li>
+                        <li>Respected · SGT: 23:30 – 00:15 ⚠︎</li>
+                      </ul>
+                      <span class="slot-flag">Late for Singapore — confirm flexibility</span>
+                    </div>
+                    <div class="slot-card selected">
+                      <div class="slot-meta">Wed · Sep 04</div>
+                      <h4>07:45 – 08:30 PT</h4>
+                      <ul>
+                        <li>Alex · US Pacific: 07:45 – 08:30</li>
+                        <li>Priya · Europe/London: 15:45 – 16:30</li>
+                        <li>Customer HQ · GMT: 15:45 – 16:30</li>
+                      </ul>
+                      <span class="slot-flag" style="background:rgba(34,197,94,0.18); color:#166534;">All in-hours</span>
+                    </div>
+                    <div class="slot-card">
+                      <div class="slot-meta">Thu · Sep 05</div>
+                      <h4>09:15 – 10:00 PT</h4>
+                      <ul>
+                        <li>Alex · US Pacific: 09:15 – 10:00</li>
+                        <li>Priya · Europe/London: 17:15 – 18:00</li>
+                        <li>Customer HQ · GMT: 17:15 – 18:00</li>
+                      </ul>
+                      <span class="slot-flag">Late for London — outside 6pm</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <div class="hint">
+              2 options selected · All attendees in-hours · 1 respected timezone flagged for review.
+            </div>
+            <div class="footer-actions">
+              <button class="btn secondary">Back</button>
+              <button class="btn primary">Continue</button>
+            </div>
+          </div>
+        </div>
+        <p class="caption">
+          Overlap bands and slot cards surface when a respected timezone is stretched, letting an
+          assistant decide whether to keep or swap the option before reaching out.
+        </p>
+      </section>
+
+      <section id="flow-3">
+        <h2>Flow 3 · Review, Holds, and Outreach</h2>
+        <p>
+          Final checkpoint before communicating with participants. Slots, holds, and timezone
+          considerations are summarized so assistants can send or copy outreach confidently.
+        </p>
+
+        <div class="modal-demo">
+          <div class="modal-header">
+            <div>
+              <h2>Meeting Scheduler</h2>
+              <div class="modal-meta">Step 3 of 3 · Review &amp; Send</div>
+            </div>
+            <span class="step-pill">Review</span>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-body-columns">
+              <div class="modal-column">
+                <div class="summary-panel">
+                  <div class="summary-group">
+                    <h3>Participants &amp; Timezones</h3>
+                    <ul class="summary-list">
+                      <li><strong>Alex Morgan</strong> — US Pacific · 08:30–17:00 · Invite sent</li>
+                      <li><strong>Priya Nair</strong> — Europe/London · 09:00–17:30 · Hold only</li>
+                      <li><strong>Timezones to respect</strong> — US Eastern, Europe/London, Asia/Singapore</li>
+                    </ul>
+                  </div>
+                  <div class="summary-group">
+                    <h3>Selected Windows (2)</h3>
+                    <ul class="summary-list">
+                      <li>Tue Sep 03 · 08:30–09:15 PT / 16:30–17:15 BST / 23:30–00:15 SGT ⚠︎</li>
+                      <li>Wed Sep 04 · 07:45–08:30 PT / 15:45–16:30 BST / 22:45–23:30 SGT ✓</li>
+                    </ul>
+                  </div>
+                  <div class="summary-group">
+                    <h3>Checks</h3>
+                    <ul class="summary-list">
+                      <li>All confirmed attendees in-hours ✔︎</li>
+                      <li>Respected timezone (Asia/Singapore) late notice ⚠︎ — flagged in message</li>
+                      <li>Calendar holds ready for host + hold-only teammates</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-column">
+                <div class="form-card">
+                  <h3>Hold &amp; Notification Strategy</h3>
+                  <label>Hold placement</label>
+                  <div class="radio-group">
+                    <span class="radio-chip">Host &amp; hold-only teammates</span>
+                    <span class="radio-chip inactive">Host only</span>
+                  </div>
+                  <label style="margin-top:14px;">Customer follow-up</label>
+                  <div class="radio-group">
+                    <span class="radio-chip">Copy email</span>
+                    <span class="radio-chip inactive">Send via CalFix</span>
+                    <span class="radio-chip inactive">Share scheduling link</span>
+                  </div>
+                  <label style="margin-top:14px;">Reminders</label>
+                  <div class="chips">
+                    <span class="chip">24h reminder</span>
+                    <span class="chip inactive">Slack summary</span>
+                  </div>
+                </div>
+
+                <div class="form-card">
+                  <h3>Email Preview</h3>
+                  <div class="message-preview">
+Hi Priya — sharing two options that keep everyone in their preferred hours:
+
+1) Tue Sep 03 · 8:30–9:15 AM PT / 4:30–5:15 PM BST (late in SGT — please confirm)
+2) Wed Sep 04 · 7:45–8:30 AM PT / 3:45–4:30 PM BST / 10:45–11:30 PM SGT
+
+Let us know which works best and I’ll confirm the invite instantly.
+
+Thanks!</div>
+                  <div class="toggle-row" style="margin-top:14px;">
+                    <span class="chip">Copy to clipboard</span>
+                    <span class="chip inactive">Customize tone</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <div class="hint">
+              Holds ready for 3 calendars · Email copied · 1 timezone flexibility callout added.
+            </div>
+            <div class="footer-actions">
+              <button class="btn secondary">Back</button>
+              <button class="btn primary">Create Holds &amp; Copy Email</button>
+            </div>
+          </div>
+        </div>
+        <p class="caption">
+          The review screen pairs a human-readable summary with the exact outreach copy, ensuring
+          timezone guardrails and flexibility notes travel together into the final message.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
