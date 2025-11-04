@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 
 type ParticipantRole = 'host' | 'required' | 'optional';
@@ -232,6 +232,7 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   const [emailDraft, setEmailDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isIpad, setIsIpad] = useState(false);
 
   const suggestedTimezones = useMemo(() => {
     const existing = new Set(COMMON_TIMEZONES.map(tz => tz.value));
@@ -242,6 +243,18 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   }, [defaultTimezone]);
 
   const hostParticipant = participants.find(person => person.role === 'host') ?? participants[0];
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined') {
+      return;
+    }
+
+    const ua = navigator.userAgent || '';
+    const platform = navigator.platform || '';
+    const maxTouchPoints = typeof navigator.maxTouchPoints === 'number' ? navigator.maxTouchPoints : 0;
+    const detectedIpad = /iPad/.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
+    setIsIpad(detectedIpad);
+  }, []);
 
   const getTimezoneLabel = (timezone: string) =>
     suggestedTimezones.find(tz => tz.value === timezone)?.label ?? timezone;
@@ -1201,7 +1214,10 @@ Thanks!`;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-slate-900/10">
+      <div
+        className={`bg-white rounded-3xl w-full max-w-4xl ${isIpad ? 'max-h-[100vh] overflow-y-auto' : 'max-h-[92vh] overflow-hidden'} flex flex-col shadow-2xl border border-slate-900/10`}
+        style={isIpad ? { WebkitOverflowScrolling: 'touch' } : undefined}
+      >
         <div
           className="px-6 py-5"
           style={{
