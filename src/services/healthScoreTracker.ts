@@ -10,6 +10,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Json } from '../types/supabase';
 import type { CalendarEvent } from '../types/calendar';
 
 // Types
@@ -68,7 +69,7 @@ export interface SnoozePattern {
   patternName: string;
   patternType: 'event_title' | 'attendee' | 'time_range' | 'location' | 'recurring' | 'custom';
   factorId?: string;
-  patternConfig: any;
+  patternConfig: Json;
   isEnabled: boolean;
 }
 
@@ -76,7 +77,7 @@ class HealthScoreTracker {
   private supabase: SupabaseClient | null = null;
   private userId: string | null = null;
   private factors: Map<string, HealthFactor> = new Map();
-  private userOverrides: Map<string, any> = new Map();
+  private userOverrides: Map<string, Json> = new Map();
   private activeSnoozes: Map<string, Set<string>> = new Map(); // eventId -> factorIds
   private snoozePatterns: SnoozePattern[] = [];
   private isInitialized = false;
@@ -208,7 +209,7 @@ class HealthScoreTracker {
         this.snoozePatterns = patterns.map(pattern => ({
           id: pattern.id,
           patternName: pattern.pattern_name,
-          patternType: pattern.pattern_type as any,
+          patternType: pattern.pattern_type as 'event_title' | 'attendee' | 'time_range' | 'location' | 'recurring' | 'custom',
           factorId: pattern.factor_id,
           patternConfig: pattern.pattern_config,
           isEnabled: pattern.is_enabled
@@ -224,8 +225,7 @@ class HealthScoreTracker {
    */
   async calculateHealthScores(
     events: CalendarEvent[],
-    calendarId: string,
-    existingScores?: any
+    calendarId: string
   ): Promise<Map<TimeHorizon, HealthScore>> {
     const scores = new Map<TimeHorizon, HealthScore>();
     const now = new Date();
@@ -399,21 +399,23 @@ class HealthScoreTracker {
         }
         break;
 
-      case 'meeting_overload_6h':
+      case 'meeting_overload_6h': {
         // Check if total meeting time > 6 hours
         const totalHours = this.calculateTotalMeetingHours(events);
         if (totalHours > 6) {
           eventIds.push('day_overload_6h');
         }
         break;
+      }
 
-      case 'meeting_overload_8h':
+      case 'meeting_overload_8h': {
         // Check if total meeting time > 8 hours
         const totalHours8 = this.calculateTotalMeetingHours(events);
         if (totalHours8 > 8) {
           eventIds.push('day_overload_8h');
         }
         break;
+      }
 
       // Add other factor detections as needed
     }
@@ -523,13 +525,14 @@ class HealthScoreTracker {
     const config = pattern.patternConfig;
 
     switch (pattern.patternType) {
-      case 'event_title':
+      case 'event_title': {
         if (!event.summary) return false;
         const titleLower = event.summary.toLowerCase();
         const titlePatterns = config.title_contains || [];
         return titlePatterns.some((p: string) =>
           titleLower.includes(p.toLowerCase())
         );
+      }
 
       case 'attendee':
         if (!event.attendees) return false;
@@ -547,12 +550,13 @@ class HealthScoreTracker {
         // Implement time range matching
         return false;
 
-      case 'location':
+      case 'location': {
         if (!event.location) return false;
         const locationPatterns = config.location_contains || [];
         return locationPatterns.some((p: string) =>
           event.location.toLowerCase().includes(p.toLowerCase())
         );
+      }
 
       case 'recurring':
         return !!event.recurringEventId;

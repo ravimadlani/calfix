@@ -20,7 +20,7 @@ export interface UserAction {
   attendeeCount?: number;
   healthScoreImpact?: number;
   timeHorizon?: 'today' | 'tomorrow' | 'week' | 'next_week' | 'month' | 'next_month';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   clientTimestamp?: Date;
 }
 
@@ -30,7 +30,7 @@ export interface ActionError {
   errorMessage: string;
   errorStack?: string;
   recoveryAction?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SessionInfo {
@@ -43,7 +43,6 @@ export interface SessionInfo {
 // Configuration
 const BATCH_SIZE = 50;
 const BATCH_INTERVAL = 5000; // 5 seconds
-const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 class ActivityLogger {
@@ -291,15 +290,15 @@ class ActivityLogger {
   /**
    * Sanitize object recursively
    */
-  private sanitizeObject(obj: any): any {
+  private sanitizeObject(obj: unknown): unknown {
     if (Array.isArray(obj)) {
       return obj.map(item =>
         typeof item === 'object' ? this.sanitizeObject(item) : item
       );
     }
 
-    const sanitized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(obj)) {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       if (this.isPIIField(key)) continue;
 
       if (typeof value === 'string') {
