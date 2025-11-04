@@ -233,6 +233,7 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isIpad, setIsIpad] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const suggestedTimezones = useMemo(() => {
     const existing = new Set(COMMON_TIMEZONES.map(tz => tz.value));
@@ -255,6 +256,12 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
     const detectedIpad = /iPad/.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
     setIsIpad(detectedIpad);
   }, []);
+
+  useEffect(() => {
+    if (step !== 3) {
+      setCopyFeedback(null);
+    }
+  }, [step]);
 
   const getTimezoneLabel = (timezone: string) =>
     suggestedTimezones.find(tz => tz.value === timezone)?.label ?? timezone;
@@ -601,6 +608,21 @@ Thanks!`;
     setEmailDraft(draft);
     setErrorMessage(null);
     setStep(3);
+  };
+
+  const copyEmailToClipboard = async () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+      setCopyFeedback({ type: 'error', text: 'Clipboard not available. Please copy manually.' });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(emailDraft);
+      setCopyFeedback({ type: 'success', text: 'Message copied to clipboard.' });
+    } catch (error) {
+      console.error('Clipboard copy failed', error);
+      setCopyFeedback({ type: 'error', text: 'Unable to copy automatically. Please copy manually.' });
+    }
   };
 
   const createCalendarHolds = async () => {
@@ -1144,6 +1166,13 @@ Thanks!`;
             onChange={(event) => setEmailDraft(event.target.value)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-600 focus:border-slate-600 flex-1 min-h-[180px]"
           />
+          {copyFeedback && (
+            <p
+              className={`text-xs ${copyFeedback.type === 'success' ? 'text-emerald-600' : 'text-amber-600'}`}
+            >
+              {copyFeedback.text}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -1342,24 +1371,34 @@ Thanks!`;
               </button>
             )}
             {step === 3 && (
-              <button
-                type="button"
-                onClick={createCalendarHolds}
-                disabled={loading}
-                className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: '#047857',
-                  color: '#ffffff'
-                }}
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.backgroundColor = '#065f46';
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.backgroundColor = '#047857';
-                }}
-              >
-                {loading ? 'Saving…' : 'Create holds & copy email'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={copyEmailToClipboard}
+                  disabled={!emailDraft.trim()}
+                  className="px-5 py-2 rounded-xl text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Copy message
+                </button>
+                <button
+                  type="button"
+                  onClick={createCalendarHolds}
+                  disabled={loading}
+                  className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: '#047857',
+                    color: '#ffffff'
+                  }}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.backgroundColor = '#065f46';
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.backgroundColor = '#047857';
+                  }}
+                >
+                  {loading ? 'Saving…' : 'Create holds'}
+                </button>
+              </>
             )}
           </div>
         </div>
