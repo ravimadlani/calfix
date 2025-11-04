@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calfix Health Score & Logging Database Schema v3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #5f72be 0%, #9921e8 100%);
+            padding: 40px;
+            text-align: center;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1.3em;
+            margin: 20px 0 15px 0;
+        }
+
+        .feature-highlight {
+            background: linear-gradient(to right, #f0fdf4, #dcfce7);
+            border: 2px solid #10b981;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-highlight h3 {
+            color: #047857;
+            margin-bottom: 10px;
+        }
+
+        .schema-diagram {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+
+        .table-card {
+            background: white;
+            border: 2px solid #e1e4e8;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header.snooze {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+        }
+
+        .table-header.config {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .table-type {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+        }
+
+        .table-description {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e1e4e8;
+            color: #586069;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f1f3f5;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e1e4e8;
+            color: #333;
+        }
+
+        .column-name {
+            font-weight: 600;
+            color: #0366d6;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.95em;
+        }
+
+        .data-type {
+            color: #6f42c1;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+            background: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .constraint {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin: 0 2px;
+            font-weight: 500;
+        }
+
+        .primary-key { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+        .foreign-key { background: #cfe2ff; color: #084298; border: 1px solid #6ea8fe; }
+        .not-null { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .unique { background: #d1ecf1; color: #0c5460; border: 1px solid #9ec5ce; }
+        .index { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+        }
+
+        .stat-card.snooze {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .aggregation-example {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .aggregation-example h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .example-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .tab-container {
+            margin: 30px 0;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 2px;
+            background: #f1f3f5;
+            padding: 2px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .snooze-ui-preview {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .health-score-display {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .score-comparison {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .score-label {
+            font-size: 0.9em;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Calfix Health Score & Logging Database Schema</h1>
+            <div class="subtitle">Comprehensive User Action Tracking with Configurable Health Monitoring</div>
+            <div class="version-badge">Version 3.0 - Snooze System & Enhanced Aggregation</div>
+        </header>
+
+        <div class="content">
+            <!-- New Features Highlight -->
+            <div class="feature-highlight">
+                <h3>🎉 New in Version 3.0</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin: 8px 0;">
+                        <strong>🔧 Enhanced Aggregation Types:</strong> Configure whether factors apply per occurrence, once per period, or with a cap
+                    </li>
+                    <li style="margin: 8px 0;">
+                        <strong>🔕 Alert Snooze System:</strong> Users can snooze specific health alerts for individual events
+                    </li>
+                    <li style="margin: 8px 0;">
+                        <strong>📊 Dual Score Tracking:</strong> Show both actual (with snoozes) and unsnoozed health scores
+                    </li>
+                    <li style="margin: 8px 0;">
+                        <strong>🎯 Pattern-Based Snoozing:</strong> Auto-snooze alerts based on event patterns
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Overview Section -->
+            <div class="section">
+                <h2>
+                    <span>📈</span>
+                    Schema Overview
+                </h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">19</div>
+                        <div class="stat-label">Total Tables</div>
+                    </div>
+                    <div class="stat-card snooze">
+                        <div class="stat-number">2</div>
+                        <div class="stat-label">Snooze Tables</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">Aggregation Types</div>
+                    </div>
+                    <div class="stat-card snooze">
+                        <div class="stat-number">2</div>
+                        <div class="stat-label">Score Views</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Aggregation Configuration -->
+            <div class="section">
+                <h2>
+                    <span>⚙️</span>
+                    Enhanced Aggregation Configuration
+                </h2>
+
+                <div class="schema-diagram">
+                    <h3>Aggregation Types Explained</h3>
+
+                    <div class="aggregation-example">
+                        <h4>📍 per_occurrence</h4>
+                        <div class="example-row">
+                            <span>Each instance counts separately</span>
+                            <span><strong>3 back-to-back meetings = -45 points</strong></span>
+                        </div>
+                        <div class="example-row">
+                            <span>Use for: Cumulative problems that get worse with quantity</span>
+                            <span>Examples: Back-to-back, insufficient buffers</span>
+                        </div>
+                    </div>
+
+                    <div class="aggregation-example">
+                        <h4>📍 once_per_period</h4>
+                        <div class="example-row">
+                            <span>Only counts once regardless of occurrences</span>
+                            <span><strong>5 double bookings = -25 points total</strong></span>
+                        </div>
+                        <div class="example-row">
+                            <span>Use for: Binary problems (exists or not)</span>
+                            <span>Examples: Double bookings, meeting overload</span>
+                        </div>
+                    </div>
+
+                    <div class="aggregation-example">
+                        <h4>📍 capped</h4>
+                        <div class="example-row">
+                            <span>Counts up to a specified limit</span>
+                            <span><strong>10 issues but cap=5 = -75 points max</strong></span>
+                        </div>
+                        <div class="example-row">
+                            <span>Use for: Preventing score from going too negative</span>
+                            <span>Examples: Missing video links (cap at 5)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Updated health_score_factors table -->
+                <div class="table-card">
+                    <div class="table-header config">
+                        <span>health_score_factors (Enhanced)</span>
+                        <span class="table-type">UPDATED</span>
+                    </div>
+                    <div class="table-description">
+                        Master configuration with new aggregation_type replacing applies_cumulative for more flexible scoring control.
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Column</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #fef3c7;">
+                                <td class="column-name">aggregation_type</td>
+                                <td class="data-type">TEXT</td>
+                                <td><strong>NEW:</strong> 'per_occurrence', 'once_per_period', or 'capped'</td>
+                            </tr>
+                            <tr style="background: #fef3c7;">
+                                <td class="column-name">aggregation_limit</td>
+                                <td class="data-type">INTEGER</td>
+                                <td><strong>NEW:</strong> Maximum occurrences to count (for 'capped' type)</td>
+                            </tr>
+                            <tr>
+                                <td class="column-name">factor_key</td>
+                                <td class="data-type">TEXT</td>
+                                <td>Unique identifier (e.g., 'back_to_back', 'double_booking')</td>
+                            </tr>
+                            <tr>
+                                <td class="column-name">base_impact</td>
+                                <td class="data-type">INTEGER</td>
+                                <td>Points per occurrence (or total for once_per_period)</td>
+                            </tr>
+                            <tr>
+                                <td class="column-name">is_active</td>
+                                <td class="data-type">BOOLEAN</td>
+                                <td>Whether to include in calculations</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Snooze System -->
+            <div class="section">
+                <h2>
+                    <span>🔕</span>
+                    Alert Snooze System
+                </h2>
+
+                <div class="tab-container">
+                    <div class="tabs">
+                        <button class="tab active" onclick="showTab('snooze-tables')">Database Tables</button>
+                        <button class="tab" onclick="showTab('snooze-ui')">User Interface</button>
+                        <button class="tab" onclick="showTab('snooze-logic')">Dual Score Logic</button>
+                    </div>
+
+                    <!-- Snooze Tables -->
+                    <div id="snooze-tables" class="tab-content active">
+                        <!-- Health Alert Snoozes Table -->
+                        <div class="table-card">
+                            <div class="table-header snooze">
+                                <span>health_alert_snoozes</span>
+                                <span class="table-type">NEW - Snooze System</span>
+                            </div>
+                            <div class="table-description">
+                                Tracks which health alerts users have snoozed for specific calendar events. Each snooze is event + factor specific.
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="column-name">id</td>
+                                        <td class="data-type">UUID</td>
+                                        <td>Unique identifier</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">user_id</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>User who snoozed the alert</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">event_id</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>Google Calendar event ID</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">factor_key</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>Which health factor is snoozed (e.g., 'back_to_back')</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">snoozed_until</td>
+                                        <td class="data-type">TIMESTAMPTZ</td>
+                                        <td>When snooze expires (NULL = indefinite)</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">snooze_reason</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>Optional user-provided reason</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">event_summary</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>Event title snapshot (in case event changes)</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">event_start</td>
+                                        <td class="data-type">TIMESTAMPTZ</td>
+                                        <td>Event start time snapshot</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">is_active</td>
+                                        <td class="data-type">BOOLEAN</td>
+                                        <td>Whether snooze is currently active</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Health Snooze Patterns Table -->
+                        <div class="table-card">
+                            <div class="table-header snooze">
+                                <span>health_snooze_patterns</span>
+                                <span class="table-type">NEW - Auto-Snooze</span>
+                            </div>
+                            <div class="table-description">
+                                Define patterns for automatically snoozing alerts based on event characteristics.
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="column-name">pattern_type</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>Type: 'title_contains', 'attendee_email', 'recurring_event_id', 'time_range'</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">pattern_value</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>The pattern to match (e.g., "1:1 with Boss")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">factor_key</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>Specific factor to snooze or NULL for all</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">auto_snooze</td>
+                                        <td class="data-type">BOOLEAN</td>
+                                        <td>Whether to automatically apply</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="column-name">description</td>
+                                        <td class="data-type">TEXT</td>
+                                        <td>User-friendly description of pattern</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Enhanced health_scores table -->
+                        <div class="table-card">
+                            <div class="table-header snooze">
+                                <span>health_scores (Enhanced)</span>
+                                <span class="table-type">UPDATED</span>
+                            </div>
+                            <div class="table-description">
+                                Now tracks both actual (with snoozes) and unsnoozed scores for comparison.
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="column-name">health_score</td>
+                                        <td class="data-type">INTEGER</td>
+                                        <td>Actual score (WITH snoozes applied)</td>
+                                    </tr>
+                                    <tr style="background: #fce7f3;">
+                                        <td class="column-name">health_score_unsnoozed</td>
+                                        <td class="data-type">INTEGER</td>
+                                        <td><strong>NEW:</strong> Raw score (WITHOUT snoozes)</td>
+                                    </tr>
+                                    <tr style="background: #fce7f3;">
+                                        <td class="column-name">snoozed_penalties</td>
+                                        <td class="data-type">INTEGER</td>
+                                        <td><strong>NEW:</strong> Points recovered via snoozing</td>
+                                    </tr>
+                                    <tr style="background: #fce7f3;">
+                                        <td class="column-name">snoozed_event_count</td>
+                                        <td class="data-type">INTEGER</td>
+                                        <td><strong>NEW:</strong> Number of events with snoozes</td>
+                                    </tr>
+                                    <tr style="background: #fce7f3;">
+                                        <td class="column-name">snoozed_factors</td>
+                                        <td class="data-type">JSONB</td>
+                                        <td><strong>NEW:</strong> Details of what was snoozed</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Snooze UI Preview -->
+                    <div id="snooze-ui" class="tab-content">
+                        <div class="snooze-ui-preview">
+                            <h3>Event Card with Snooze Options</h3>
+                            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-top: 15px;">
+                                <div style="font-weight: 600; margin-bottom: 8px;">Weekly Team Sync</div>
+                                <div style="font-size: 0.9em; color: #6b7280; margin-bottom: 12px;">3:00 PM - 4:00 PM</div>
+
+                                <!-- Health Alerts -->
+                                <div style="space-y: 4px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; padding: 6px 10px; border-radius: 6px; margin-bottom: 4px;">
+                                        <span style="color: #991b1b; font-size: 0.85em;">⚠️ Back-to-back meeting</span>
+                                        <button style="padding: 2px 6px; background: white; border: 1px solid #fca5a5; border-radius: 4px; font-size: 0.75em; color: #991b1b;">
+                                            🔕 Snooze
+                                        </button>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #e5e7eb; padding: 6px 10px; border-radius: 6px; text-decoration: line-through;">
+                                        <span style="color: #6b7280; font-size: 0.85em;">🔕 Out-of-hours (snoozed)</span>
+                                        <button style="padding: 2px 6px; background: white; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.75em; color: #6b7280;">
+                                            Unsnooze
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Snooze Menu -->
+                                <div style="margin-top: 10px; padding: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                    <div style="font-size: 0.85em; font-weight: 600; margin-bottom: 8px;">Snooze this alert for:</div>
+                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                                        <button style="padding: 6px; background: white; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8em;">1 day</button>
+                                        <button style="padding: 6px; background: white; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8em;">1 week</button>
+                                        <button style="padding: 6px; background: white; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8em;">1 month</button>
+                                        <button style="padding: 6px; background: white; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8em;">Indefinitely</button>
+                                    </div>
+                                    <input type="text" placeholder="Reason (optional)" style="width: 100%; margin-top: 8px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8em;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="snooze-ui-preview" style="margin-top: 20px;">
+                            <h3>Pattern-Based Auto-Snooze Configuration</h3>
+                            <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                                <h4 style="margin-bottom: 12px;">Active Patterns</h4>
+                                <div style="space-y: 8px;">
+                                    <div style="padding: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: 600;">1:1 with Manager</div>
+                                                <div style="font-size: 0.85em; color: #6b7280; margin-top: 2px;">
+                                                    Auto-snooze: back-to-back warnings for events containing "1:1 with"
+                                                </div>
+                                            </div>
+                                            <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em;">Active</span>
+                                        </div>
+                                    </div>
+
+                                    <div style="padding: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: 600;">Interview Sessions</div>
+                                                <div style="font-size: 0.85em; color: #6b7280; margin-top: 2px;">
+                                                    Auto-snooze: all alerts for events with "Interview" in title
+                                                </div>
+                                            </div>
+                                            <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em;">Active</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dual Score Logic -->
+                    <div id="snooze-logic" class="tab-content">
+                        <div class="health-score-display">
+                            <h3>Dual Health Score Display</h3>
+
+                            <div class="score-comparison">
+                                <div class="score-item">
+                                    <div class="score-value" style="color: #10b981;">78</div>
+                                    <div class="score-label">Actual Score</div>
+                                    <div style="font-size: 0.8em; color: #10b981; margin-top: 4px;">+15 from snoozes</div>
+                                </div>
+
+                                <div style="align-self: center; padding: 0 20px;">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                                        <path d="M9 18l6-6-6-6"/>
+                                    </svg>
+                                </div>
+
+                                <div class="score-item">
+                                    <div class="score-value" style="color: #9ca3af;">63</div>
+                                    <div class="score-label">Unsnoozed Score</div>
+                                    <div style="font-size: 0.8em; color: #6b7280; margin-top: 4px;">Raw calculation</div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+                                <h4 style="margin-bottom: 10px;">Snoozed Factors Breakdown</h4>
+                                <table style="width: 100%; font-size: 0.9em;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <th style="text-align: left; padding: 8px;">Factor</th>
+                                            <th style="text-align: center; padding: 8px;">Total</th>
+                                            <th style="text-align: center; padding: 8px;">Snoozed</th>
+                                            <th style="text-align: center; padding: 8px;">Active</th>
+                                            <th style="text-align: right; padding: 8px;">Points Recovered</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="padding: 8px;">Back-to-back</td>
+                                            <td style="text-align: center; padding: 8px;">3</td>
+                                            <td style="text-align: center; padding: 8px; color: #10b981;">1</td>
+                                            <td style="text-align: center; padding: 8px;">2</td>
+                                            <td style="text-align: right; padding: 8px; color: #10b981;">+15</td>
+                                        </tr>
+                                        <tr style="background: #f9fafb;">
+                                            <td style="padding: 8px;">Out-of-hours</td>
+                                            <td style="text-align: center; padding: 8px;">2</td>
+                                            <td style="text-align: center; padding: 8px; color: #10b981;">2</td>
+                                            <td style="text-align: center; padding: 8px;">0</td>
+                                            <td style="text-align: right; padding: 8px; color: #10b981;">+24</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 8px;">Double booking</td>
+                                            <td style="text-align: center; padding: 8px;">1</td>
+                                            <td style="text-align: center; padding: 8px;">0</td>
+                                            <td style="text-align: center; padding: 8px;">1</td>
+                                            <td style="text-align: right; padding: 8px; color: #6b7280;">0</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px;">
+                                <h4 style="color: #92400e; margin-bottom: 8px;">Calculation Example</h4>
+                                <div style="font-family: monospace; font-size: 0.85em; line-height: 1.6;">
+                                    Base Score: 100<br>
+                                    Back-to-back (3 total, 1 snoozed): -30 (2 active × -15)<br>
+                                    Out-of-hours (2 total, 2 snoozed): 0 (0 active × -12)<br>
+                                    Double booking (1 total, 0 snoozed): -25 (once_per_period)<br>
+                                    Focus blocks: +8<br>
+                                    <strong>Actual Score: 78</strong><br><br>
+
+                                    Without snoozes:<br>
+                                    Back-to-back: -45 (3 × -15)<br>
+                                    Out-of-hours: -24 (2 × -12)<br>
+                                    Double booking: -25<br>
+                                    Focus blocks: +8<br>
+                                    <strong>Unsnoozed Score: 63</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Benefits Section -->
+            <div class="section">
+                <h2>
+                    <span>🎯</span>
+                    System Benefits
+                </h2>
+
+                <div class="stats-grid">
+                    <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; border: 2px solid #86efac;">
+                        <h3 style="color: #166534; margin-bottom: 10px;">👤 For Users</h3>
+                        <ul style="color: #166534; font-size: 0.9em; list-style: none; padding: 0;">
+                            <li style="margin: 5px 0;">✓ Acknowledge unavoidable issues</li>
+                            <li style="margin: 5px 0;">✓ Reduce alert fatigue</li>
+                            <li style="margin: 5px 0;">✓ See true vs. potential health</li>
+                            <li style="margin: 5px 0;">✓ Auto-snooze patterns</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: #fef3c7; padding: 20px; border-radius: 10px; border: 2px solid #fde68a;">
+                        <h3 style="color: #92400e; margin-bottom: 10px;">🎛️ For Admins</h3>
+                        <ul style="color: #92400e; font-size: 0.9em; list-style: none; padding: 0;">
+                            <li style="margin: 5px 0;">✓ Flexible aggregation types</li>
+                            <li style="margin: 5px 0;">✓ Cap penalties to prevent extremes</li>
+                            <li style="margin: 5px 0;">✓ A/B test configurations</li>
+                            <li style="margin: 5px 0;">✓ No code changes needed</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: #ede9fe; padding: 20px; border-radius: 10px; border: 2px solid #c7d2fe;">
+                        <h3 style="color: #5b21b6; margin-bottom: 10px;">📊 For Analytics</h3>
+                        <ul style="color: #5b21b6; font-size: 0.9em; list-style: none; padding: 0;">
+                            <li style="margin: 5px 0;">✓ Dual score metrics</li>
+                            <li style="margin: 5px 0;">✓ Snooze pattern insights</li>
+                            <li style="margin: 5px 0;">✓ Engagement tracking</li>
+                            <li style="margin: 5px 0;">✓ ROI measurement</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: #fee2e2; padding: 20px; border-radius: 10px; border: 2px solid #fecaca;">
+                        <h3 style="color: #991b1b; margin-bottom: 10px;">🚀 For Product</h3>
+                        <ul style="color: #991b1b; font-size: 0.9em; list-style: none; padding: 0;">
+                            <li style="margin: 5px 0;">✓ Progressive feature rollout</li>
+                            <li style="margin: 5px 0;">✓ User preference learning</li>
+                            <li style="margin: 5px 0;">✓ Personalized experiences</li>
+                            <li style="margin: 5px 0;">✓ Quick iteration cycles</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+    </script>
+</body>
+</html>

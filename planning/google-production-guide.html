@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalFix - Google OAuth Production Publishing Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+
+        .warning h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            margin: 40px 0;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .section h3 {
+            color: #333;
+            margin: 25px 0 15px 0;
+            font-size: 1.3em;
+        }
+
+        .section h4 {
+            color: #555;
+            margin: 20px 0 10px 0;
+            font-size: 1.1em;
+        }
+
+        .checklist {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .checklist li {
+            padding: 12px;
+            margin: 10px 0;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #28a745;
+            display: flex;
+            align-items: start;
+        }
+
+        .checklist li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            font-size: 1.4em;
+            margin-right: 15px;
+        }
+
+        .timeline {
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 6px;
+        }
+
+        .timeline-item {
+            padding: 20px;
+            border-left: 3px solid #667eea;
+            margin-left: 20px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .timeline-item:before {
+            content: "";
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border: 4px solid white;
+            border-radius: 50%;
+            position: absolute;
+            left: -13px;
+            top: 20px;
+            box-shadow: 0 0 0 3px #667eea;
+        }
+
+        .timeline-item h4 {
+            color: #667eea;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .timeline-item .duration {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+        }
+
+        .link-button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 10px 10px 0;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .link-button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .link-button.secondary {
+            background: #6c757d;
+        }
+
+        .link-button.secondary:hover {
+            background: #5a6268;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+            font-size: 0.9em;
+        }
+
+        .cost-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .cost-table th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+
+        .cost-table td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .cost-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .important-note {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .important-note h4 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+
+        .danger {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .danger h4 {
+            color: #721c24;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        ul li {
+            margin: 8px 0;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+            }
+
+            .link-button {
+                border: 2px solid #667eea;
+                color: #667eea;
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 CalFix Production Publishing Guide</h1>
+            <p>Complete Guide to Publishing Your Google Calendar OAuth App</p>
+        </div>
+
+        <div class="content">
+            <div class="warning">
+                <h3>⏱️ Expected Timeline: 2-4 Weeks</h3>
+                <p>Google's verification process for apps using sensitive scopes (like Calendar access) typically takes 2-4 weeks after submission. Plan accordingly if you need to launch by a specific date.</p>
+            </div>
+
+            <!-- OVERVIEW -->
+            <div class="section">
+                <h2>📋 Overview</h2>
+                <p>To publish CalFix as a production app that anyone can use, you need to complete Google's OAuth verification process. Since CalFix requests <code>https://www.googleapis.com/auth/calendar</code> (full calendar access), this is considered a <strong>sensitive scope</strong> requiring enhanced verification.</p>
+
+                <div class="important-note">
+                    <h4>💡 Why Verification is Required</h4>
+                    <p>Google requires verification for apps accessing sensitive user data (like calendars, email, or drive) to protect users from malicious apps. The process ensures your app follows security best practices and handles user data responsibly.</p>
+                </div>
+            </div>
+
+            <!-- PREREQUISITES -->
+            <div class="section">
+                <h2>✅ Prerequisites Checklist</h2>
+                <p>Before starting the verification process, ensure you have:</p>
+
+                <ul class="checklist">
+                    <li>
+                        <div>
+                            <strong>Domain Name</strong><br>
+                            A registered domain for your app (e.g., calfix.com). Cannot use localhost or IP addresses.
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <strong>Hosted Privacy Policy</strong><br>
+                            A publicly accessible privacy policy URL on your domain.
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <strong>Hosted Terms of Service</strong> (Optional but recommended)<br>
+                            Terms of service accessible on your domain.
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <strong>App Homepage</strong><br>
+                            A landing page explaining what your app does.
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <strong>Working Production App</strong><br>
+                            Your app must be deployed and functional at the domain you're verifying.
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <strong>Video Demonstration</strong><br>
+                            A screen recording showing how your app uses Calendar data.
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <strong>Domain Verification</strong><br>
+                            Proof of ownership for your domain in Google Search Console.
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- DETAILED REQUIREMENTS -->
+            <div class="section">
+                <h2>📝 Detailed Requirements</h2>
+
+                <h3><span class="step-number">1</span>Privacy Policy</h3>
+                <p>Your privacy policy must be publicly accessible and cover:</p>
+                <ul>
+                    <li>What data you collect from Google Calendar</li>
+                    <li>How you use the data</li>
+                    <li>How you store and protect the data</li>
+                    <li>Whether you share data with third parties</li>
+                    <li>How users can delete their data</li>
+                    <li>Contact information for privacy concerns</li>
+                </ul>
+
+                <div class="important-note">
+                    <h4>🔐 Key Privacy Points for CalFix</h4>
+                    <p>Since CalFix processes calendar data entirely client-side:</p>
+                    <ul>
+                        <li>✓ Data is NOT sent to your servers</li>
+                        <li>✓ Data is NOT stored in databases</li>
+                        <li>✓ OAuth tokens are stored in browser localStorage only</li>
+                        <li>✓ All processing happens in the user's browser</li>
+                    </ul>
+                    <p><strong>This is a major security advantage you should highlight!</strong></p>
+                </div>
+
+                <a href="https://support.google.com/cloud/answer/9110914" class="link-button" target="_blank">View Google's Privacy Policy Requirements →</a>
+                <a href="https://www.freeprivacypolicy.com/" class="link-button secondary" target="_blank">Generate Privacy Policy (Free Tool) →</a>
+
+                <h3><span class="step-number">2</span>Domain Verification</h3>
+                <p>You must prove ownership of your domain:</p>
+                <ol>
+                    <li>Go to <a href="https://search.google.com/search-console" target="_blank">Google Search Console</a></li>
+                    <li>Click "Add Property"</li>
+                    <li>Enter your domain (e.g., calfix.com)</li>
+                    <li>Verify ownership using one of these methods:
+                        <ul>
+                            <li>DNS TXT record (recommended)</li>
+                            <li>HTML file upload</li>
+                            <li>HTML meta tag</li>
+                        </ul>
+                    </li>
+                    <li>Once verified, the domain appears in your OAuth consent screen settings</li>
+                </ol>
+
+                <a href="https://search.google.com/search-console" class="link-button" target="_blank">Google Search Console →</a>
+                <a href="https://support.google.com/webmasters/answer/9008080" class="link-button secondary" target="_blank">Domain Verification Guide →</a>
+
+                <h3><span class="step-number">3</span>Video Demonstration</h3>
+                <p>Create a 2-5 minute screen recording showing:</p>
+                <ul>
+                    <li><strong>OAuth Flow:</strong> Show the entire sign-in process</li>
+                    <li><strong>Permission Scopes:</strong> Clearly show what permissions you request</li>
+                    <li><strong>Data Usage:</strong> Demonstrate how you fetch and display calendar events</li>
+                    <li><strong>Features:</strong> Show all features that use calendar data (analytics, insights, actions)</li>
+                    <li><strong>Data Handling:</strong> Explain that data stays client-side (mention in narration)</li>
+                </ul>
+
+                <div class="important-note">
+                    <h4>🎥 Video Recording Tips</h4>
+                    <ul>
+                        <li>Use screen recording software (QuickTime, Loom, or OBS)</li>
+                        <li>Start from a logged-out state</li>
+                        <li>Use a test Google account</li>
+                        <li>Keep it concise but comprehensive</li>
+                        <li>Upload to YouTube (unlisted) or Google Drive (public link)</li>
+                    </ul>
+                </div>
+
+                <h3><span class="step-number">4</span>Authorized Domains</h3>
+                <p>Update your OAuth consent screen with production domains:</p>
+                <ol>
+                    <li>Go to <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank">OAuth Consent Screen</a></li>
+                    <li>Edit "Authorized domains"</li>
+                    <li>Add your domain (e.g., <code>calfix.com</code>)</li>
+                    <li>Update JavaScript origins and redirect URIs:
+                        <ul>
+                            <li>JavaScript origin: <code>https://calfix.com</code></li>
+                            <li>Redirect URI: <code>https://calfix.com</code> (or your OAuth callback URL)</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <div class="danger">
+                    <h4>⚠️ Important: HTTPS Required</h4>
+                    <p>Production apps MUST use HTTPS. Google will reject apps using HTTP or localhost URLs.</p>
+                </div>
+            </div>
+
+            <!-- STEP BY STEP PROCESS -->
+            <div class="section">
+                <h2>🚀 Step-by-Step Verification Process</h2>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <span class="duration">Day 1</span>
+                        <h4>Step 1: Prepare Your App</h4>
+                        <ul>
+                            <li>Deploy CalFix to production (e.g., Vercel, Netlify, or custom server)</li>
+                            <li>Ensure HTTPS is configured</li>
+                            <li>Test OAuth flow in production environment</li>
+                            <li>Create and deploy privacy policy page</li>
+                            <li>Create and deploy terms of service page</li>
+                            <li>Set up app homepage/landing page</li>
+                        </ul>
+                    </div>
+
+                    <div class="timeline-item">
+                        <span class="duration">Day 1-2</span>
+                        <h4>Step 2: Domain Verification</h4>
+                        <ul>
+                            <li>Add domain to Google Search Console</li>
+                            <li>Verify ownership via DNS or HTML method</li>
+                            <li>Wait for verification (usually instant, sometimes 24 hours)</li>
+                        </ul>
+                        <a href="https://search.google.com/search-console" class="link-button" target="_blank">Verify Domain →</a>
+                    </div>
+
+                    <div class="timeline-item">
+                        <span class="duration">Day 2-3</span>
+                        <h4>Step 3: Update OAuth Consent Screen</h4>
+                        <ul>
+                            <li>Go to OAuth consent screen in Google Cloud Console</li>
+                            <li>Add your verified domain to "Authorized domains"</li>
+                            <li>Add privacy policy URL</li>
+                            <li>Add terms of service URL (optional)</li>
+                            <li>Add app homepage URL</li>
+                            <li>Add app logo (120x120px recommended)</li>
+                            <li>Review and save</li>
+                        </ul>
+                        <a href="https://console.cloud.google.com/apis/credentials/consent" class="link-button" target="_blank">OAuth Consent Screen →</a>
+                    </div>
+
+                    <div class="timeline-item">
+                        <span class="duration">Day 3-4</span>
+                        <h4>Step 4: Create Demonstration Video</h4>
+                        <ul>
+                            <li>Record screen showing full OAuth flow</li>
+                            <li>Demonstrate all calendar features</li>
+                            <li>Show how data is accessed and displayed</li>
+                            <li>Upload to YouTube (unlisted) or Google Drive</li>
+                            <li>Get shareable link</li>
+                        </ul>
+                    </div>
+
+                    <div class="timeline-item">
+                        <span class="duration">Day 4-5</span>
+                        <h4>Step 5: Submit for Verification</h4>
+                        <ul>
+                            <li>Go to OAuth consent screen</li>
+                            <li>Click "Publish App" button</li>
+                            <li>Fill out verification questionnaire:
+                                <ul>
+                                    <li>App functionality description</li>
+                                    <li>Why you need calendar scope</li>
+                                    <li>How you handle user data</li>
+                                    <li>Security measures</li>
+                                    <li>Video demonstration URL</li>
+                                </ul>
+                            </li>
+                            <li>Submit for review</li>
+                        </ul>
+                        <a href="https://console.cloud.google.com/apis/credentials/consent" class="link-button" target="_blank">Submit for Verification →</a>
+                    </div>
+
+                    <div class="timeline-item">
+                        <span class="duration">Week 2-4</span>
+                        <h4>Step 6: Google Review Process</h4>
+                        <ul>
+                            <li>Google's Trust & Safety team reviews your submission</li>
+                            <li>They may request additional information or clarifications</li>
+                            <li>Respond promptly to any requests (delays the process if you don't)</li>
+                            <li>Google tests your app's OAuth flow</li>
+                            <li>Review typically takes 2-4 weeks</li>
+                        </ul>
+                    </div>
+
+                    <div class="timeline-item">
+                        <span class="duration">After Approval</span>
+                        <h4>Step 7: Go Live</h4>
+                        <ul>
+                            <li>Receive approval email from Google</li>
+                            <li>OAuth consent screen shows "Verified by Google"</li>
+                            <li>Remove test user restrictions</li>
+                            <li>Any Google account can now use your app</li>
+                            <li>Launch publicly! 🎉</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUESTIONNAIRE PREVIEW -->
+            <div class="section">
+                <h2>📋 Verification Questionnaire Preview</h2>
+                <p>Google will ask questions like these. Prepare your answers in advance:</p>
+
+                <h4>1. What does your application do?</h4>
+                <p><em>Example answer:</em> "CalFix is a calendar management dashboard that helps professionals and executive assistants optimize their Google Calendar. It provides analytics on meeting health, identifies scheduling issues (double bookings, back-to-back meetings, missing travel blocks), and offers one-click optimizations to improve calendar efficiency."</p>
+
+                <h4>2. Why does your application need access to Google Calendar data?</h4>
+                <p><em>Example answer:</em> "CalFix requires full calendar access (read and write) to: (1) Fetch and analyze calendar events to calculate health scores and detect scheduling issues, (2) Create and modify events to implement optimizations like adding buffers, scheduling focus time, and creating travel blocks, (3) Access multiple calendars for users managing delegate calendars (e.g., executive assistants)."</p>
+
+                <h4>3. How does your application use the data obtained from Google APIs?</h4>
+                <p><em>Example answer:</em> "CalFix processes all calendar data entirely within the user's browser (client-side). No calendar data is sent to our servers or stored in databases. The app analyzes events locally to provide insights and recommendations. Users can modify their calendars through the app, with all API calls going directly from the user's browser to Google's Calendar API."</p>
+
+                <h4>4. How does your application store and protect user data?</h4>
+                <p><em>Example answer:</em> "CalFix uses a client-side architecture for maximum privacy. OAuth tokens are stored only in the user's browser localStorage. No calendar events or user data are transmitted to or stored on our servers. All data processing happens locally in the browser and is cleared when the user signs out."</p>
+
+                <h4>5. Does your application share user data with third parties?</h4>
+                <p><em>Example answer:</em> "No. CalFix does not share, sell, or transmit user calendar data to any third parties. Since all processing is client-side, data never leaves the user's browser except for direct API calls to Google Calendar."</p>
+
+                <h4>6. Provide a link to your privacy policy</h4>
+                <p><em>Example:</em> <code>https://calfix.com/privacy</code></p>
+
+                <h4>7. Provide a link to your terms of service</h4>
+                <p><em>Example:</em> <code>https://calfix.com/terms</code></p>
+
+                <h4>8. Provide a video demonstration of your app's OAuth flow</h4>
+                <p><em>Example:</em> <code>https://youtu.be/your-video-id</code> or <code>https://drive.google.com/file/d/your-file-id/view</code></p>
+            </div>
+
+            <!-- COSTS -->
+            <div class="section">
+                <h2>💰 Cost Breakdown</h2>
+
+                <table class="cost-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Estimated Cost</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Google OAuth Verification</strong></td>
+                            <td>$0 (FREE)</td>
+                            <td>Google doesn't charge for verification</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Domain Registration</strong></td>
+                            <td>$10-15/year</td>
+                            <td>Required for production app</td>
+                        </tr>
+                        <tr>
+                            <td><strong>SSL Certificate</strong></td>
+                            <td>$0 (FREE)</td>
+                            <td>Free with Let's Encrypt or hosting provider</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Web Hosting</strong></td>
+                            <td>$0-20/month</td>
+                            <td>Vercel/Netlify free tier works, or $5-20 for VPS</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Privacy Policy Generator</strong></td>
+                            <td>$0-50 (one-time)</td>
+                            <td>Free generators available, or hire lawyer for custom</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Video Recording Software</strong></td>
+                            <td>$0 (FREE)</td>
+                            <td>Use QuickTime (Mac), OBS, or Loom free tier</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Google Calendar API Usage</strong></td>
+                            <td>$0 (FREE)</td>
+                            <td>Free within generous quota limits</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="important-note">
+                    <h4>📊 Total Estimated Cost: $10-35/year (plus optional hosting)</h4>
+                    <p>The verification process itself is free. Main costs are domain registration and optional hosting if you need more than free tier.</p>
+                </div>
+            </div>
+
+            <!-- DEPLOYMENT OPTIONS -->
+            <div class="section">
+                <h2>🌐 Deployment Options for Production</h2>
+
+                <h3>Option 1: Vercel (Recommended for Vite)</h3>
+                <ul>
+                    <li>✓ Free tier available</li>
+                    <li>✓ Automatic HTTPS</li>
+                    <li>✓ Custom domain support</li>
+                    <li>✓ Git integration (auto-deploy on push)</li>
+                    <li>✓ Excellent for Vite/React apps</li>
+                </ul>
+                <a href="https://vercel.com" class="link-button" target="_blank">Deploy on Vercel →</a>
+                <a href="https://vitejs.dev/guide/static-deploy.html#vercel" class="link-button secondary" target="_blank">Vite + Vercel Guide →</a>
+
+                <h3>Option 2: Netlify</h3>
+                <ul>
+                    <li>✓ Free tier available</li>
+                    <li>✓ Automatic HTTPS</li>
+                    <li>✓ Custom domain support</li>
+                    <li>✓ Drag-and-drop deployment</li>
+                    <li>✓ Great for static sites</li>
+                </ul>
+                <a href="https://www.netlify.com" class="link-button" target="_blank">Deploy on Netlify →</a>
+
+                <h3>Option 3: DigitalOcean App Platform</h3>
+                <ul>
+                    <li>✓ $5/month starting</li>
+                    <li>✓ More control than Vercel/Netlify</li>
+                    <li>✓ Automatic HTTPS</li>
+                    <li>✓ Can add backend later if needed</li>
+                </ul>
+                <a href="https://www.digitalocean.com/products/app-platform" class="link-button" target="_blank">DigitalOcean App Platform →</a>
+
+                <h3>Option 4: AWS Amplify</h3>
+                <ul>
+                    <li>✓ Free tier for 12 months</li>
+                    <li>✓ Scales well</li>
+                    <li>✓ Full AWS integration</li>
+                    <li>- More complex setup</li>
+                </ul>
+                <a href="https://aws.amazon.com/amplify/" class="link-button" target="_blank">AWS Amplify →</a>
+            </div>
+
+            <!-- COMMON ISSUES -->
+            <div class="section">
+                <h2>⚠️ Common Rejection Reasons & How to Avoid</h2>
+
+                <h3>1. Unclear Data Usage</h3>
+                <div class="danger">
+                    <h4>Problem:</h4>
+                    <p>"Your application's use of calendar data is not clearly explained."</p>
+                    <h4>Solution:</h4>
+                    <ul>
+                        <li>Be very specific in your questionnaire answers</li>
+                        <li>Show exactly how calendar data appears in your UI</li>
+                        <li>Demonstrate every feature that uses calendar access</li>
+                    </ul>
+                </div>
+
+                <h3>2. Poor Quality Video</h3>
+                <div class="danger">
+                    <h4>Problem:</h4>
+                    <p>"Video demonstration does not clearly show OAuth flow or data usage."</p>
+                    <h4>Solution:</h4>
+                    <ul>
+                        <li>Record in HD (at least 1080p)</li>
+                        <li>Show the entire OAuth consent screen</li>
+                        <li>Demonstrate complete user journey</li>
+                        <li>Keep video under 5 minutes but cover everything</li>
+                    </ul>
+                </div>
+
+                <h3>3. Privacy Policy Issues</h3>
+                <div class="danger">
+                    <h4>Problem:</h4>
+                    <p>"Privacy policy does not adequately describe data handling practices."</p>
+                    <h4>Solution:</h4>
+                    <ul>
+                        <li>Explicitly mention "Google Calendar data"</li>
+                        <li>Describe client-side processing model</li>
+                        <li>Include data retention and deletion policies</li>
+                        <li>Provide contact information for privacy inquiries</li>
+                    </ul>
+                </div>
+
+                <h3>4. Domain Not Verified</h3>
+                <div class="danger">
+                    <h4>Problem:</h4>
+                    <p>"Authorized domain is not verified in Search Console."</p>
+                    <h4>Solution:</h4>
+                    <ul>
+                        <li>Verify domain BEFORE submitting for review</li>
+                        <li>Ensure domain in OAuth settings matches verified domain</li>
+                        <li>Use root domain, not subdomain (or verify both)</li>
+                    </ul>
+                </div>
+
+                <h3>5. App Not Functional</h3>
+                <div class="danger">
+                    <h4>Problem:</h4>
+                    <p>"Reviewers unable to access or use the application."</p>
+                    <h4>Solution:</h4>
+                    <ul>
+                        <li>Test production deployment thoroughly before submission</li>
+                        <li>Ensure OAuth redirect URIs match production URLs</li>
+                        <li>Provide test account credentials if app requires onboarding</li>
+                        <li>Check that all links in submission work</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- IMPORTANT LINKS -->
+            <div class="section">
+                <h2>🔗 Important Links Reference</h2>
+
+                <h3>Google Cloud Console</h3>
+                <a href="https://console.cloud.google.com" class="link-button" target="_blank">Cloud Console Home →</a>
+                <a href="https://console.cloud.google.com/apis/credentials/consent" class="link-button" target="_blank">OAuth Consent Screen →</a>
+                <a href="https://console.cloud.google.com/apis/credentials" class="link-button" target="_blank">API Credentials →</a>
+                <a href="https://console.cloud.google.com/apis/library" class="link-button" target="_blank">API Library →</a>
+
+                <h3>Verification Resources</h3>
+                <a href="https://support.google.com/cloud/answer/9110914" class="link-button" target="_blank">OAuth Verification FAQ →</a>
+                <a href="https://support.google.com/cloud/answer/7454865" class="link-button" target="_blank">API Services User Data Policy →</a>
+                <a href="https://developers.google.com/terms/api-services-user-data-policy" class="link-button" target="_blank">User Data Policy Details →</a>
+
+                <h3>Domain & Security</h3>
+                <a href="https://search.google.com/search-console" class="link-button" target="_blank">Google Search Console →</a>
+                <a href="https://support.google.com/webmasters/answer/9008080" class="link-button" target="_blank">Verify Domain Ownership →</a>
+
+                <h3>Documentation</h3>
+                <a href="https://developers.google.com/calendar/api/guides/overview" class="link-button" target="_blank">Google Calendar API Docs →</a>
+                <a href="https://developers.google.com/identity/protocols/oauth2" class="link-button" target="_blank">OAuth 2.0 Documentation →</a>
+
+                <h3>Tools</h3>
+                <a href="https://www.freeprivacypolicy.com" class="link-button" target="_blank">Privacy Policy Generator →</a>
+                <a href="https://www.loom.com" class="link-button" target="_blank">Loom (Video Recording) →</a>
+                <a href="https://obsproject.com" class="link-button" target="_blank">OBS Studio (Free Recording) →</a>
+            </div>
+
+            <!-- TIMELINE SUMMARY -->
+            <div class="section">
+                <h2>📅 Timeline Summary</h2>
+
+                <table class="cost-table">
+                    <thead>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Duration</th>
+                            <th>Tasks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Preparation</strong></td>
+                            <td>3-7 days</td>
+                            <td>Deploy app, create privacy policy, verify domain, create video</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Submission</strong></td>
+                            <td>1 day</td>
+                            <td>Complete questionnaire, submit for review</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Google Review</strong></td>
+                            <td>2-4 weeks</td>
+                            <td>Wait for Google's Trust & Safety team review</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Possible Revisions</strong></td>
+                            <td>3-7 days</td>
+                            <td>Address any Google feedback (if requested)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Approval & Launch</strong></td>
+                            <td>1 day</td>
+                            <td>Receive approval, remove test restrictions, go live</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="important-note" style="margin-top: 20px;">
+                    <h4>⏱️ Total Time: 3-6 Weeks</h4>
+                    <p>From starting the process to receiving approval. Most of the time is waiting for Google's review. Plan accordingly for launch dates.</p>
+                </div>
+            </div>
+
+            <!-- NEXT STEPS -->
+            <div class="section">
+                <h2>🎯 Your Next Steps</h2>
+
+                <ol style="font-size: 1.1em; line-height: 2;">
+                    <li><strong>Register a domain</strong> for CalFix (e.g., calfix.com) - <a href="https://domains.google" target="_blank">Google Domains</a> or <a href="https://www.namecheap.com" target="_blank">Namecheap</a></li>
+                    <li><strong>Deploy CalFix</strong> to production with HTTPS</li>
+                    <li><strong>Create privacy policy</strong> and terms of service pages</li>
+                    <li><strong>Verify domain</strong> in Google Search Console</li>
+                    <li><strong>Record demonstration video</strong> showing OAuth flow and features</li>
+                    <li><strong>Update OAuth consent screen</strong> with all required URLs</li>
+                    <li><strong>Submit for verification</strong> with complete questionnaire</li>
+                    <li><strong>Wait for approval</strong> (2-4 weeks)</li>
+                    <li><strong>Launch publicly!</strong></li>
+                </ol>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-left: none;">
+                <h2 style="color: white;">💬 Need Help?</h2>
+                <p>If you have questions during the verification process:</p>
+                <ul>
+                    <li>Review Google's <a href="https://support.google.com/cloud/answer/9110914" style="color: #ffd700;" target="_blank">OAuth Verification FAQ</a></li>
+                    <li>Check the <a href="https://stackoverflow.com/questions/tagged/google-oauth" style="color: #ffd700;" target="_blank">Stack Overflow Google OAuth tag</a></li>
+                    <li>Contact Google Cloud Support (if you have a paid plan)</li>
+                </ul>
+
+                <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.3);">
+                    <p style="font-size: 0.9em; opacity: 0.9;">This guide was created for CalFix - Calendar Management Dashboard</p>
+                    <p style="font-size: 0.9em; opacity: 0.9;">Last updated: October 2025</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

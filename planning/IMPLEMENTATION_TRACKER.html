@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalFix SaaS Implementation Tracker</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1e40af;
+            margin-top: 30px;
+            background: white;
+            padding: 15px;
+            border-left: 5px solid #2563eb;
+        }
+        h3 {
+            color: #3b82f6;
+            margin-top: 20px;
+        }
+        .phase {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .task {
+            margin: 10px 0;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 4px;
+        }
+        .task input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        .completed {
+            background: #d1fae5;
+            text-decoration: line-through;
+            color: #059669;
+        }
+        .comment {
+            margin-left: 30px;
+            padding: 10px;
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .deliverable {
+            background: #dbeafe;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-in-progress { background: #dbeafe; color: #1e40af; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+        .metadata {
+            background: #e0e7ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>CalFix SaaS Transformation - Implementation Tracker</h1>
+
+    <div class="metadata">
+        <strong>Started:</strong> <span id="startDate">Not started</span><br>
+        <strong>Last Updated:</strong> <span id="lastUpdate">Never</span><br>
+        <strong>Current Phase:</strong> <span id="currentPhase">Phase 1</span><br>
+        <strong>Overall Progress:</strong> <span id="overallProgress">0%</span>
+    </div>
+
+    <!-- PHASE 1: SETUP & CONFIGURATION -->
+    <div class="phase">
+        <h2>Phase 1: Setup & Configuration (Week 1) <span class="status status-pending">Pending</span></h2>
+        <p><strong>Duration:</strong> 3-5 days</p>
+
+        <h3>1.1 Clerk Setup</h3>
+        <div class="task">
+            <input type="checkbox" id="clerk-account"> <label for="clerk-account">Create Clerk account at https://clerk.com</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-app"> <label for="clerk-app">Create new application in Clerk dashboard</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-google"> <label for="clerk-google">Configure OAuth providers: Enable Google OAuth</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-email"> <label for="clerk-email">Configure OAuth providers: Enable email/password auth</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-stripe"> <label for="clerk-stripe">Set up Stripe integration: Connect Stripe account</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-products"> <label for="clerk-products">Set up Stripe integration: Create subscription products</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-tiers"> <label for="clerk-tiers">Set up Stripe integration: Configure pricing tiers (Free, Pro, Team)</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-webhook-created"> <label for="clerk-webhook-created">Configure webhooks: User created → Sync to Supabase</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-webhook-updated"> <label for="clerk-webhook-updated">Configure webhooks: User updated → Update Supabase</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-webhook-deleted"> <label for="clerk-webhook-deleted">Configure webhooks: User deleted → CASCADE delete in Supabase</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-webhook-subscription"> <label for="clerk-webhook-subscription">Configure webhooks: Subscription changed → Update user tier</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="clerk-env"> <label for="clerk-env">Copy API keys to .env (VITE_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, CLERK_WEBHOOK_SECRET)</label>
+        </div>
+
+        <h3>Deliverables:</h3>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-clerk-configured"> Clerk application configured
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-oauth-enabled"> OAuth providers enabled
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-stripe-connected"> Stripe connected
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-webhooks-configured"> Webhooks configured
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-clerk-keys"> API keys in .env
+        </div>
+
+        <h3>1.2 Supabase Setup</h3>
+        <div class="task">
+            <input type="checkbox" id="supabase-account"> <label for="supabase-account">Create Supabase account at https://supabase.com</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-project"> <label for="supabase-project">Create new project</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-users-table"> <label for="supabase-users-table">Create database schema: Run SQL migration for users table</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-calendars-table"> <label for="supabase-calendars-table">Create database schema: Run SQL migration for managed_calendars table</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-actions-table"> <label for="supabase-actions-table">Create database schema: Run SQL migration for user_actions table (with calendar_id column)</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-prefs-table"> <label for="supabase-prefs-table">Create database schema: Run SQL migration for user_preferences table</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-cal-prefs-table"> <label for="supabase-cal-prefs-table">Create database schema: Run SQL migration for calendar_preferences table</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-summary-table"> <label for="supabase-summary-table">Create database schema: Run SQL migration for time_savings_summary table</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-rls-enable"> <label for="supabase-rls-enable">Configure Row-Level Security (RLS): Enable RLS on all tables</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-rls-policies"> <label for="supabase-rls-policies">Configure Row-Level Security (RLS): Create policies for SELECT, INSERT, UPDATE, DELETE</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-clerk-jwt"> <label for="supabase-clerk-jwt">Set up Clerk <> Supabase JWT integration: Get Clerk JWKS endpoint</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-jwt-config"> <label for="supabase-jwt-config">Set up Clerk <> Supabase JWT integration: Configure in Supabase dashboard</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-indexes"> <label for="supabase-indexes">Create database indexes for performance</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="supabase-env"> <label for="supabase-env">Copy API keys to .env (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)</label>
+        </div>
+
+        <h3>Deliverables:</h3>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-supabase-created"> Supabase project created
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-schema-deployed"> Database schema deployed
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-rls-active"> RLS policies active
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-jwt-working"> Clerk JWT integration working
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-supabase-keys"> API keys in .env
+        </div>
+
+        <h3>1.3 Environment Variables</h3>
+        <div class="task">
+            <input type="checkbox" id="env-update"> <label for="env-update">Update .env file with all required variables</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="env-example"> <label for="env-example">Create .env.example for documentation</label>
+        </div>
+    </div>
+
+    <!-- PHASE 2: FRONTEND INTEGRATION -->
+    <div class="phase">
+        <h2>Phase 2: Frontend Integration (Week 1-2) <span class="status status-pending">Pending</span></h2>
+        <p><strong>Duration:</strong> 5-7 days</p>
+
+        <h3>2.1 Install Dependencies</h3>
+        <div class="task">
+            <input type="checkbox" id="install-deps"> <label for="install-deps">Install @clerk/clerk-react and @supabase/supabase-js</label>
+        </div>
+
+        <h3>2.2 Wrap App with Clerk Provider</h3>
+        <div class="task">
+            <input type="checkbox" id="clerk-provider"> <label for="clerk-provider">Update src/main.tsx with ClerkProvider</label>
+        </div>
+
+        <h3>2.3 Create Auth Components</h3>
+        <div class="task">
+            <input type="checkbox" id="auth-signin"> <label for="auth-signin">Create src/components/SignInPage.tsx</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="auth-signup"> <label for="auth-signup">Create src/components/SignUpPage.tsx</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="auth-profile"> <label for="auth-profile">Create src/components/UserProfile.tsx</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="auth-protected"> <label for="auth-protected">Create src/components/ProtectedRoute.tsx</label>
+        </div>
+
+        <h3>2.4 Update Routing</h3>
+        <div class="task">
+            <input type="checkbox" id="install-router"> <label for="install-router">Install react-router-dom</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="update-app"> <label for="update-app">Update src/App.tsx with BrowserRouter and Routes</label>
+        </div>
+
+        <h3>2.5 Initialize Supabase Client</h3>
+        <div class="task">
+            <input type="checkbox" id="supabase-client"> <label for="supabase-client">Create src/lib/supabase.ts with useSupabaseClient hook</label>
+        </div>
+
+        <h3>2.6 Migrate localStorage to Supabase</h3>
+        <div class="task">
+            <input type="checkbox" id="migration-utility"> <label for="migration-utility">Create migration utility src/utils/migrateLocalStorage.ts</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="migration-prompt"> <label for="migration-prompt">Add migration prompt on first login</label>
+        </div>
+
+        <h3>Deliverables:</h3>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-clerk-integrated"> Clerk Provider integrated
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-auth-pages"> Auth pages created
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-protected-routes"> Protected routes working
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-supabase-initialized"> Supabase client initialized
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-migration-ready"> Migration utility ready
+        </div>
+    </div>
+
+    <!-- PHASE 3: USER ACTIONS SERVICE -->
+    <div class="phase">
+        <h2>Phase 3: User Actions Service (Week 2) <span class="status status-pending">Pending</span></h2>
+        <p><strong>Duration:</strong> 3-5 days</p>
+
+        <h3>3.1 Create Supabase User Actions Service</h3>
+        <div class="task">
+            <input type="checkbox" id="actions-service"> <label for="actions-service">Create src/services/userActionsSupabase.ts with all functions</label>
+        </div>
+
+        <h3>3.2 Update Components to Use Supabase</h3>
+        <div class="task">
+            <input type="checkbox" id="update-record-action"> <label for="update-record-action">Replace recordAction() calls with Supabase version</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="update-alert-checks"> <label for="update-alert-checks">Update isAlertDismissed() checks</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="update-time-savings"> <label for="update-time-savings">Update time savings display</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="add-loading-states"> <label for="add-loading-states">Add loading states for async operations</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="add-error-handling"> <label for="add-error-handling">Add error handling for network failures</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="optimistic-updates"> <label for="optimistic-updates">Implement optimistic updates for better UX</label>
+        </div>
+
+        <h3>Deliverables:</h3>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-actions-service"> Supabase user actions service created
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-components-updated"> Components updated to use Supabase
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-loading-states"> Loading states added
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-error-handling"> Error handling implemented
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-optimistic-updates"> Optimistic updates working
+        </div>
+    </div>
+
+    <!-- PHASE 4: USER PREFERENCES -->
+    <div class="phase">
+        <h2>Phase 4: User Preferences (Week 2) <span class="status status-pending">Pending</span></h2>
+        <p><strong>Duration:</strong> 2-3 days</p>
+
+        <h3>4.1 Create Preferences Service</h3>
+        <div class="task">
+            <input type="checkbox" id="prefs-service"> <label for="prefs-service">Create src/services/userPreferences.ts</label>
+        </div>
+
+        <h3>4.2 Create Settings Page</h3>
+        <div class="task">
+            <input type="checkbox" id="settings-page"> <label for="settings-page">Create src/components/SettingsPage.tsx with all UI elements</label>
+        </div>
+
+        <h3>4.3 Add Real-Time Sync</h3>
+        <div class="task">
+            <input type="checkbox" id="realtime-sync"> <label for="realtime-sync">Implement Supabase real-time subscriptions for cross-device sync</label>
+        </div>
+
+        <h3>Deliverables:</h3>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-prefs-service"> Preferences service created
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-settings-ui"> Settings page UI built
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-realtime-sync"> Real-time sync working
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-cross-device"> Cross-device updates instant
+        </div>
+    </div>
+
+    <!-- PHASE 5: BILLING INTEGRATION -->
+    <div class="phase">
+        <h2>Phase 5: Billing Integration (Week 3) <span class="status status-pending">Pending</span></h2>
+        <p><strong>Duration:</strong> 3-5 days</p>
+
+        <h3>5.1 Configure Stripe in Clerk</h3>
+        <div class="task">
+            <input type="checkbox" id="stripe-connect"> <label for="stripe-connect">Connect Stripe account to Clerk</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="stripe-free"> <label for="stripe-free">Create subscription products: Free tier ($0/month)</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="stripe-pro"> <label for="stripe-pro">Create subscription products: Pro tier ($10/month)</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="stripe-team"> <label for="stripe-team">Create subscription products: Team tier ($20/month)</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="stripe-webhook"> <label for="stripe-webhook">Set up webhooks for subscription events</label>
+        </div>
+
+        <h3>5.2 Create Feature Gates</h3>
+        <div class="task">
+            <input type="checkbox" id="feature-gates"> <label for="feature-gates">Create src/lib/featureGates.ts</label>
+        </div>
+
+        <h3>5.3 Add Upgrade CTAs</h3>
+        <div class="task">
+            <input type="checkbox" id="upgrade-ctas"> <label for="upgrade-ctas">Create upgrade prompts for premium features</label>
+        </div>
+
+        <h3>5.4 Create Subscription Management Page</h3>
+        <div class="task">
+            <input type="checkbox" id="subscription-page"> <label for="subscription-page">Create src/components/SubscriptionPage.tsx</label>
+        </div>
+
+        <h3>Deliverables:</h3>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-stripe-configured"> Stripe configured in Clerk
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-feature-gates"> Feature gates implemented
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-upgrade-ctas"> Upgrade CTAs added
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-subscription-page"> Subscription management page built
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-checkout-flow"> Checkout flow working
+        </div>
+    </div>
+
+    <!-- PHASE 6: TESTING & DEPLOYMENT -->
+    <div class="phase">
+        <h2>Phase 6: Testing & Deployment (Week 3) <span class="status status-pending">Pending</span></h2>
+        <p><strong>Duration:</strong> 5-7 days</p>
+
+        <h3>6.1 Testing Checklist - Authentication</h3>
+        <div class="task">
+            <input type="checkbox" id="test-signup-email"> <label for="test-signup-email">Sign up with email works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-signup-google"> <label for="test-signup-google">Sign up with Google works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-signin-email"> <label for="test-signin-email">Sign in with email works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-signin-google"> <label for="test-signin-google">Sign in with Google works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-password-reset"> <label for="test-password-reset">Password reset works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-profile-update"> <label for="test-profile-update">User profile updates</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-signout"> <label for="test-signout">Sign out works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-session-persist"> <label for="test-session-persist">Session persistence across page refresh</label>
+        </div>
+
+        <h3>6.1 Testing Checklist - Google Calendar Integration</h3>
+        <div class="task">
+            <input type="checkbox" id="test-oauth-flow"> <label for="test-oauth-flow">OAuth flow after Clerk auth works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-calendar-fetch"> <label for="test-calendar-fetch">Calendar data fetches correctly</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-calendar-actions"> <label for="test-calendar-actions">Actions modify calendar successfully</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-token-refresh"> <label for="test-token-refresh">Tokens refresh automatically</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-multi-calendar"> <label for="test-multi-calendar">Multiple calendars supported</label>
+        </div>
+
+        <h3>6.1 Testing Checklist - User Actions</h3>
+        <div class="task">
+            <input type="checkbox" id="test-actions-save"> <label for="test-actions-save">Actions saved to Supabase</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-actions-retrieve"> <label for="test-actions-retrieve">Actions retrieved correctly</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-alert-dismiss"> <label for="test-alert-dismiss">Alert dismissal works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-alert-snooze"> <label for="test-alert-snooze">Alert snoozing works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-time-calc"> <label for="test-time-calc">Time savings calculated correctly</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-cross-device-sync"> <label for="test-cross-device-sync">Cross-device sync works</label>
+        </div>
+
+        <h3>6.1 Testing Checklist - Preferences</h3>
+        <div class="task">
+            <input type="checkbox" id="test-prefs-save"> <label for="test-prefs-save">Settings save to Supabase</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-prefs-load"> <label for="test-prefs-load">Settings load on app start</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-prefs-sync"> <label for="test-prefs-sync">Real-time sync across devices</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-theme-changes"> <label for="test-theme-changes">Theme changes apply immediately</label>
+        </div>
+
+        <h3>6.1 Testing Checklist - Billing</h3>
+        <div class="task">
+            <input type="checkbox" id="test-stripe-checkout"> <label for="test-stripe-checkout">Stripe checkout works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-subscription-created"> <label for="test-subscription-created">Subscription created in Clerk</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-feature-gates-enforce"> <label for="test-feature-gates-enforce">Feature gates enforce correctly</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-upgrade-downgrade"> <label for="test-upgrade-downgrade">Upgrade/downgrade works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-webhook-processing"> <label for="test-webhook-processing">Webhook events processed</label>
+        </div>
+
+        <h3>6.1 Testing Checklist - Security</h3>
+        <div class="task">
+            <input type="checkbox" id="test-rls-policies"> <label for="test-rls-policies">RLS policies prevent cross-user access</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-jwt-validation"> <label for="test-jwt-validation">JWT validation works</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-unauth-blocked"> <label for="test-unauth-blocked">Unauthorized requests blocked</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-https-enforced"> <label for="test-https-enforced">HTTPS enforced in production</label>
+        </div>
+
+        <h3>6.1 Testing Checklist - Edge Cases</h3>
+        <div class="task">
+            <input type="checkbox" id="test-offline-mode"> <label for="test-offline-mode">Offline mode (localStorage fallback)</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-network-errors"> <label for="test-network-errors">Network error handling</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-loading-display"> <label for="test-loading-display">Loading states show correctly</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-empty-states"> <label for="test-empty-states">Empty states handled</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="test-large-datasets"> <label for="test-large-datasets">Large datasets perform well</label>
+        </div>
+
+        <h3>6.2 Performance Testing</h3>
+        <div class="task">
+            <input type="checkbox" id="perf-lighthouse"> <label for="perf-lighthouse">Run Lighthouse audit</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="perf-chrome-devtools"> <label for="perf-chrome-devtools">Chrome DevTools Performance analysis</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="perf-supabase-queries"> <label for="perf-supabase-queries">Supabase query analyzer check</label>
+        </div>
+
+        <h3>6.3 Deployment</h3>
+        <div class="task">
+            <input type="checkbox" id="deploy-staging"> <label for="deploy-staging">Deploy to Vercel staging</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="deploy-staging-test"> <label for="deploy-staging-test">Test all features in staging</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="deploy-production"> <label for="deploy-production">Deploy to Vercel production</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="deploy-verify-prod"> <label for="deploy-verify-prod">Verify all features work in production</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="deploy-test-payment"> <label for="deploy-test-payment">Test payment flow with real Stripe</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="deploy-monitor-errors"> <label for="deploy-monitor-errors">Monitor error logs</label>
+        </div>
+        <div class="task">
+            <input type="checkbox" id="deploy-check-analytics"> <label for="deploy-check-analytics">Check analytics</label>
+        </div>
+
+        <h3>Deliverables:</h3>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-tests-passing"> All tests passing
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-performance-met"> Performance benchmarks met
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-staging-deployed"> Staging deployed and tested
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-production-deployed"> Production deployed
+        </div>
+        <div class="deliverable">
+            <input type="checkbox" id="deliverable-monitoring-setup"> Monitoring set up
+        </div>
+    </div>
+
+    <script>
+        // Update last modified timestamp
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+        document.getElementById('startDate').textContent = new Date().toLocaleString();
+
+        // Add event listeners to all checkboxes to update last modified time
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+                updateProgress();
+            });
+        });
+
+        function updateProgress() {
+            const total = document.querySelectorAll('input[type="checkbox"]').length;
+            const checked = document.querySelectorAll('input[type="checkbox"]:checked').length;
+            const percentage = Math.round((checked / total) * 100);
+            document.getElementById('overallProgress').textContent = percentage + '%';
+        }
+    </script>
+</body>
+</html>

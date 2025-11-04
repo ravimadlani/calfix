@@ -21,6 +21,8 @@ import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type { CalendarEvent, CalendarProviderId } from '../types';
 import MeetingAudienceSummary from './MeetingAudienceSummary';
+import { activityLogger, logUserAction } from '../services/activityLogger';
+import { healthScoreTracker } from '../services/healthScoreTracker';
 
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
@@ -87,6 +89,7 @@ const CalendarDashboard = () => {
   });
   const [availableCalendars, setAvailableCalendars] = useState([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
+  const [loggingInitialized, setLoggingInitialized] = useState(false);
 
   const primaryClerkEmail =
     clerkUser?.primaryEmailAddress?.emailAddress ||
@@ -403,6 +406,26 @@ const CalendarDashboard = () => {
       const analyticsData = calculateAnalytics(filteredEvents, extendedEvents, calendarOwnerEmail);
       setAnalytics(analyticsData);
 
+      // Log analytics view based on current view
+      const viewActionMap = {
+        'today': 'analytics_view_today',
+        'tomorrow': 'analytics_view_tomorrow',
+        'week': 'analytics_view_week',
+        'nextWeek': 'analytics_view_next_week',
+        'thisMonth': 'analytics_view_month',
+        'nextMonth': 'analytics_view_next_month'
+      };
+
+      const actionName = viewActionMap[currentView] || 'analytics_view_today';
+      logUserAction(actionName, {
+        calendarId: calendarIdString,
+        timeHorizon: currentView,
+        metadata: {
+          eventCount: filteredEvents.length,
+          healthScore: analyticsData.healthScore
+        }
+      });
+
       // Get events with gap information using filtered events
       const eventsWithGapData = getEventsWithGaps(filteredEvents);
 
@@ -512,6 +535,38 @@ const CalendarDashboard = () => {
     }
   }, [checkSubscription, clerkUser?.id]);
 
+  // Initialize logging services when user is authenticated
+  useEffect(() => {
+    const initializeLogging = async () => {
+      if (clerkUser?.id && !loggingInitialized) {
+        try {
+          console.log('[CalendarDashboard] Initializing activity logging services...');
+
+          // Initialize both services with the user ID
+          await activityLogger.initialize(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY,
+            clerkUser.id
+          );
+
+          await healthScoreTracker.initialize(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY,
+            clerkUser.id
+          );
+
+          setLoggingInitialized(true);
+          console.log('[CalendarDashboard] Activity logging services initialized successfully');
+        } catch (error) {
+          console.error('[CalendarDashboard] Failed to initialize logging services:', error);
+          // Don't fail the whole app if logging fails
+        }
+      }
+    };
+
+    initializeLogging();
+  }, [clerkUser?.id, loggingInitialized]);
+
   // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {
     if (isCalendarConnected && subscriptionLoaded && maxCalendars > 0) {
@@ -555,6 +610,13 @@ const CalendarDashboard = () => {
     try {
       await helper(event);
 
+      // Log the action
+      logUserAction('quick_action_add_prep', {
+        calendarId: managedCalendarId,
+        eventId: event.id,
+        timeHorizon: currentView
+      });
+
       if (!options.skipRefresh) {
         await loadEvents();
       }
@@ -591,6 +653,13 @@ const CalendarDashboard = () => {
     setActionLoading(true);
     try {
       await helper(event);
+
+      // Log the action
+      logUserAction('quick_action_add_wrap', {
+        calendarId: managedCalendarId,
+        eventId: event.id,
+        timeHorizon: currentView
+      });
 
       if (!options.skipRefresh) {
         await loadEvents();
@@ -640,6 +709,17 @@ const CalendarDashboard = () => {
     setActionLoading(true);
     try {
       await move(event.id, event, nextSlot);
+
+      // Log the action
+      logUserAction('meeting_reschedule', {
+        calendarId: managedCalendarId,
+        eventId: event.id,
+        timeHorizon: currentView,
+        metadata: {
+          newStartTime: nextSlot.toISOString()
+        }
+      });
+
       await loadEvents();
       alert('Event moved successfully!');
     } catch (err) {
@@ -933,6 +1013,17 @@ const CalendarDashboard = () => {
     }
 
     await helper(placeholderEvent);
+
+    // Log the action
+    logUserAction('calendar_event_delete', {
+      calendarId: managedCalendarId,
+      eventId: placeholderEvent.id,
+      timeHorizon: currentView,
+      metadata: {
+        eventType: 'placeholder',
+        eventTitle: placeholderEvent.summary
+      }
+    });
 
     // Only refresh if not in bulk mode (bulk mode will refresh once at the end)
     if (!options.skipRefresh) {
