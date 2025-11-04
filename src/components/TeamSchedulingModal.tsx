@@ -642,13 +642,12 @@ Thanks!`;
 
         return ({
           summary,
-          description: [
-            'Calendar hold created from CalFix scheduler.',
-            trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
-            respectedTimezones.length > 0
-              ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
-              : null
-          ].filter(Boolean).join('\n'),
+        description: [
+          trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
+          respectedTimezones.length > 0
+            ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
+            : null
+        ].filter(Boolean).join('\n'),
           start: {
             dateTime: slot.start.toISOString(),
             timeZone: hostTimezone
