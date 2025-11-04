@@ -51,7 +51,7 @@ class ActivityLogger {
   private sessionId: string | null = null;
   private actionQueue: UserAction[] = [];
   private errorQueue: ActionError[] = [];
-  private batchTimer: NodeJS.Timeout | null = null;
+  private batchTimer: ReturnType<typeof setTimeout> | null = null;
   private isInitialized = false;
   private actionTypeCache = new Map<string, string>();
 
@@ -207,7 +207,7 @@ class ActivityLogger {
 
     // Remove any PII from metadata
     if (sanitized.metadata) {
-      const sanitizedMetadata: Record<string, any> = {};
+      const sanitizedMetadata: Record<string, unknown> = {};
 
       for (const [key, value] of Object.entries(sanitized.metadata)) {
         // Skip fields that might contain PII
@@ -249,7 +249,7 @@ class ActivityLogger {
 
     // Sanitize metadata
     if (sanitized.metadata) {
-      sanitized.metadata = this.sanitizeObject(sanitized.metadata);
+      sanitized.metadata = this.sanitizeObject(sanitized.metadata) as Record<string, unknown>;
     }
 
     return sanitized;

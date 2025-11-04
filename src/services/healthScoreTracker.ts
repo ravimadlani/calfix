@@ -433,10 +433,11 @@ class HealthScoreTracker {
 
     const override = this.userOverrides.get(overrideKey) || this.userOverrides.get(globalOverrideKey);
 
-    if (override) {
-      if (override.is_disabled) return 0;
-      if (override.override_points !== null) {
-        return parseFloat(override.override_points);
+    if (override && typeof override === 'object' && !Array.isArray(override)) {
+      const overrideObj = override as Record<string, unknown>;
+      if (overrideObj.is_disabled) return 0;
+      if (overrideObj.override_points !== null && overrideObj.override_points !== undefined) {
+        return Number(overrideObj.override_points);
       }
     }
 
@@ -462,7 +463,7 @@ class HealthScoreTracker {
 
     try {
       // Create snooze record
-      const { data: snooze, error } = await this.supabase
+      const { error } = await this.supabase
         .from('health_alert_snoozes')
         .insert({
           user_id: this.userId,
@@ -522,13 +523,13 @@ class HealthScoreTracker {
    * Check if an event matches a snooze pattern
    */
   private eventMatchesPattern(event: CalendarEvent, pattern: SnoozePattern): boolean {
-    const config = pattern.patternConfig;
+    const config = pattern.patternConfig as Record<string, unknown>;
 
     switch (pattern.patternType) {
       case 'event_title': {
         if (!event.summary) return false;
         const titleLower = event.summary.toLowerCase();
-        const titlePatterns = config.title_contains || [];
+        const titlePatterns = (config.title_contains as string[]) || [];
         return titlePatterns.some((p: string) =>
           titleLower.includes(p.toLowerCase())
         );
@@ -537,11 +538,12 @@ class HealthScoreTracker {
       case 'attendee':
         if (!event.attendees) return false;
         if (config.attendee_count_gt) {
-          return event.attendees.length > config.attendee_count_gt;
+          return event.attendees.length > (config.attendee_count_gt as number);
         }
         if (config.attendee_emails) {
+          const emails = config.attendee_emails as string[];
           return event.attendees.some(a =>
-            config.attendee_emails.includes(a.email)
+            emails.includes(a.email)
           );
         }
         return false;
@@ -552,7 +554,7 @@ class HealthScoreTracker {
 
       case 'location': {
         if (!event.location) return false;
-        const locationPatterns = config.location_contains || [];
+        const locationPatterns = (config.location_contains as string[]) || [];
         return locationPatterns.some((p: string) =>
           event.location.toLowerCase().includes(p.toLowerCase())
         );
@@ -704,7 +706,7 @@ class HealthScoreTracker {
   ): CalendarEvent[] {
     return events.filter(event => {
       const eventStart = this.getEventStartTime(event);
-      const eventEnd = this.getEventEndTime(event);
+      // const eventEnd = this.getEventEndTime(event); // Not currently used
 
       return eventStart >= start && eventStart <= end;
     });
@@ -805,8 +807,8 @@ export async function trackHealthImpact(
   actionId: string,
   beforeScore: number,
   afterScore: number,
-  horizon: TimeHorizon,
-  factorsAffected: any[]
+  horizon: TimeHorizon
+  // factorsAffected: unknown[] // Commented out - will be used when implementation is complete
 ): Promise<void> {
   // Implementation would save to action_health_impacts table
   console.log(`Health impact tracked: ${beforeScore} -> ${afterScore} for ${horizon}`);

@@ -24,6 +24,19 @@ import MeetingAudienceSummary from './MeetingAudienceSummary';
 import { activityLogger, logUserAction } from '../services/activityLogger';
 import { healthScoreTracker } from '../services/healthScoreTracker';
 
+// Helper to map view names to TimeHorizon type
+const getTimeHorizon = (view: string): 'today' | 'tomorrow' | 'week' | 'next_week' | 'month' | 'next_month' => {
+  const map: Record<string, 'today' | 'tomorrow' | 'week' | 'next_week' | 'month' | 'next_month'> = {
+    'today': 'today',
+    'tomorrow': 'tomorrow',
+    'week': 'week',
+    'nextWeek': 'next_week',
+    'thisMonth': 'month',
+    'nextMonth': 'next_month'
+  };
+  return map[view] || 'today';
+};
+
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
   const {
@@ -419,7 +432,7 @@ const CalendarDashboard = () => {
       const actionName = viewActionMap[currentView] || 'analytics_view_today';
       logUserAction(actionName, {
         calendarId: calendarIdString,
-        timeHorizon: currentView,
+        timeHorizon: getTimeHorizon(currentView),
         metadata: {
           eventCount: filteredEvents.length,
           healthScore: analyticsData.healthScore
@@ -614,7 +627,7 @@ const CalendarDashboard = () => {
       logUserAction('quick_action_add_prep', {
         calendarId: managedCalendarId,
         eventId: event.id,
-        timeHorizon: currentView
+        timeHorizon: getTimeHorizon(currentView)
       });
 
       if (!options.skipRefresh) {
@@ -658,7 +671,7 @@ const CalendarDashboard = () => {
       logUserAction('quick_action_add_wrap', {
         calendarId: managedCalendarId,
         eventId: event.id,
-        timeHorizon: currentView
+        timeHorizon: getTimeHorizon(currentView)
       });
 
       if (!options.skipRefresh) {
@@ -714,7 +727,7 @@ const CalendarDashboard = () => {
       logUserAction('meeting_reschedule', {
         calendarId: managedCalendarId,
         eventId: event.id,
-        timeHorizon: currentView,
+        timeHorizon: getTimeHorizon(currentView),
         metadata: {
           newStartTime: nextSlot.toISOString()
         }
@@ -1018,7 +1031,7 @@ const CalendarDashboard = () => {
     logUserAction('calendar_event_delete', {
       calendarId: managedCalendarId,
       eventId: placeholderEvent.id,
-      timeHorizon: currentView,
+      timeHorizon: getTimeHorizon(currentView),
       metadata: {
         eventType: 'placeholder',
         eventTitle: placeholderEvent.summary
