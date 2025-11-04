@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 
 type ParticipantRole = 'host' | 'required' | 'optional';
@@ -232,6 +232,8 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   const [emailDraft, setEmailDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isIpad, setIsIpad] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const suggestedTimezones = useMemo(() => {
     const existing = new Set(COMMON_TIMEZONES.map(tz => tz.value));
@@ -242,6 +244,24 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   }, [defaultTimezone]);
 
   const hostParticipant = participants.find(person => person.role === 'host') ?? participants[0];
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined') {
+      return;
+    }
+
+    const ua = navigator.userAgent || '';
+    const platform = navigator.platform || '';
+    const maxTouchPoints = typeof navigator.maxTouchPoints === 'number' ? navigator.maxTouchPoints : 0;
+    const detectedIpad = /iPad/.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
+    setIsIpad(detectedIpad);
+  }, []);
+
+  useEffect(() => {
+    if (step !== 3) {
+      setCopyFeedback(null);
+    }
+  }, [step]);
 
   const getTimezoneLabel = (timezone: string) =>
     suggestedTimezones.find(tz => tz.value === timezone)?.label ?? timezone;
@@ -590,6 +610,21 @@ Thanks!`;
     setStep(3);
   };
 
+  const copyEmailToClipboard = async () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+      setCopyFeedback({ type: 'error', text: 'Clipboard not available. Please copy manually.' });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(emailDraft);
+      setCopyFeedback({ type: 'success', text: 'Message copied to clipboard.' });
+    } catch (error) {
+      console.error('Clipboard copy failed', error);
+      setCopyFeedback({ type: 'error', text: 'Unable to copy automatically. Please copy manually.' });
+    }
+  };
+
   const createCalendarHolds = async () => {
     try {
       setLoading(true);
@@ -607,13 +642,12 @@ Thanks!`;
 
         return ({
           summary,
-          description: [
-            'Calendar hold created from CalFix scheduler.',
-            trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
-            respectedTimezones.length > 0
-              ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
-              : null
-          ].filter(Boolean).join('\n'),
+        description: [
+          trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
+          respectedTimezones.length > 0
+            ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
+            : null
+        ].filter(Boolean).join('\n'),
           start: {
             dateTime: slot.start.toISOString(),
             timeZone: hostTimezone
@@ -1131,6 +1165,13 @@ Thanks!`;
             onChange={(event) => setEmailDraft(event.target.value)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-600 focus:border-slate-600 flex-1 min-h-[180px]"
           />
+          {copyFeedback && (
+            <p
+              className={`text-xs ${copyFeedback.type === 'success' ? 'text-emerald-600' : 'text-amber-600'}`}
+            >
+              {copyFeedback.text}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -1201,7 +1242,10 @@ Thanks!`;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-slate-900/10">
+      <div
+        className={`bg-white rounded-3xl w-full max-w-4xl ${isIpad ? 'max-h-[100vh] overflow-y-auto' : 'max-h-[92vh] overflow-hidden'} flex flex-col shadow-2xl border border-slate-900/10`}
+        style={isIpad ? { WebkitOverflowScrolling: 'touch' } : undefined}
+      >
         <div
           className="px-6 py-5"
           style={{
@@ -1326,24 +1370,34 @@ Thanks!`;
               </button>
             )}
             {step === 3 && (
-              <button
-                type="button"
-                onClick={createCalendarHolds}
-                disabled={loading}
-                className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: '#047857',
-                  color: '#ffffff'
-                }}
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.backgroundColor = '#065f46';
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.backgroundColor = '#047857';
-                }}
-              >
-                {loading ? 'Saving…' : 'Create holds & copy email'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={copyEmailToClipboard}
+                  disabled={!emailDraft.trim()}
+                  className="px-5 py-2 rounded-xl text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Copy message
+                </button>
+                <button
+                  type="button"
+                  onClick={createCalendarHolds}
+                  disabled={loading}
+                  className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: '#047857',
+                    color: '#ffffff'
+                  }}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.backgroundColor = '#065f46';
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.backgroundColor = '#047857';
+                  }}
+                >
+                  {loading ? 'Saving…' : 'Create holds'}
+                </button>
+              </>
             )}
           </div>
         </div>

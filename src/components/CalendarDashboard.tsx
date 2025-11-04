@@ -1299,13 +1299,11 @@ const CalendarDashboard = () => {
           managedCalendarId={managedCalendarId}
           hostEmail={calendarOwnerEmail}
           onSchedule={async (holds, emailDraft) => {
+            void emailDraft;
             // Create calendar holds for team members on the managed calendar
             for (const hold of holds) {
               await createProviderEvent(hold, managedCalendarId);
             }
-
-            // Copy email draft to clipboard
-            await navigator.clipboard.writeText(emailDraft);
 
             // Refresh events
             await loadEvents();
