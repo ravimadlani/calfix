@@ -1103,18 +1103,13 @@ Thanks!`;
                         day: 'numeric'
                       }).format(slot.start)} · {formatTimeRangeBasic(slot.start, slot.end, hostParticipant?.timezone || defaultTimezone)}
                     </div>
-                    <div className="border border-slate-200 rounded-lg bg-white px-3 py-2">
-                      <label className="block text-[11px] font-semibold text-slate-500 mb-1">
-                        Hold title
-                      </label>
-                      <input
-                        type="text"
-                        value={titleValue}
-                        onChange={(event) => updateHoldTitle(index, event.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
-                        placeholder={defaultTitle}
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={titleValue}
+                      onChange={(event) => updateHoldTitle(index, event.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+                      placeholder={defaultTitle}
+                    />
                     <ul className="text-xs text-slate-500 space-y-1">
                       {timezoneSummaries.map(summary => (
                         <li key={summary.timezone}>
