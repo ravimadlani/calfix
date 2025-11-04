@@ -575,9 +575,9 @@ const buildGuardrailStatus = (slotStart: Date, slotEnd: Date): SlotGuardrailStat
         }).format(slot.start)}\n${timezoneLines}${guardSection}`;
       }).join('\n\n');
 
-    const draft = `Hi there,
+    const draft = `Hi,
 
-Thanks for taking the time to connect. Here are a couple of options that keep the team within their working hours:
+We have availability at the following times:
 
 ${slotText}
 
@@ -1059,8 +1059,8 @@ Thanks!`;
 
   const renderStepThree = () => (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
-        <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4 min-h-[320px] lg:min-h-[360px]">
+        <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-4 min-h-0">
           <div>
             <h3 className="text-sm font-semibold text-slate-700">Participants &amp; guardrails</h3>
             <ul className="mt-2 space-y-2 text-sm text-slate-600">
@@ -1086,9 +1086,9 @@ Thanks!`;
             </ul>
           </div>
 
-          <div>
+          <div className="min-h-0">
             <h3 className="text-sm font-semibold text-slate-700">Selected windows</h3>
-            <ul className="mt-2 space-y-3 text-sm text-slate-600">
+            <ul className="mt-2 space-y-3 text-sm text-slate-600 max-h-60 overflow-y-auto pr-1">
               {selectedSlots.map((slot, index) => {
                 const timezoneSummaries = summarizeSlotTimezones(slot);
                 const defaultTitle = `[Hold] ${meetingPurpose.trim()} ${index + 1}`;
@@ -1124,13 +1124,12 @@ Thanks!`;
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3">
+        <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3 flex flex-col min-h-0">
           <h3 className="text-sm font-semibold text-slate-700">Message to send</h3>
           <textarea
             value={emailDraft}
             onChange={(event) => setEmailDraft(event.target.value)}
-            rows={14}
-            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-slate-600 focus:border-slate-600 flex-1 min-h-[180px]"
           />
         </div>
       </div>
