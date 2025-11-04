@@ -778,7 +778,7 @@ Thanks!`;
   );
 
   const renderStepOne = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-0">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="block text-sm font-medium text-slate-700">
@@ -855,7 +855,7 @@ Thanks!`;
           </p>
         )}
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 max-h-52 overflow-y-auto pr-1">
           {respectedTimezones.map(guard => (
             <div
               key={guard.id}
@@ -914,7 +914,7 @@ Thanks!`;
             ＋ Add teammate
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4 max-h-64 overflow-y-auto pr-1">
           {participants.map(renderParticipantCard)}
         </div>
       </div>
