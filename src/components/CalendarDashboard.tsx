@@ -474,28 +474,6 @@ const CalendarDashboard = () => {
         }
       });
 
-      // Calculate and save health score using the secure tracker
-      console.log('[CalendarDashboard] Health score check - loggingInitialized:', loggingInitialized, 'tracker:', !!secureHealthScoreTracker);
-      if (loggingInitialized && secureHealthScoreTracker) {
-        console.log('[CalendarDashboard] Attempting to calculate health score...');
-        try {
-          const { startDate, endDate } = getDateRange(currentView);
-          console.log('[CalendarDashboard] Date range:', { startDate, endDate });
-          const healthScore = await secureHealthScoreTracker.calculateHealthScore(
-            analyticsData,
-            calendarIdString,
-            getTimeHorizon(currentView),
-            startDate,
-            endDate
-          );
-          console.log('[CalendarDashboard] Health score calculated:', healthScore);
-        } catch (error) {
-          console.error('[CalendarDashboard] Failed to calculate health score:', error);
-        }
-      } else {
-        console.log('[CalendarDashboard] Skipping health score - not initialized');
-      }
-
       // Get events with gap information using filtered events
       const eventsWithGapData = getEventsWithGaps(filteredEvents);
 
@@ -668,6 +646,45 @@ const CalendarDashboard = () => {
       setSelectedDay(null);
     }
   }, [currentView, isCalendarConnected, loadEvents, subscriptionLoaded]);
+
+  // Calculate and save health score when both services are initialized and analytics are available
+  useEffect(() => {
+    const calculateAndSaveHealthScore = async () => {
+      console.log('[CalendarDashboard] Health score useEffect - checking conditions:', {
+        loggingInitialized,
+        hasTracker: !!secureHealthScoreTracker,
+        hasAnalytics: !!analytics,
+        analyticsHealthScore: analytics?.healthScore
+      });
+
+      if (loggingInitialized && secureHealthScoreTracker && analytics) {
+        console.log('[CalendarDashboard] All conditions met - calculating health score...');
+        try {
+          const { startDate, endDate } = getDateRange(currentView);
+          const calendarId = managedCalendarId || 'primary';
+          console.log('[CalendarDashboard] Health score params:', {
+            calendarId,
+            timeHorizon: getTimeHorizon(currentView),
+            startDate,
+            endDate
+          });
+
+          const healthScore = await secureHealthScoreTracker.calculateHealthScore(
+            analytics,
+            calendarId,
+            getTimeHorizon(currentView),
+            startDate,
+            endDate
+          );
+          console.log('[CalendarDashboard] Health score successfully calculated and saved:', healthScore);
+        } catch (error) {
+          console.error('[CalendarDashboard] Failed to calculate health score:', error);
+        }
+      }
+    };
+
+    calculateAndSaveHealthScore();
+  }, [loggingInitialized, secureHealthScoreTracker, analytics, currentView, managedCalendarId]);
 
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
