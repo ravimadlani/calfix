@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest, getSupabaseAdmin } from './lib/auth';
-import { SessionOperationSchema } from './lib/validation';
+import { authenticateRequest, getSupabaseAdmin } from './lib/auth.js';
+import { SessionOperationSchema } from './lib/validation.js';
 import { z } from 'zod';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -144,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Session operation error:', error);
 
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: `Validation error: ${error.errors[0].message}` });
+      return res.status(400).json({ error: `Validation error: ${error.issues[0].message}` });
     }
 
     if (error instanceof Error && error.message === 'Authentication failed') {

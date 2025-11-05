@@ -17,7 +17,7 @@ export const LogActionSchema = z.object({
   attendeeCount: z.number().int().min(0).optional(),
   healthScoreImpact: z.number().optional(),
   timeHorizon: z.enum(['today', 'tomorrow', 'week', 'next_week', 'month', 'next_month']).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   clientTimestamp: z.string().datetime({ offset: true }).optional(),
 });
 
@@ -31,7 +31,7 @@ export const LogErrorSchema = z.object({
   errorMessage: z.string().min(1).max(1000),
   errorStack: z.string().max(5000).optional(),
   recoveryAction: z.string().max(500).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const BatchLogErrorsSchema = z.object({
@@ -41,7 +41,7 @@ export const BatchLogErrorsSchema = z.object({
 export const SessionOperationSchema = z.object({
   operation: z.enum(['create', 'update', 'end']),
   sessionId: z.string().uuid().optional(), // Required for update/end
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ============================================
@@ -60,7 +60,7 @@ export const SaveHealthScoreSchema = z.object({
   totalEvents: z.number().int().min(0).optional(),
   totalMeetings: z.number().int().min(0).optional(),
   totalHours: z.number().min(0).optional(),
-  calculationMetadata: z.record(z.unknown()).optional(),
+  calculationMetadata: z.record(z.string(), z.unknown()).optional(),
   breakdowns: z.array(z.object({
     factorId: z.string().uuid(),
     occurrences: z.number().int().min(0),
@@ -69,7 +69,7 @@ export const SaveHealthScoreSchema = z.object({
     snoozedOccurrences: z.number().int().min(0).optional(),
     snoozedImpact: z.number().optional(),
     affectedEventIds: z.array(z.string()).optional(),
-    calculationDetails: z.record(z.unknown()).optional(),
+    calculationDetails: z.record(z.string(), z.unknown()).optional(),
   })).optional(),
 });
 
