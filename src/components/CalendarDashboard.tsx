@@ -475,9 +475,12 @@ const CalendarDashboard = () => {
       });
 
       // Calculate and save health score using the secure tracker
+      console.log('[CalendarDashboard] Health score check - loggingInitialized:', loggingInitialized, 'tracker:', !!secureHealthScoreTracker);
       if (loggingInitialized && secureHealthScoreTracker) {
+        console.log('[CalendarDashboard] Attempting to calculate health score...');
         try {
           const { startDate, endDate } = getDateRange(currentView);
+          console.log('[CalendarDashboard] Date range:', { startDate, endDate });
           const healthScore = await secureHealthScoreTracker.calculateHealthScore(
             analyticsData,
             calendarIdString,
@@ -489,6 +492,8 @@ const CalendarDashboard = () => {
         } catch (error) {
           console.error('[CalendarDashboard] Failed to calculate health score:', error);
         }
+      } else {
+        console.log('[CalendarDashboard] Skipping health score - not initialized');
       }
 
       // Get events with gap information using filtered events
