@@ -38,6 +38,26 @@ const getTimeHorizon = (view: string): 'today' | 'tomorrow' | 'week' | 'next_wee
   return map[view] || 'today';
 };
 
+// Helper to get date range for current view
+const getDateRange = (view: string): { startDate: Date, endDate: Date } => {
+  switch (view) {
+    case 'today':
+      return getTodayRange();
+    case 'tomorrow':
+      return getTomorrowRange();
+    case 'week':
+      return getThisWeekRange();
+    case 'nextWeek':
+      return getNextWeekRange();
+    case 'thisMonth':
+      return getThisMonthRange();
+    case 'nextMonth':
+      return getNextMonthRange();
+    default:
+      return getTodayRange();
+  }
+};
+
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
@@ -440,6 +460,23 @@ const CalendarDashboard = () => {
           healthScore: analyticsData.healthScore
         }
       });
+
+      // Calculate and save health score using the secure tracker
+      if (loggingInitialized && secureHealthScoreTracker) {
+        try {
+          const { startDate, endDate } = getDateRange(currentView);
+          const healthScore = await secureHealthScoreTracker.calculateHealthScore(
+            analyticsData,
+            getTimeHorizon(currentView),
+            calendarIdString,
+            startDate,
+            endDate
+          );
+          console.log('[CalendarDashboard] Health score calculated:', healthScore);
+        } catch (error) {
+          console.error('[CalendarDashboard] Failed to calculate health score:', error);
+        }
+      }
 
       // Get events with gap information using filtered events
       const eventsWithGapData = getEventsWithGaps(filteredEvents);
