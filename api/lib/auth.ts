@@ -73,6 +73,22 @@ export async function verifyCalendarAccess(
   calendarId: string
 ): Promise<boolean> {
   try {
+    // Handle "primary" alias by checking for the user's primary calendar
+    if (calendarId === 'primary') {
+      const { data, error } = await supabaseAdmin
+        .from('managed_calendars')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_primary', true)
+        .single();
+
+      if (error || !data) {
+        return false;
+      }
+      return true;
+    }
+
+    // For non-primary calendars, check by calendar_id
     const { data, error } = await supabaseAdmin
       .from('managed_calendars')
       .select('id')
