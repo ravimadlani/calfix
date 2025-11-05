@@ -18,7 +18,7 @@ export const LogActionSchema = z.object({
   healthScoreImpact: z.number().optional(),
   timeHorizon: z.enum(['today', 'tomorrow', 'week', 'next_week', 'month', 'next_month']).optional(),
   metadata: z.record(z.unknown()).optional(),
-  clientTimestamp: z.string().datetime().optional(),
+  clientTimestamp: z.string().datetime({ offset: true }).optional(),
 });
 
 export const BatchLogActionsSchema = z.object({
@@ -51,8 +51,8 @@ export const SessionOperationSchema = z.object({
 export const SaveHealthScoreSchema = z.object({
   calendarId: z.string().max(255),
   timeHorizon: z.string().max(50),
-  periodStart: z.string().datetime(),
-  periodEnd: z.string().datetime(),
+  periodStart: z.string().datetime({ offset: true }),
+  periodEnd: z.string().datetime({ offset: true }),
   baseScore: z.number().min(0).max(100),
   actualScore: z.number().min(0).max(100),
   unsnoozedScore: z.number().min(0).max(100),
@@ -80,13 +80,13 @@ export const CreateSnoozeSchema = z.object({
   snoozeReason: z.string().max(500).optional(),
   snoozeType: z.enum(['manual', 'pattern', 'auto']),
   patternId: z.string().uuid().optional(),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.string().datetime({ offset: true }).optional(),
 });
 
 export const UpdateSnoozeSchema = z.object({
   snoozeId: z.string().uuid(),
   isActive: z.boolean().optional(),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.string().datetime({ offset: true }).optional(),
   snoozeReason: z.string().max(500).optional(),
 });
 

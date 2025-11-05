@@ -133,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Activity logging error:', error);
 
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: `Validation error: ${error.errors[0].message}` });
+      return res.status(400).json({ error: `Validation error: ${error.issues[0].message}` });
     }
 
     if (error instanceof Error && error.message === 'Authentication failed') {
