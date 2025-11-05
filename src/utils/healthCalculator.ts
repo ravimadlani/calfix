@@ -178,35 +178,41 @@ export const calculateHealthScore = (events) => {
  * @param {number} score - Health score (0-100)
  * @returns {Object} Interpretation with label, color, and message
  */
-export const getHealthScoreInterpretation = (score) => {
+export const getHealthScoreInterpretation = (score: number): {
+  label: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  color: 'green' | 'blue' | 'yellow' | 'red';
+  bgColor: string;
+  textColor: string;
+  message: string;
+} => {
   if (score >= 80) {
     return {
-      label: 'Excellent',
-      color: 'green',
+      label: 'Excellent' as const,
+      color: 'green' as const,
       bgColor: 'bg-green-100',
       textColor: 'text-green-800',
       message: 'Your calendar is well-balanced!'
     };
   } else if (score >= 60) {
     return {
-      label: 'Good',
-      color: 'blue',
+      label: 'Good' as const,
+      color: 'blue' as const,
       bgColor: 'bg-slate-100',
       textColor: 'text-slate-800',
       message: 'Good calendar health with room for improvement'
     };
   } else if (score >= 40) {
     return {
-      label: 'Fair',
-      color: 'yellow',
+      label: 'Fair' as const,
+      color: 'yellow' as const,
       bgColor: 'bg-yellow-100',
       textColor: 'text-yellow-800',
       message: 'Consider optimizing your schedule'
     };
   } else {
     return {
-      label: 'Poor',
-      color: 'red',
+      label: 'Poor' as const,
+      color: 'red' as const,
       bgColor: 'bg-red-100',
       textColor: 'text-red-800',
       message: 'Your calendar needs attention'

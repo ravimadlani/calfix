@@ -40,22 +40,35 @@ const getTimeHorizon = (view: string): 'today' | 'tomorrow' | 'week' | 'next_wee
 
 // Helper to get date range for current view
 const getDateRange = (view: string): { startDate: Date, endDate: Date } => {
+  let range;
   switch (view) {
     case 'today':
-      return getTodayRange();
+      range = getTodayRange();
+      break;
     case 'tomorrow':
-      return getTomorrowRange();
+      range = getTomorrowRange();
+      break;
     case 'week':
-      return getThisWeekRange();
+      range = getThisWeekRange();
+      break;
     case 'nextWeek':
-      return getNextWeekRange();
+      range = getNextWeekRange();
+      break;
     case 'thisMonth':
-      return getThisMonthRange();
+      range = getThisMonthRange();
+      break;
     case 'nextMonth':
-      return getNextMonthRange();
+      range = getNextMonthRange();
+      break;
     default:
-      return getTodayRange();
+      range = getTodayRange();
   }
+
+  // Convert timeMin/timeMax to Date objects
+  return {
+    startDate: new Date(range.timeMin),
+    endDate: new Date(range.timeMax)
+  };
 };
 
 const CalendarDashboard = () => {
@@ -467,8 +480,8 @@ const CalendarDashboard = () => {
           const { startDate, endDate } = getDateRange(currentView);
           const healthScore = await secureHealthScoreTracker.calculateHealthScore(
             analyticsData,
-            getTimeHorizon(currentView),
             calendarIdString,
+            getTimeHorizon(currentView),
             startDate,
             endDate
           );
