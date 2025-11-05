@@ -17,12 +17,13 @@ import UpgradeModal from './UpgradeModal';
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type { CalendarEvent, CalendarProviderId } from '../types';
 import MeetingAudienceSummary from './MeetingAudienceSummary';
-import { activityLogger, logUserAction } from '../services/activityLogger';
-import { healthScoreTracker } from '../services/healthScoreTracker';
+// Use secure versions of the services
+import secureActivityLogger, { logUserAction } from '../services/activityLoggerSecure';
+import secureHealthScoreTracker from '../services/healthScoreTrackerSecure';
 
 // Helper to map view names to TimeHorizon type
 const getTimeHorizon = (view: string): 'today' | 'tomorrow' | 'week' | 'next_week' | 'month' | 'next_month' => {
@@ -39,6 +40,7 @@ const getTimeHorizon = (view: string): 'today' | 'tomorrow' | 'week' | 'next_wee
 
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
   const {
     activeProvider,
     activeProviderId,
@@ -553,23 +555,31 @@ const CalendarDashboard = () => {
     const initializeLogging = async () => {
       if (clerkUser?.id && !loggingInitialized) {
         try {
-          console.log('[CalendarDashboard] Initializing activity logging services...');
+          console.log('[CalendarDashboard] Initializing secure activity logging services...');
 
-          // Initialize both services with the user ID
-          await activityLogger.initialize(
-            import.meta.env.VITE_SUPABASE_URL,
-            import.meta.env.VITE_SUPABASE_ANON_KEY,
-            clerkUser.id
+          // Create a function that gets the token
+          const tokenGetter = async () => {
+            try {
+              return await getToken();
+            } catch (error) {
+              console.error('Failed to get Clerk token:', error);
+              return null;
+            }
+          };
+
+          // Initialize both secure services with user ID and token getter
+          await secureActivityLogger.initialize(
+            clerkUser.id,
+            tokenGetter
           );
 
-          await healthScoreTracker.initialize(
-            import.meta.env.VITE_SUPABASE_URL,
-            import.meta.env.VITE_SUPABASE_ANON_KEY,
-            clerkUser.id
+          await secureHealthScoreTracker.initialize(
+            clerkUser.id,
+            tokenGetter
           );
 
           setLoggingInitialized(true);
-          console.log('[CalendarDashboard] Activity logging services initialized successfully');
+          console.log('[CalendarDashboard] Secure activity logging services initialized successfully');
         } catch (error) {
           console.error('[CalendarDashboard] Failed to initialize logging services:', error);
           // Don't fail the whole app if logging fails
@@ -578,7 +588,7 @@ const CalendarDashboard = () => {
     };
 
     initializeLogging();
-  }, [clerkUser?.id, loggingInitialized]);
+  }, [clerkUser?.id, loggingInitialized, getToken]);
 
   // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {
