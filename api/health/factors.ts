@@ -7,7 +7,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   authenticateRequest,
   getSupabaseAdmin
-} from '../lib/auth';
+} from '../lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow GET requests

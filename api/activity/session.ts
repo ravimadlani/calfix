@@ -4,8 +4,8 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest, getSupabaseAdmin } from '../lib/auth';
-import { SessionOperationSchema } from '../lib/validation';
+import { authenticateRequest, getSupabaseAdmin } from '../lib/auth.js';
+import { SessionOperationSchema } from '../lib/validation.js';
 import { z } from 'zod';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

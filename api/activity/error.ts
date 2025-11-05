@@ -4,8 +4,8 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest, getSupabaseAdmin } from '../lib/auth';
-import { BatchLogErrorsSchema } from '../lib/validation';
+import { authenticateRequest, getSupabaseAdmin } from '../lib/auth.js';
+import { BatchLogErrorsSchema } from '../lib/validation.js';
 import { z } from 'zod';
 
 const MAX_ERRORS_PER_BATCH = 50;

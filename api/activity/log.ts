@@ -8,8 +8,8 @@ import {
   authenticateRequest,
   getSupabaseAdmin,
   verifyCalendarAccess,
-} from '../lib/auth';
-import { BatchLogActionsSchema } from '../lib/validation';
+} from '../lib/auth.js';
+import { BatchLogActionsSchema } from '../lib/validation.js';
 import { z } from 'zod';
 
 const MAX_ACTIONS_PER_BATCH = 100;
