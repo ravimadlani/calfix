@@ -114,3 +114,22 @@ export async function verifyCalendarAccess(
 export function getSupabaseAdmin() {
   return supabaseAdmin;
 }
+
+/**
+ * Verify authentication and return result with authenticated flag
+ * Compatible with existing API endpoints
+ */
+export async function verifyAuth(req: VercelRequest): Promise<{ authenticated: boolean; userId?: string; email?: string }> {
+  try {
+    const user = await authenticateRequest(req);
+    return {
+      authenticated: true,
+      userId: user.userId,
+      email: user.email,
+    };
+  } catch {
+    return {
+      authenticated: false,
+    };
+  }
+}
