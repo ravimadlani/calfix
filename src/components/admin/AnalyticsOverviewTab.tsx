@@ -155,7 +155,8 @@ const AnalyticsOverviewTab: React.FC = () => {
       // Fetch category distribution
       const { data: actionTypes } = await supabase
         .from('action_types')
-        .select('action_name, action_category');
+        .select('name, category')
+        .eq('is_active', true);
 
       const { data: recentActions } = await supabase
         .from('user_actions')
@@ -164,9 +165,9 @@ const AnalyticsOverviewTab: React.FC = () => {
 
       // Create a map of action_name to category
       const actionCategoryMap: Record<string, string> = {};
-      actionTypes?.forEach((type: { action_name?: string; action_category?: string }) => {
-        const actionName = type.action_name;
-        const category = type.action_category;
+      actionTypes?.forEach((type: { name?: string; category?: string }) => {
+        const actionName = type.name;
+        const category = type.category;
         if (actionName && category) {
           actionCategoryMap[actionName] = category;
         }
