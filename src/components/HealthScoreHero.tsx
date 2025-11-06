@@ -6,18 +6,20 @@
 
 import React, { useState } from 'react';
 import type { CalendarAnalytics } from '../types/analytics';
+import type { HealthScoreResult } from '../services/healthScoreTrackerSecure';
 import { formatHours } from '../utils/dateHelpers';
 
 interface HealthScoreHeroProps {
   analytics: CalendarAnalytics;
+  healthScoreResult?: HealthScoreResult | null;
 }
 
-const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics }) => {
+const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScoreResult }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showUnsnoozed, setShowUnsnoozed] = useState(false);
 
   const {
-    healthScore,
+    healthScore: analyticsHealthScore,
     healthInterpretation,
     backToBackCount,
     insufficientBufferCount,
@@ -27,18 +29,28 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics }) => {
     doubleBookingCount,
   } = analytics;
 
+  // Use health score from healthScoreResult if available, otherwise fall back to analytics
+  const healthScore = healthScoreResult?.actualScore ?? analyticsHealthScore;
+
   // Calculate meeting overload factors
   const meetingOverload6h = totalMeetingHours > 6 ? 1 : 0;
   const meetingOverload8h = totalMeetingHours > 8 ? 1 : 0;
 
-  // Calculate score impacts (matching healthCalculator.ts logic)
-  const backToBackImpact = backToBackCount * -15;
-  const insufficientBufferImpact = insufficientBufferCount * -8;
-  const focusBlockImpact = Math.min(focusBlockCount, 5) * 8; // Max 5 blocks
-  const overload6hImpact = meetingOverload6h * -10;
-  const overload8hImpact = meetingOverload8h * -20;
-  const doubleBookingImpact = doubleBookingCount * -20;
-  const outOfHoursImpact = outOfHoursMeetingCount * -10;
+  // Helper function to get impact from healthScoreResult breakdowns
+  const getImpactFromBreakdown = (factorCode: string, fallbackImpact: number) => {
+    if (!healthScoreResult?.breakdowns) return fallbackImpact;
+    const breakdown = healthScoreResult.breakdowns.find(b => b.factorCode === factorCode);
+    return breakdown ? breakdown.totalImpact : fallbackImpact;
+  };
+
+  // Use impacts from health score calculation if available, otherwise fall back to local calculation
+  const backToBackImpact = getImpactFromBreakdown('back_to_back', backToBackCount * -15);
+  const insufficientBufferImpact = getImpactFromBreakdown('insufficient_buffer', insufficientBufferCount * -8);
+  const focusBlockImpact = getImpactFromBreakdown('focus_block', Math.min(focusBlockCount, 5) * 8);
+  const overload6hImpact = getImpactFromBreakdown('meeting_overload', meetingOverload6h * -10);
+  const overload8hImpact = getImpactFromBreakdown('extreme_meeting_overload', meetingOverload8h * -20);
+  const doubleBookingImpact = getImpactFromBreakdown('double_booking', doubleBookingCount * -20);
+  const outOfHoursImpact = getImpactFromBreakdown('out_of_hours', outOfHoursMeetingCount * -10);
 
   // Active factors (non-zero values or impacts)
   const activeFactors = [

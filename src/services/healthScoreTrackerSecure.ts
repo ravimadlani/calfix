@@ -162,7 +162,7 @@ class SecureHealthScoreTracker {
 
     // Calculate deductions based on factors
     for (const factor of this.healthFactors) {
-      if (!factor.is_enabled || factor.has_override) continue;
+      if (!factor.is_enabled) continue;
 
       let occurrences = 0;
       let affectedEventIds: string[] = [];
@@ -174,6 +174,9 @@ class SecureHealthScoreTracker {
           break;
         case 'insufficient_buffer':
           occurrences = analytics.insufficientBufferCount || 0;
+          break;
+        case 'focus_block':
+          occurrences = analytics.focusBlockCount || 0;
           break;
         case 'double_booking':
           occurrences = analytics.doubleBookings?.length || 0;
@@ -208,6 +211,9 @@ class SecureHealthScoreTracker {
         effectiveOccurrences = 1;
       } else if (factor.aggregation_type === 'capped' && factor.max_occurrences) {
         effectiveOccurrences = Math.min(occurrences, factor.max_occurrences);
+      } else if (factor.aggregation_type === 'per_occurrence' && factor.max_occurrences) {
+        // per_occurrence with max_occurrences acts as a cap
+        effectiveOccurrences = Math.min(occurrences, factor.max_occurrences);
       }
 
       // Calculate impact
@@ -231,15 +237,12 @@ class SecureHealthScoreTracker {
         }
       }
 
-      // Apply deductions
+      // Apply impact (totalImpact is already negative for penalties, positive for bonuses)
+      unsnoozedScore += totalImpact;
+      actualScore += (totalImpact - snoozedImpact);
+
       if (factor.is_penalty) {
-        unsnoozedScore -= totalImpact;
-        actualScore -= (totalImpact - snoozedImpact);
         snoozedDeductions += snoozedImpact;
-      } else {
-        // Bonus factors add points
-        unsnoozedScore += totalImpact;
-        actualScore += (totalImpact - snoozedImpact);
       }
 
       // Add to breakdowns

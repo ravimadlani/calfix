@@ -137,6 +137,7 @@ const CalendarDashboard = () => {
   const [availableCalendars, setAvailableCalendars] = useState([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
   const [loggingInitialized, setLoggingInitialized] = useState(false);
+  const [healthScoreResult, setHealthScoreResult] = useState(null);
 
   const primaryClerkEmail =
     clerkUser?.primaryEmailAddress?.emailAddress ||
@@ -693,6 +694,7 @@ const CalendarDashboard = () => {
             endDate
           );
           console.log('[CalendarDashboard] Health score successfully calculated and saved:', healthScore);
+          setHealthScoreResult(healthScore);
         } catch (error) {
           console.error('[CalendarDashboard] Failed to calculate health score:', error);
         }
@@ -1480,7 +1482,7 @@ const CalendarDashboard = () => {
 
       {/* Health Score Hero (replaces stats grid) */}
       {displayAnalytics && (
-        <HealthScoreHero analytics={displayAnalytics} />
+        <HealthScoreHero analytics={displayAnalytics} healthScoreResult={healthScoreResult} />
       )}
 
       {/* Day Filter Pills for Week and Month Views */}

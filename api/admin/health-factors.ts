@@ -26,7 +26,7 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
     const { data: factors, error } = await supabase
       .from('health_score_factors')
       .select('*')
-      .order('display_order', { ascending: true });
+      .order('factor_name', { ascending: true });
 
     if (error) {
       console.error('Error fetching health factors:', error);
@@ -61,14 +61,31 @@ async function handlePut(req: VercelRequest, res: VercelResponse) {
     const supabase = getSupabaseAdmin();
 
     // Update the health factor
+    const updateData: {
+      default_points: number;
+      is_enabled: boolean;
+      updated_at: string;
+      aggregation_type?: string;
+      max_occurrences?: number | null;
+    } = {
+      default_points: factor.default_points,
+      is_enabled: factor.is_enabled,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only include aggregation_type if provided
+    if (factor.aggregation_type) {
+      updateData.aggregation_type = factor.aggregation_type;
+    }
+
+    // Only include max_occurrences if provided (can be null to clear it)
+    if (factor.max_occurrences !== undefined) {
+      updateData.max_occurrences = factor.max_occurrences;
+    }
+
     const { data, error } = await supabase
       .from('health_score_factors')
-      .update({
-        default_points: factor.default_points,
-        enabled: factor.enabled,
-        max_occurrences_per_period: factor.max_occurrences_per_period,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', factor.id)
       .select()
       .single();

@@ -11,13 +11,16 @@ interface HealthFactor {
   factor_code: string;
   factor_name: string;
   description: string;
-  category: 'negative' | 'positive' | 'neutral';
+  category: string;
   default_points: number;
-  aggregation_method: 'per_occurrence' | 'once_per_period' | 'cumulative';
-  implementation_status: 'active' | 'detected_only' | 'planned';
-  enabled: boolean;
-  max_occurrences_per_period?: number;
-  display_order: number;
+  aggregation_type: 'per_occurrence' | 'once_per_period' | 'capped';
+  implementation_status: string;
+  is_enabled: boolean;
+  is_penalty: boolean;
+  max_occurrences?: number;
+  detection_logic?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const HealthFactorConfigTab: React.FC = () => {
@@ -102,8 +105,16 @@ const HealthFactorConfigTab: React.FC = () => {
     setFactors(factors.map(f => f.id === id ? { ...f, default_points: newPoints } : f));
   };
 
+  const handleAggregationTypeChange = (id: string, newType: 'per_occurrence' | 'once_per_period' | 'capped') => {
+    setFactors(factors.map(f => f.id === id ? { ...f, aggregation_type: newType } : f));
+  };
+
+  const handleMaxOccurrencesChange = (id: string, newMax: number | null) => {
+    setFactors(factors.map(f => f.id === id ? { ...f, max_occurrences: newMax || undefined } : f));
+  };
+
   const handleEnabledToggle = (id: string) => {
-    setFactors(factors.map(f => f.id === id ? { ...f, enabled: !f.enabled } : f));
+    setFactors(factors.map(f => f.id === id ? { ...f, is_enabled: !f.is_enabled } : f));
   };
 
   const getCategoryBadge = (category: string) => {
@@ -179,7 +190,7 @@ const HealthFactorConfigTab: React.FC = () => {
           <div>
             <p className="text-sm text-gray-600">Enabled</p>
             <p className="text-2xl font-bold text-indigo-600">
-              {factors.filter(f => f.enabled).length}
+              {factors.filter(f => f.is_enabled).length}
             </p>
           </div>
         </div>
@@ -195,10 +206,10 @@ const HealthFactorConfigTab: React.FC = () => {
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded border-gray-300"
-                    checked={factors.filter(f => f.enabled).length === factors.length}
+                    checked={factors.filter(f => f.is_enabled).length === factors.length}
                     onChange={(e) => {
                       const allEnabled = e.target.checked;
-                      setFactors(factors.map(f => ({ ...f, enabled: allEnabled })));
+                      setFactors(factors.map(f => ({ ...f, is_enabled: allEnabled })));
                     }}
                   />
                 </th>
@@ -217,7 +228,7 @@ const HealthFactorConfigTab: React.FC = () => {
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded border-gray-300"
-                      checked={factor.enabled}
+                      checked={factor.is_enabled}
                       onChange={() => handleEnabledToggle(factor.id)}
                     />
                   </td>
@@ -251,9 +262,34 @@ const HealthFactorConfigTab: React.FC = () => {
                     )}
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-xs text-gray-600">{factor.aggregation_method.replace('_', ' ')}</span>
-                    {factor.max_occurrences_per_period && (
-                      <p className="text-xs text-gray-400 mt-1">max: {factor.max_occurrences_per_period}</p>
+                    {editingId === factor.id ? (
+                      <div className="space-y-2">
+                        <select
+                          value={factor.aggregation_type}
+                          onChange={(e) => handleAggregationTypeChange(factor.id, e.target.value as 'per_occurrence' | 'once_per_period' | 'capped')}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                        >
+                          <option value="per_occurrence">per occurrence</option>
+                          <option value="once_per_period">once per period</option>
+                          <option value="capped">capped</option>
+                        </select>
+                        {(factor.aggregation_type === 'capped' || factor.aggregation_type === 'per_occurrence') && (
+                          <input
+                            type="number"
+                            value={factor.max_occurrences || ''}
+                            onChange={(e) => handleMaxOccurrencesChange(factor.id, e.target.value ? parseInt(e.target.value) : null)}
+                            placeholder="Max occurrences"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-xs text-gray-600">{factor.aggregation_type.replace('_', ' ')}</span>
+                        {factor.max_occurrences && (
+                          <p className="text-xs text-gray-400 mt-1">max: {factor.max_occurrences}</p>
+                        )}
+                      </>
                     )}
                   </td>
                   <td className="py-4 px-4 text-center">
