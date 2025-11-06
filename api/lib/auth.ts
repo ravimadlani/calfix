@@ -5,19 +5,26 @@
 
 import { verifyToken } from '@clerk/backend';
 import type { VercelRequest } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client with service role key (bypasses RLS)
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
+// Lazy-load Supabase client to avoid initialization errors
+let supabaseAdmin: SupabaseClient | null = null;
+
+function getSupabaseAdminClient(): SupabaseClient {
+  if (!supabaseAdmin) {
+    supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
   }
-);
+  return supabaseAdmin;
+}
 
 export interface AuthenticatedUser {
   userId: string;
@@ -73,9 +80,11 @@ export async function verifyCalendarAccess(
   calendarId: string
 ): Promise<boolean> {
   try {
+    const supabase = getSupabaseAdminClient();
+
     // Handle "primary" alias by checking for the user's primary calendar
     if (calendarId === 'primary') {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('managed_calendars')
         .select('id')
         .eq('user_id', userId)
@@ -89,7 +98,7 @@ export async function verifyCalendarAccess(
     }
 
     // For non-primary calendars, check by calendar_id
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('managed_calendars')
       .select('id')
       .eq('user_id', userId)
@@ -112,7 +121,7 @@ export async function verifyCalendarAccess(
  * Use this for database operations that bypass RLS
  */
 export function getSupabaseAdmin() {
-  return supabaseAdmin;
+  return getSupabaseAdminClient();
 }
 
 /**
