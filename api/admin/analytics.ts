@@ -5,14 +5,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-import { verifyAuth } from '../lib/auth.js';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role key for admin operations
-);
+import { verifyAuth, getSupabaseAdmin } from '../lib/auth.js';
 
 /**
  * GET /api/admin/analytics
@@ -25,6 +18,8 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
     if (!authResult.authenticated || !authResult.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const supabase = getSupabaseAdmin();
 
     // Get date ranges for comparison
     const now = new Date();

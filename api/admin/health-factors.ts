@@ -6,14 +6,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-import { verifyAuth } from '../lib/auth.js';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role key for admin operations
-);
+import { verifyAuth, getSupabaseAdmin } from '../lib/auth.js';
 
 /**
  * GET /api/admin/health-factors
@@ -26,6 +19,8 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
     if (!authResult.authenticated || !authResult.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const supabase = getSupabaseAdmin();
 
     // Fetch all health factors
     const { data: factors, error } = await supabase
@@ -62,6 +57,8 @@ async function handlePut(req: VercelRequest, res: VercelResponse) {
     if (!factor || !factor.id) {
       return res.status(400).json({ error: 'Missing required field: factor.id' });
     }
+
+    const supabase = getSupabaseAdmin();
 
     // Update the health factor
     const { data, error } = await supabase
