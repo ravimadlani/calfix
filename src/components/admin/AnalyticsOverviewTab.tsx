@@ -4,12 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { useAuth } from '@clerk/clerk-react';
 
 interface TrendData {
   date: string;
@@ -19,12 +14,13 @@ interface TrendData {
 
 interface CategoryData {
   category: string;
+  rawCategory: string;
   count: number;
   percentage: number;
-  color: string;
 }
 
 const AnalyticsOverviewTab: React.FC = () => {
+  const { getToken } = useAuth();
   const [stats, setStats] = useState({
     totalActions: 0,
     totalActionsTrend: 0,
@@ -34,6 +30,7 @@ const AnalyticsOverviewTab: React.FC = () => {
     avgHealthScoreTrend: 0,
     errorRate: 0,
     errorRateTrend: 0,
+    totalErrors: 0,
   });
   const [loading, setLoading] = useState(true);
   const [trendData, setTrendData] = useState<TrendData[]>([]);
@@ -48,168 +45,25 @@ const AnalyticsOverviewTab: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get date ranges for comparison
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const token = await getToken();
+      const response = await fetch('/api/admin/analytics', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // Fetch total actions (last 30 days)
-      const { count: currentActions } = await supabase
-        .from('user_actions')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
-
-      // Fetch previous period actions (30-60 days ago)
-      const { count: previousActions } = await supabase
-        .from('user_actions')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', sixtyDaysAgo.toISOString())
-        .lt('created_at', thirtyDaysAgo.toISOString());
-
-      // Calculate trend
-      const actionsTrend = previousActions && previousActions > 0
-        ? ((currentActions || 0) - previousActions) / previousActions * 100
-        : 0;
-
-      // Fetch active users (last 30 days)
-      const { data: currentUserSessions } = await supabase
-        .from('user_sessions')
-        .select('user_id')
-        .gte('started_at', thirtyDaysAgo.toISOString());
-
-      const activeUsers = new Set(currentUserSessions?.map(s => s.user_id) || []).size;
-
-      // Fetch previous period users
-      const { data: previousUserSessions } = await supabase
-        .from('user_sessions')
-        .select('user_id')
-        .gte('started_at', sixtyDaysAgo.toISOString())
-        .lt('started_at', thirtyDaysAgo.toISOString());
-
-      const previousUsers = new Set(previousUserSessions?.map(s => s.user_id) || []).size;
-      const usersTrend = previousUsers > 0
-        ? (activeUsers - previousUsers) / previousUsers * 100
-        : 0;
-
-      // Fetch average health scores
-      const { data: currentScores } = await supabase
-        .from('health_scores')
-        .select('actual_score')
-        .gte('calculated_at', thirtyDaysAgo.toISOString());
-
-      const avgHealthScore = currentScores && currentScores.length > 0
-        ? currentScores.reduce((sum, s) => sum + (s.actual_score || 0), 0) / currentScores.length
-        : 0;
-
-      const { data: previousScores } = await supabase
-        .from('health_scores')
-        .select('actual_score')
-        .gte('calculated_at', sixtyDaysAgo.toISOString())
-        .lt('calculated_at', thirtyDaysAgo.toISOString());
-
-      const prevAvgScore = previousScores && previousScores.length > 0
-        ? previousScores.reduce((sum, s) => sum + (s.actual_score || 0), 0) / previousScores.length
-        : 0;
-
-      const scoreTrend = avgHealthScore - prevAvgScore;
-
-      // Fetch errors
-      const { count: totalErrors } = await supabase
-        .from('action_errors')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
-
-      const errorRate = currentActions && currentActions > 0
-        ? ((totalErrors || 0) / currentActions) * 100
-        : 0;
-
-      // Fetch 7-day trend data
-      const trendDays = [];
-      for (let i = 0; i < 7; i++) {
-        const dayEnd = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const dayStart = new Date(dayEnd.getTime() - 24 * 60 * 60 * 1000);
-
-        const { count } = await supabase
-          .from('user_actions')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', dayStart.toISOString())
-          .lt('created_at', dayEnd.toISOString());
-
-        const { count: prevDayCount } = await supabase
-          .from('user_actions')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', new Date(dayStart.getTime() - 24 * 60 * 60 * 1000).toISOString())
-          .lt('created_at', dayStart.toISOString());
-
-        const trend = prevDayCount && prevDayCount > 0
-          ? ((count || 0) - prevDayCount) / prevDayCount * 100
-          : 0;
-
-        trendDays.push({
-          date: dayEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          actions: count || 0,
-          trend: Math.round(trend * 10) / 10,
-        });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch analytics');
       }
 
-      // Fetch category distribution
-      const { data: actionTypes } = await supabase
-        .from('action_types')
-        .select('name, category')
-        .eq('is_active', true);
+      const data = await response.json();
 
-      const { data: recentActions } = await supabase
-        .from('user_actions')
-        .select('action_name')
-        .gte('created_at', thirtyDaysAgo.toISOString());
-
-      console.log('actionTypes from DB:', actionTypes);
-      console.log('recentActions from DB:', recentActions);
-
-      // Create a map of action_name to category
-      const actionCategoryMap: Record<string, string> = {};
-      actionTypes?.forEach((type: { name?: string; category?: string }) => {
-        const actionName = type.name;
-        const category = type.category;
-        if (actionName && category) {
-          actionCategoryMap[actionName] = category;
-        }
-      });
-
-      // Count actions by category
-      const categoryCounts: Record<string, number> = {};
-      recentActions?.forEach((action: { action_name?: string }) => {
-        const actionName = action.action_name;
-        const category = actionName ? (actionCategoryMap[actionName] || 'other') : 'other';
-        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-      });
-
-      console.log('actionCategoryMap:', actionCategoryMap);
-      console.log('categoryCounts:', categoryCounts);
-
-      const totalActionsForDistribution = recentActions?.length || 1;
-      const categoryData = Object.entries(categoryCounts)
-        .map(([category, count]) => ({
-          category: category.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-          count,
-          percentage: Math.round((count / totalActionsForDistribution) * 100),
-          color: getCategoryColor(category),
-        }))
-        .sort((a, b) => b.count - a.count);
-
-      setStats({
-        totalActions: currentActions || 0,
-        totalActionsTrend: Math.round(actionsTrend * 10) / 10,
-        activeUsers,
-        activeUsersTrend: Math.round(usersTrend * 10) / 10,
-        avgHealthScore: Math.round(avgHealthScore * 10) / 10,
-        avgHealthScoreTrend: Math.round(scoreTrend * 10) / 10,
-        errorRate: Math.round(errorRate * 10) / 10,
-        errorRateTrend: 0,
-      });
-
-      setTrendData(trendDays);
-      setCategoryDistribution(categoryData);
+      setStats(data.stats);
+      setTrendData(data.trendData);
+      setCategoryDistribution(data.categoryDistribution);
     } catch (error) {
       console.error('Error loading analytics:', error);
     } finally {
@@ -318,7 +172,7 @@ const AnalyticsOverviewTab: React.FC = () => {
             <span className="text-green-600 text-sm font-semibold">↓ {Math.abs(stats.errorRateTrend)}%</span>
           </div>
           <p className="text-3xl font-bold text-slate-800">{stats.errorRate}%</p>
-          <p className="text-xs text-slate-500 mt-2">567 errors total</p>
+          <p className="text-xs text-slate-500 mt-2">{stats.totalErrors || 0} errors total</p>
         </div>
       </div>
 
@@ -368,7 +222,7 @@ const AnalyticsOverviewTab: React.FC = () => {
                   </span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-3">
-                  <div className={`${category.color} h-3 rounded-full`} style={{ width: `${category.percentage}%` }} />
+                  <div className={`${getCategoryColor(category.rawCategory)} h-3 rounded-full`} style={{ width: `${category.percentage}%` }} />
                 </div>
               </div>
             ))}
