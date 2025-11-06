@@ -11,6 +11,19 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+interface TrendData {
+  date: string;
+  actions: number;
+  trend: number;
+}
+
+interface CategoryData {
+  category: string;
+  count: number;
+  percentage: number;
+  color: string;
+}
+
 const AnalyticsOverviewTab: React.FC = () => {
   const [stats, setStats] = useState({
     totalActions: 0,
@@ -23,9 +36,12 @@ const AnalyticsOverviewTab: React.FC = () => {
     errorRateTrend: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [trendData, setTrendData] = useState<TrendData[]>([]);
+  const [categoryDistribution, setCategoryDistribution] = useState<CategoryData[]>([]);
 
   useEffect(() => {
     loadAnalytics();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadAnalytics = async () => {
@@ -107,6 +123,72 @@ const AnalyticsOverviewTab: React.FC = () => {
         ? ((totalErrors || 0) / currentActions) * 100
         : 0;
 
+      // Fetch 7-day trend data
+      const trendDays = [];
+      for (let i = 0; i < 7; i++) {
+        const dayEnd = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dayStart = new Date(dayEnd.getTime() - 24 * 60 * 60 * 1000);
+
+        const { count } = await supabase
+          .from('user_actions')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', dayStart.toISOString())
+          .lt('created_at', dayEnd.toISOString());
+
+        const { count: prevDayCount } = await supabase
+          .from('user_actions')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', new Date(dayStart.getTime() - 24 * 60 * 60 * 1000).toISOString())
+          .lt('created_at', dayStart.toISOString());
+
+        const trend = prevDayCount && prevDayCount > 0
+          ? ((count || 0) - prevDayCount) / prevDayCount * 100
+          : 0;
+
+        trendDays.push({
+          date: dayEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          actions: count || 0,
+          trend: Math.round(trend * 10) / 10,
+        });
+      }
+
+      // Fetch category distribution
+      const { data: actionTypes } = await supabase
+        .from('action_types')
+        .select('action_name, action_category');
+
+      const { data: recentActions } = await supabase
+        .from('user_actions')
+        .select('action_name')
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      // Create a map of action_name to category
+      const actionCategoryMap: Record<string, string> = {};
+      actionTypes?.forEach((type: { action_name?: string; action_category?: string }) => {
+        const actionName = type.action_name;
+        const category = type.action_category;
+        if (actionName && category) {
+          actionCategoryMap[actionName] = category;
+        }
+      });
+
+      // Count actions by category
+      const categoryCounts: Record<string, number> = {};
+      recentActions?.forEach(action => {
+        const category = actionCategoryMap[action.action_name] || 'other';
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      });
+
+      const totalActionsForDistribution = recentActions?.length || 1;
+      const categoryData = Object.entries(categoryCounts)
+        .map(([category, count]) => ({
+          category: category.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          count,
+          percentage: Math.round((count / totalActionsForDistribution) * 100),
+          color: getCategoryColor(category),
+        }))
+        .sort((a, b) => b.count - a.count);
+
       setStats({
         totalActions: currentActions || 0,
         totalActionsTrend: Math.round(actionsTrend * 10) / 10,
@@ -115,8 +197,11 @@ const AnalyticsOverviewTab: React.FC = () => {
         avgHealthScore: Math.round(avgHealthScore * 10) / 10,
         avgHealthScoreTrend: Math.round(scoreTrend * 10) / 10,
         errorRate: Math.round(errorRate * 10) / 10,
-        errorRateTrend: 0, // Would need previous period for this
+        errorRateTrend: 0,
       });
+
+      setTrendData(trendDays);
+      setCategoryDistribution(categoryData);
     } catch (error) {
       console.error('Error loading analytics:', error);
     } finally {
@@ -124,24 +209,22 @@ const AnalyticsOverviewTab: React.FC = () => {
     }
   };
 
-  const trendData = [
-    { date: 'Nov 6, 2024', actions: 3547, trend: 5.2 },
-    { date: 'Nov 5, 2024', actions: 3371, trend: 2.1 },
-    { date: 'Nov 4, 2024', actions: 3302, trend: -1.8 },
-    { date: 'Nov 3, 2024', actions: 3363, trend: 4.7 },
-    { date: 'Nov 2, 2024', actions: 3211, trend: 1.3 },
-    { date: 'Nov 1, 2024', actions: 3170, trend: -3.2 },
-    { date: 'Oct 31, 2024', actions: 3275, trend: 2.8 },
-  ];
-
-  const categoryDistribution = [
-    { category: 'Quick Actions', count: 8606, percentage: 35, color: 'bg-indigo-600' },
-    { category: 'Workflows', count: 6147, percentage: 25, color: 'bg-purple-600' },
-    { category: 'Calendar Operations', count: 4426, percentage: 18, color: 'bg-green-600' },
-    { category: 'Analytics', count: 2951, percentage: 12, color: 'bg-yellow-600' },
-    { category: 'Meeting Management', count: 1967, percentage: 8, color: 'bg-orange-600' },
-    { category: 'Other', count: 492, percentage: 2, color: 'bg-slate-600' },
-  ];
+  const getCategoryColor = (category: string): string => {
+    const colors: Record<string, string> = {
+      'quick_action': 'bg-indigo-600',
+      'workflow': 'bg-purple-600',
+      'calendar_write': 'bg-green-600',
+      'calendar_read': 'bg-blue-600',
+      'analytics': 'bg-yellow-600',
+      'meeting_management': 'bg-orange-600',
+      'team_scheduling': 'bg-pink-600',
+      'authentication': 'bg-cyan-600',
+      'preferences': 'bg-teal-600',
+      'error': 'bg-red-600',
+      'other': 'bg-slate-600',
+    };
+    return colors[category] || 'bg-slate-600';
+  };
 
   if (loading) {
     return (
