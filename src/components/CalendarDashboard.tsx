@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ViewSelector from './ViewSelector';
-import StatsCard from './StatsCard';
 import DayActionsPanel from './DayActionsPanel';
 import DayFilterPills from './DayFilterPills';
 import EventsTimeline from './EventsTimeline';
@@ -13,14 +12,14 @@ import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
 import CalendarConnectPrompt from './CalendarConnectPrompt';
 import UpgradeModal from './UpgradeModal';
+import HealthScoreHero from './HealthScoreHero';
 
-import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
+import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type { CalendarEvent, CalendarProviderId } from '../types';
-import MeetingAudienceSummary from './MeetingAudienceSummary';
 // Use secure versions of the services
 import secureActivityLogger, { logUserAction } from '../services/activityLoggerSecure';
 import secureHealthScoreTracker from '../services/healthScoreTrackerSecure';
@@ -1479,53 +1478,9 @@ const CalendarDashboard = () => {
         currentTier={(subscriptionTier || 'basic') as 'basic' | 'ea' | 'ea_pro'}
       />
 
-      {/* Statistics Grid */}
+      {/* Health Score Hero (replaces stats grid) */}
       {displayAnalytics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-          <StatsCard
-            icon="📅"
-            label="Total Events"
-            value={displayAnalytics.totalEvents}
-            subtext={`${displayAnalytics.totalMeetings} meetings`}
-            color="indigo"
-          />
-          <StatsCard
-            icon="👥"
-            label="Total Meetings"
-            value={displayAnalytics.totalMeetings}
-            subtext={`${formatHours(displayAnalytics.totalMeetingHours)} hours`}
-            color="blue"
-          />
-          <MeetingAudienceSummary
-            totalMeetings={displayAnalytics.totalMeetings}
-            totalMeetingHours={displayAnalytics.totalMeetingHours}
-            internalMeetingCount={displayAnalytics.internalMeetingCount}
-            internalMeetingHours={displayAnalytics.internalMeetingHours}
-            externalMeetingCount={displayAnalytics.externalMeetingCount}
-            externalMeetingHours={displayAnalytics.externalMeetingHours}
-          />
-          <StatsCard
-            icon="🔴"
-            label="Back-to-Back"
-            value={displayAnalytics.backToBackCount}
-            subtext="Needs buffers"
-            color={displayAnalytics.backToBackCount > 0 ? 'red' : 'green'}
-          />
-          <StatsCard
-            icon="🎯"
-            label="Focus Blocks"
-            value={displayAnalytics.focusBlockCount}
-            subtext="60+ min gaps"
-            color="green"
-          />
-          <StatsCard
-            icon="🌙"
-            label="Out of Hours"
-            value={displayAnalytics.outOfHoursMeetingCount}
-            subtext="In foreign timezone"
-            color={displayAnalytics.outOfHoursMeetingCount > 0 ? 'orange' : 'green'}
-          />
-        </div>
+        <HealthScoreHero analytics={displayAnalytics} />
       )}
 
       {/* Day Filter Pills for Week and Month Views */}

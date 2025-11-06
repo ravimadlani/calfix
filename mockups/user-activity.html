@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Activity Analytics - CalFix Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .stat-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .heat-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        .heat-high { background-color: #10b981; }
+        .heat-medium { background-color: #f59e0b; }
+        .heat-low { background-color: #ef4444; }
+        .heat-none { background-color: #d1d5db; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-slate-800 mb-2">User Activity Analytics</h1>
+            <p class="text-slate-600">Engagement metrics, feature adoption, and usage patterns</p>
+        </div>
+
+        <!-- Engagement Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Actions per User -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Actions per User</p>
+                        <p class="text-xs text-slate-400">30-day average</p>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">19.7</p>
+                <div class="mt-3 text-xs text-slate-500">
+                    <span class="text-green-600 font-semibold">↑ 2.3</span> from last period
+                </div>
+            </div>
+
+            <!-- Avg Session Duration -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Avg Session</p>
+                        <p class="text-xs text-slate-400">Duration (min)</p>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">12.4</p>
+                <div class="mt-3 text-xs text-slate-500">
+                    <span class="text-green-600 font-semibold">↑ 8%</span> from last period
+                </div>
+            </div>
+
+            <!-- Feature Adoption -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Feature Adoption</p>
+                        <p class="text-xs text-slate-400">% using all features</p>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">67%</p>
+                <div class="mt-3 text-xs text-slate-500">
+                    <span class="text-red-600 font-semibold">↓ 2%</span> from last period
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Category Details -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Action Categories (30 Days)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-slate-200">
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Category</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Total Actions</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Unique Users</th>
+                            <th class="text-center py-3 px-4 text-sm font-semibold text-slate-600">Trend</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Most Used Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">Quick Actions</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">8,606</td>
+                            <td class="py-4 px-4 text-right text-slate-600">1,042</td>
+                            <td class="py-4 px-4 text-center">
+                                <span class="text-green-600 font-semibold">↑ 15%</span>
+                            </td>
+                            <td class="py-4 px-4 text-slate-700 text-sm">quick_action_add_prep (3,247)</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Workflows</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">6,147</td>
+                            <td class="py-4 px-4 text-right text-slate-600">847</td>
+                            <td class="py-4 px-4 text-center">
+                                <span class="text-green-600 font-semibold">↑ 22%</span>
+                            </td>
+                            <td class="py-4 px-4 text-slate-700 text-sm">workflow_batch_add_buffers (1,984)</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Calendar Operations</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">4,426</td>
+                            <td class="py-4 px-4 text-right text-slate-600">1,183</td>
+                            <td class="py-4 px-4 text-center">
+                                <span class="text-green-600 font-semibold">↑ 8%</span>
+                            </td>
+                            <td class="py-4 px-4 text-slate-700 text-sm">calendar_event_create (1,652)</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Analytics</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">2,951</td>
+                            <td class="py-4 px-4 text-right text-slate-600">1,247</td>
+                            <td class="py-4 px-4 text-center">
+                                <span class="text-green-600 font-semibold">↑ 12%</span>
+                            </td>
+                            <td class="py-4 px-4 text-slate-700 text-sm">analytics_view_week (1,421)</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Meeting Management</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">1,967</td>
+                            <td class="py-4 px-4 text-right text-slate-600">623</td>
+                            <td class="py-4 px-4 text-center">
+                                <span class="text-green-600 font-semibold">↑ 5%</span>
+                            </td>
+                            <td class="py-4 px-4 text-slate-700 text-sm">meeting_reschedule (847)</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Team Scheduling</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">342</td>
+                            <td class="py-4 px-4 text-right text-slate-600">89</td>
+                            <td class="py-4 px-4 text-center">
+                                <span class="text-red-600 font-semibold">↓ 3%</span>
+                            </td>
+                            <td class="py-4 px-4 text-slate-700 text-sm">team_scheduling_find_slots (156)</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">Authentication</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">150</td>
+                            <td class="py-4 px-4 text-right text-slate-600">1,247</td>
+                            <td class="py-4 px-4 text-center">
+                                <span class="text-green-600 font-semibold">↑ 2%</span>
+                            </td>
+                            <td class="py-4 px-4 text-slate-700 text-sm">oauth_calendar_connected (78)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Feature Adoption Heat Map -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Feature Adoption Heat Map</h2>
+                <p class="text-sm text-slate-500 mb-4">Shows which features are most/least adopted by users</p>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm text-slate-700 font-medium">Quick Actions</span>
+                        <div class="flex items-center gap-2">
+                            <span class="heat-indicator heat-high"></span>
+                            <span class="text-sm text-slate-600 font-semibold">83%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm text-slate-700 font-medium">Calendar Management</span>
+                        <div class="flex items-center gap-2">
+                            <span class="heat-indicator heat-high"></span>
+                            <span class="text-sm text-slate-600 font-semibold">95%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm text-slate-700 font-medium">Analytics Views</span>
+                        <div class="flex items-center gap-2">
+                            <span class="heat-indicator heat-high"></span>
+                            <span class="text-sm text-slate-600 font-semibold">100%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm text-slate-700 font-medium">Workflows (Batch)</span>
+                        <div class="flex items-center gap-2">
+                            <span class="heat-indicator heat-medium"></span>
+                            <span class="text-sm text-slate-600 font-semibold">68%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm text-slate-700 font-medium">Meeting Mgmt</span>
+                        <div class="flex items-center gap-2">
+                            <span class="heat-indicator heat-medium"></span>
+                            <span class="text-sm text-slate-600 font-semibold">50%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm text-slate-700 font-medium">Team Scheduling</span>
+                        <div class="flex items-center gap-2">
+                            <span class="heat-indicator heat-low"></span>
+                            <span class="text-sm text-slate-600 font-semibold">7%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm text-slate-700 font-medium">Flight Travel Blocks</span>
+                        <div class="flex items-center gap-2">
+                            <span class="heat-indicator heat-low"></span>
+                            <span class="text-sm text-slate-600 font-semibold">12%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                    <div class="flex items-center gap-2">
+                        <span class="heat-indicator heat-high"></span>
+                        <span>High (>60%)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="heat-indicator heat-medium"></span>
+                        <span>Medium (30-60%)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="heat-indicator heat-low"></span>
+                        <span>Low (<30%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session Patterns -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Session Patterns</h2>
+                <p class="text-sm text-slate-500 mb-4">User engagement and usage timing</p>
+
+                <div class="space-y-4">
+                    <!-- Peak Usage Times -->
+                    <div class="border-l-4 border-indigo-500 pl-4 py-2 bg-indigo-50 rounded">
+                        <p class="text-sm font-semibold text-slate-800 mb-1">Peak Usage Times</p>
+                        <p class="text-xs text-slate-600">Monday - Friday, 9AM - 11AM EST</p>
+                        <p class="text-xs text-slate-600">Secondary peak: 2PM - 4PM EST</p>
+                    </div>
+
+                    <!-- Avg Session Length -->
+                    <div class="border-l-4 border-purple-500 pl-4 py-2 bg-purple-50 rounded">
+                        <p class="text-sm font-semibold text-slate-800 mb-1">Session Length Distribution</p>
+                        <div class="mt-2 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">< 5 min</span>
+                                <span class="text-xs font-semibold text-slate-800">23%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">5 - 15 min</span>
+                                <span class="text-xs font-semibold text-slate-800">48%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">15 - 30 min</span>
+                                <span class="text-xs font-semibold text-slate-800">21%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">> 30 min</span>
+                                <span class="text-xs font-semibold text-slate-800">8%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions per Session -->
+                    <div class="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded">
+                        <p class="text-sm font-semibold text-slate-800 mb-1">Actions per Session</p>
+                        <div class="mt-2 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Average</span>
+                                <span class="text-xs font-semibold text-slate-800">4.2 actions</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Median</span>
+                                <span class="text-xs font-semibold text-slate-800">3 actions</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Power users (top 10%)</span>
+                                <span class="text-xs font-semibold text-slate-800">12+ actions</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Return Rate -->
+                    <div class="border-l-4 border-yellow-500 pl-4 py-2 bg-yellow-50 rounded">
+                        <p class="text-sm font-semibold text-slate-800 mb-1">User Retention</p>
+                        <div class="mt-2 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Daily Active (DAU)</span>
+                                <span class="text-xs font-semibold text-slate-800">62%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Weekly Active (WAU)</span>
+                                <span class="text-xs font-semibold text-slate-800">89%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-600">Monthly Active (MAU)</span>
+                                <span class="text-xs font-semibold text-slate-800">94%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Users Leaderboard -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Most Active Users (30 Days)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-slate-200">
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Rank</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">User ID</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Total Actions</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Sessions</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Avg Actions/Session</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Most Used Feature</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 text-yellow-800 font-bold text-sm">1</span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_k7m3</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">342</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">47</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">7.3</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Quick Actions</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-sm">2</span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_p2w8</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">318</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">52</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">6.1</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Workflows</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-700 font-bold text-sm">3</span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_t5n1</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">295</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">38</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">7.8</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Quick Actions</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-500">4</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_r9c4</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">287</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">41</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">7.0</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Calendar Operations</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-500">5</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_a6h2</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">271</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">35</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">7.7</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Workflows</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-500">6</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_b8j5</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">254</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">33</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">7.7</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Quick Actions</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-500">7</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_x3v9</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">248</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">29</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">8.6</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Meeting Management</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-500">8</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_m1q7</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">239</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">31</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">7.7</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Quick Actions</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-500">9</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_f4k6</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">232</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">28</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">8.3</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Workflows</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-500">10</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_d7s2</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">227</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">26</td>
+                            <td class="py-3 px-4 text-sm text-slate-600 text-right">8.7</td>
+                            <td class="py-3 px-4 text-sm text-slate-700">Calendar Operations</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Overview - CalFix Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .stat-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .trend-up {
+            color: #10b981;
+        }
+        .trend-down {
+            color: #ef4444;
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-slate-800 mb-2">Analytics Overview</h1>
+            <p class="text-slate-600">System-wide activity metrics for the last 30 days</p>
+        </div>
+
+        <!-- Top Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Actions -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">Total Actions</p>
+                        </div>
+                    </div>
+                    <span class="trend-up text-sm font-semibold">↑ 12%</span>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">24,589</p>
+                <p class="text-xs text-slate-500 mt-2">+2,631 from last period</p>
+            </div>
+
+            <!-- Active Users -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">Active Users</p>
+                        </div>
+                    </div>
+                    <span class="trend-up text-sm font-semibold">↑ 8%</span>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">1,247</p>
+                <p class="text-xs text-slate-500 mt-2">+92 from last period</p>
+            </div>
+
+            <!-- Avg Health Score -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">Avg Health Score</p>
+                        </div>
+                    </div>
+                    <span class="trend-up text-sm font-semibold">↑ 3.2</span>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">78.5</p>
+                <p class="text-xs text-slate-500 mt-2">Score range: 0-100</p>
+            </div>
+
+            <!-- Error Rate -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">Error Rate</p>
+                        </div>
+                    </div>
+                    <span class="trend-down text-sm font-semibold">↓ 0.4%</span>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">2.3%</p>
+                <p class="text-xs text-slate-500 mt-2">567 errors total</p>
+            </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Action Trends (7 days) -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Action Trends (Last 7 Days)</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-200">
+                                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Date</th>
+                                <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Actions</th>
+                                <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="py-3 px-4 text-sm text-slate-800">Nov 6, 2024</td>
+                                <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">3,547</td>
+                                <td class="py-3 px-4 text-right">
+                                    <span class="trend-up text-sm font-semibold">↑ 5.2%</span>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="py-3 px-4 text-sm text-slate-800">Nov 5, 2024</td>
+                                <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">3,371</td>
+                                <td class="py-3 px-4 text-right">
+                                    <span class="trend-up text-sm font-semibold">↑ 2.1%</span>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="py-3 px-4 text-sm text-slate-800">Nov 4, 2024</td>
+                                <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">3,302</td>
+                                <td class="py-3 px-4 text-right">
+                                    <span class="trend-down text-sm font-semibold">↓ 1.8%</span>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="py-3 px-4 text-sm text-slate-800">Nov 3, 2024</td>
+                                <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">3,363</td>
+                                <td class="py-3 px-4 text-right">
+                                    <span class="trend-up text-sm font-semibold">↑ 4.7%</span>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="py-3 px-4 text-sm text-slate-800">Nov 2, 2024</td>
+                                <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">3,211</td>
+                                <td class="py-3 px-4 text-right">
+                                    <span class="trend-up text-sm font-semibold">↑ 1.3%</span>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="py-3 px-4 text-sm text-slate-800">Nov 1, 2024</td>
+                                <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">3,170</td>
+                                <td class="py-3 px-4 text-right">
+                                    <span class="trend-down text-sm font-semibold">↓ 3.2%</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="py-3 px-4 text-sm text-slate-800">Oct 31, 2024</td>
+                                <td class="py-3 px-4 text-sm text-slate-800 text-right font-semibold">3,275</td>
+                                <td class="py-3 px-4 text-right">
+                                    <span class="trend-up text-sm font-semibold">↑ 2.8%</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Action Category Breakdown -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Action Distribution by Category</h2>
+                <div class="space-y-4">
+                    <!-- Quick Actions -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium text-slate-700">Quick Actions</span>
+                            <span class="text-sm font-semibold text-slate-800">35% (8,606)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div class="bg-indigo-600 h-3 rounded-full" style="width: 35%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Workflows -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium text-slate-700">Workflows</span>
+                            <span class="text-sm font-semibold text-slate-800">25% (6,147)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div class="bg-purple-600 h-3 rounded-full" style="width: 25%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Operations -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium text-slate-700">Calendar Operations</span>
+                            <span class="text-sm font-semibold text-slate-800">18% (4,426)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div class="bg-green-600 h-3 rounded-full" style="width: 18%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Analytics -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium text-slate-700">Analytics</span>
+                            <span class="text-sm font-semibold text-slate-800">12% (2,951)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div class="bg-yellow-600 h-3 rounded-full" style="width: 12%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Meeting Management -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium text-slate-700">Meeting Management</span>
+                            <span class="text-sm font-semibold text-slate-800">8% (1,967)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div class="bg-orange-600 h-3 rounded-full" style="width: 8%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Other -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium text-slate-700">Other</span>
+                            <span class="text-sm font-semibold text-slate-800">2% (492)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div class="bg-slate-600 h-3 rounded-full" style="width: 2%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-slate-800">Recent Activity (Last 10 Actions)</h2>
+                <span class="text-xs text-slate-500">Auto-refreshes every 30s</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-slate-200">
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Time</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">User</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Action</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Category</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">2 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_47d3</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">workflow_batch_add_buffers</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Workflow</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">5 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_a2b9</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">quick_action_add_prep</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">Quick Action</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">8 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_f8c1</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">calendar_event_delete</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Calendar</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">12 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_k5m2</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">workflow_add_video_links</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Workflow</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Error</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">15 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_n7p4</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">meeting_reschedule</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Meeting</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">18 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_r1w8</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">analytics_view_week</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Analytics</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">21 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_b3v6</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">workflow_delete_declined_meetings</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Workflow</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">24 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_t9h2</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">calendar_switch</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Calendar</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">27 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_x4j7</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">quick_action_add_wrap</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">Quick Action</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-3 px-4 text-sm text-slate-600">30 min ago</td>
+                            <td class="py-3 px-4 text-sm text-slate-800 font-medium">user_c6q1</td>
+                            <td class="py-3 px-4 text-sm text-slate-800">oauth_calendar_connected</td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Auth</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Success</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

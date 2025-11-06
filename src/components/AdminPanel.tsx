@@ -7,6 +7,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { generateTestCalendarData } from '../services/testDataGenerator';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
+import AnalyticsOverviewTab from './admin/AnalyticsOverviewTab';
+import HealthFactorConfigTab from './admin/HealthFactorConfigTab';
 
 interface User {
   id: string;
@@ -25,6 +27,7 @@ const AdminPanel = () => {
     isAuthenticated
   } = useCalendarProvider();
   const providerLabel = activeProvider.label;
+  const [activeTab, setActiveTab] = useState<'users' | 'analytics' | 'health-factors'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -140,13 +143,19 @@ const AdminPanel = () => {
     }
   };
 
+  const tabs = [
+    { id: 'users' as const, label: 'Users & Test Data', icon: '👥' },
+    { id: 'analytics' as const, label: 'Analytics', icon: '📊' },
+    { id: 'health-factors' as const, label: 'Health Factors', icon: '⚙️' },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-gray-600 mt-1">Manage users and test data</p>
+          <p className="text-gray-600 mt-1">Manage users, analytics, and system configuration</p>
         </div>
         <a
           href="/dashboard"
@@ -154,6 +163,26 @@ const AdminPanel = () => {
         >
           ← Back to Dashboard
         </a>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-xl shadow-md p-2">
+        <div className="flex gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Success Message */}
@@ -178,8 +207,11 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Test Data Generator */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6">
+      {/* Tab Content */}
+      {activeTab === 'users' && (
+        <>
+          {/* Test Data Generator */}
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6">
         <div className="flex items-start gap-4">
           <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900 mb-2">🧪 Test Data Generator</h2>
@@ -318,6 +350,14 @@ const AdminPanel = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
+
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && <AnalyticsOverviewTab />}
+
+      {/* Health Factors Tab */}
+      {activeTab === 'health-factors' && <HealthFactorConfigTab />}
     </div>
   );
 };
