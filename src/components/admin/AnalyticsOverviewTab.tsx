@@ -163,6 +163,9 @@ const AnalyticsOverviewTab: React.FC = () => {
         .select('action_name')
         .gte('created_at', thirtyDaysAgo.toISOString());
 
+      console.log('actionTypes from DB:', actionTypes);
+      console.log('recentActions from DB:', recentActions);
+
       // Create a map of action_name to category
       const actionCategoryMap: Record<string, string> = {};
       actionTypes?.forEach((type: { name?: string; category?: string }) => {
@@ -175,10 +178,14 @@ const AnalyticsOverviewTab: React.FC = () => {
 
       // Count actions by category
       const categoryCounts: Record<string, number> = {};
-      recentActions?.forEach(action => {
-        const category = actionCategoryMap[action.action_name] || 'other';
+      recentActions?.forEach((action: { action_name?: string }) => {
+        const actionName = action.action_name;
+        const category = actionName ? (actionCategoryMap[actionName] || 'other') : 'other';
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
       });
+
+      console.log('actionCategoryMap:', actionCategoryMap);
+      console.log('categoryCounts:', categoryCounts);
 
       const totalActionsForDistribution = recentActions?.length || 1;
       const categoryData = Object.entries(categoryCounts)
