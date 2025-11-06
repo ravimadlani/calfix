@@ -531,6 +531,15 @@ const CalendarDashboard = () => {
 
     console.log(`[Calendar Switch] State updated, calling loadEvents for calendar: ${trimmedId}`);
 
+    // Log the calendar switch
+    logUserAction('calendar_switch', {
+      calendarId: trimmedId,
+      metadata: {
+        previousCalendar: managedCalendarId,
+        newCalendar: trimmedId
+      }
+    });
+
     try {
       await loadEvents(trimmedId);
       console.log(`[Calendar Switch] Successfully loaded events for ${trimmedId}`);
@@ -565,6 +574,14 @@ const CalendarDashboard = () => {
 
     if (oauthSuccess) {
       console.log('[CalendarDashboard] OAuth successful');
+
+      // Log the successful OAuth connection
+      logUserAction('oauth_calendar_connected', {
+        metadata: {
+          provider: targetProviderId,
+          success: true
+        }
+      });
     }
 
     const authenticated = isProviderAuthenticated(targetProviderId);
@@ -684,7 +701,7 @@ const CalendarDashboard = () => {
     };
 
     calculateAndSaveHealthScore();
-  }, [loggingInitialized, secureHealthScoreTracker, analytics, currentView, managedCalendarId]);
+  }, [loggingInitialized, analytics, currentView, managedCalendarId]);
 
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
@@ -861,6 +878,16 @@ const CalendarDashboard = () => {
           }
 
           await bufferHelper(selectedEvents, 'after');
+
+          // Log the batch action
+          logUserAction('workflow_batch_add_buffers', {
+            calendarId: managedCalendarId,
+            timeHorizon: getTimeHorizon(currentView),
+            metadata: {
+              actionType,
+              eventCount: selectedEvents.length
+            }
+          });
         }
         break;
 
@@ -910,6 +937,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Added ${locationSuccessCount} location event${locationSuccessCount !== 1 ? 's' : ''}. ${locationFailCount} failed.`);
         }
+
+        // Log the location tracking action
+        logUserAction('workflow_add_flight_locations', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: locationSuccessCount,
+            failCount: locationFailCount,
+            totalFlights: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -968,6 +1006,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Added ${travelBlockSuccessCount} travel block${travelBlockSuccessCount !== 1 ? 's' : ''}. ${travelBlockFailCount} failed.`);
         }
+
+        // Log the travel block action
+        logUserAction('workflow_add_travel_blocks', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: travelBlockSuccessCount,
+            failCount: travelBlockFailCount,
+            totalFlights: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -991,6 +1040,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Deleted ${deleteSuccessCount} meeting${deleteSuccessCount !== 1 ? 's' : ''}. ${deleteFailCount} failed.`);
         }
+
+        // Log the declined meeting cleanup
+        logUserAction('workflow_delete_declined_meetings', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: deleteSuccessCount,
+            failCount: deleteFailCount,
+            totalMeetings: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -1014,6 +1074,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Declined and deleted ${outOfHoursDeleteSuccessCount} meeting${outOfHoursDeleteSuccessCount !== 1 ? 's' : ''}. ${outOfHoursDeleteFailCount} failed.`);
         }
+
+        // Log the out-of-hours meeting deletion
+        logUserAction('workflow_delete_out_of_hours_meetings', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: outOfHoursDeleteSuccessCount,
+            failCount: outOfHoursDeleteFailCount,
+            totalMeetings: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -1035,8 +1106,13 @@ const CalendarDashboard = () => {
           break;
         }
 
+        let videoLinkSuccessCount = 0;
+        let videoLinkFailCount = 0;
+
         if (providerBatchAddConferenceLinks) {
           const meetResults = await providerBatchAddConferenceLinks(eventsToUpdate, managedCalendarId);
+          videoLinkSuccessCount = meetResults.successCount;
+          videoLinkFailCount = meetResults.failCount;
 
           if (meetResults.failCount === 0) {
             alert(`Successfully added video links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}!`);
@@ -1044,26 +1120,36 @@ const CalendarDashboard = () => {
             alert(`Added video links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}. ${meetResults.failCount} failed.`);
           }
         } else if (providerAddConferenceLink) {
-          let successCount = 0;
-          let failCount = 0;
-
           for (const event of eventsToUpdate) {
             try {
               await providerAddConferenceLink(event.id, event, managedCalendarId);
-              successCount++;
+              videoLinkSuccessCount++;
             } catch (error) {
               console.error('Failed to add conference link:', error);
-              failCount++;
+              videoLinkFailCount++;
             }
           }
 
-          if (failCount === 0) {
-            alert(`Successfully added video links to ${successCount} meeting${successCount !== 1 ? 's' : ''}!`);
+          if (videoLinkFailCount === 0) {
+            alert(`Successfully added video links to ${videoLinkSuccessCount} meeting${videoLinkSuccessCount !== 1 ? 's' : ''}!`);
           } else {
-            alert(`Added video links to ${successCount} meeting${successCount !== 1 ? 's' : ''}. ${failCount} failed.`);
+            alert(`Added video links to ${videoLinkSuccessCount} meeting${videoLinkSuccessCount !== 1 ? 's' : ''}. ${videoLinkFailCount} failed.`);
           }
         } else {
           alert('Conference link automation is not supported for this calendar provider yet.');
+        }
+
+        // Log the video link addition
+        if (videoLinkSuccessCount > 0 || videoLinkFailCount > 0) {
+          logUserAction('workflow_add_video_links', {
+            calendarId: managedCalendarId,
+            timeHorizon: getTimeHorizon(currentView),
+            metadata: {
+              successCount: videoLinkSuccessCount,
+              failCount: videoLinkFailCount,
+              totalMeetings: eventsToUpdate.length
+            }
+          });
         }
         break;
       }
@@ -1082,6 +1168,16 @@ const CalendarDashboard = () => {
         try {
           await deleteProviderEvent(selectedEventIds[0], managedCalendarId);
           alert('Event declined and deleted successfully!');
+
+          // Log the single event deletion (double booking resolution)
+          logUserAction('workflow_resolve_double_booking', {
+            calendarId: managedCalendarId,
+            eventId: selectedEventIds[0],
+            timeHorizon: getTimeHorizon(currentView),
+            metadata: {
+              action: 'delete_conflicting_event'
+            }
+          });
         } catch (error) {
           console.error('Failed to delete event:', error);
           throw new Error(`Failed to delete event: ${error.message}`);
@@ -1360,7 +1456,14 @@ const CalendarDashboard = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
           <button
-            onClick={() => setShowTeamScheduler(true)}
+            onClick={() => {
+              setShowTeamScheduler(true);
+              // Log opening the team scheduling modal
+              logUserAction('team_scheduling_modal_opened', {
+                calendarId: managedCalendarId,
+                timeHorizon: getTimeHorizon(currentView)
+              });
+            }}
             className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
           >
             <span>👥</span>
