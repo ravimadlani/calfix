@@ -138,6 +138,7 @@ const CalendarDashboard = () => {
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
   const [loggingInitialized, setLoggingInitialized] = useState(false);
   const [healthScoreResult, setHealthScoreResult] = useState(null);
+  const [isCalculatingHealthScore, setIsCalculatingHealthScore] = useState(false);
 
   const primaryClerkEmail =
     clerkUser?.primaryEmailAddress?.emailAddress ||
@@ -469,8 +470,7 @@ const CalendarDashboard = () => {
         calendarId: calendarIdString,
         timeHorizon: getTimeHorizon(currentView),
         metadata: {
-          eventCount: filteredEvents.length,
-          healthScore: analyticsData.healthScore
+          eventCount: filteredEvents.length
         }
       });
 
@@ -670,12 +670,12 @@ const CalendarDashboard = () => {
       console.log('[CalendarDashboard] Health score useEffect - checking conditions:', {
         loggingInitialized,
         hasTracker: !!secureHealthScoreTracker,
-        hasAnalytics: !!analytics,
-        analyticsHealthScore: analytics?.healthScore
+        hasAnalytics: !!analytics
       });
 
       if (loggingInitialized && secureHealthScoreTracker && analytics) {
         console.log('[CalendarDashboard] All conditions met - calculating health score...');
+        setIsCalculatingHealthScore(true);
         try {
           const { startDate, endDate } = getDateRange(currentView);
           const calendarId = managedCalendarId || 'primary';
@@ -697,12 +697,53 @@ const CalendarDashboard = () => {
           setHealthScoreResult(healthScore);
         } catch (error) {
           console.error('[CalendarDashboard] Failed to calculate health score:', error);
+        } finally {
+          setIsCalculatingHealthScore(false);
         }
       }
     };
 
     calculateAndSaveHealthScore();
   }, [loggingInitialized, analytics, currentView, managedCalendarId]);
+
+  // Memoized filtered events and analytics for display
+  const filteredEvents = useMemo(() => {
+    if (!selectedDay || (currentView !== 'week' && currentView !== 'nextWeek' && currentView !== 'thisMonth' && currentView !== 'nextMonth')) {
+      return eventsWithGaps;
+    }
+
+    // selectedDay is now a date key in format YYYY-MM-DD
+    return eventsWithGaps.filter(event => {
+      let startTime;
+      if (event.start?.dateTime) {
+        startTime = new Date(event.start.dateTime);
+      } else if (event.start?.date) {
+        const [year, month, day] = event.start.date.split('-').map(Number);
+        startTime = new Date(year, month - 1, day);
+      } else {
+        return false;
+      }
+
+      const dateKey = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
+      return dateKey === selectedDay;
+    });
+  }, [selectedDay, currentView, eventsWithGaps]);
+
+  const displayAnalytics = useMemo(() => {
+    return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
+      ? calculateAnalytics(
+          filteredEvents,
+          extendedEventsForFlights.length > 0 ? extendedEventsForFlights : null,
+          calendarOwnerEmail
+        )
+      : analytics;
+  }, [selectedDay, currentView, filteredEvents, extendedEventsForFlights, calendarOwnerEmail, analytics]);
+
+  const displayRecommendations = useMemo(() => {
+    return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
+      ? getRecommendations(filteredEvents, calendarOwnerEmail)
+      : recommendations;
+  }, [selectedDay, currentView, filteredEvents, calendarOwnerEmail, recommendations]);
 
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
@@ -1319,22 +1360,6 @@ const CalendarDashboard = () => {
     });
   };
 
-  const filteredEvents = getFilteredEvents();
-
-  // Calculate analytics for the filtered view (day-specific if a day is selected)
-  const displayAnalytics = selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-    ? calculateAnalytics(
-        filteredEvents,
-        extendedEventsForFlights.length > 0 ? extendedEventsForFlights : null,
-        calendarOwnerEmail
-      )
-    : analytics;
-
-  // Calculate recommendations for the filtered view
-  const displayRecommendations = selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-    ? getRecommendations(filteredEvents, calendarOwnerEmail)
-    : recommendations;
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Calendar Management Section */}
@@ -1482,7 +1507,11 @@ const CalendarDashboard = () => {
 
       {/* Health Score Hero (replaces stats grid) */}
       {displayAnalytics && (
-        <HealthScoreHero analytics={displayAnalytics} healthScoreResult={healthScoreResult} />
+        <HealthScoreHero
+          analytics={displayAnalytics}
+          healthScoreResult={healthScoreResult}
+          isCalculating={isCalculatingHealthScore}
+        />
       )}
 
       {/* Day Filter Pills for Week and Month Views */}

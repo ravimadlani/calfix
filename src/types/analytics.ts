@@ -30,8 +30,6 @@ export interface CalendarAnalytics {
   backToBackCount: number;
   insufficientBufferCount: number;
   focusBlockCount: number;
-  healthScore: number;
-  healthInterpretation: HealthScoreInterpretation;
   gaps: GapInfo[];
   insights: Insight[];
   doubleBookings: DoubleBooking[];

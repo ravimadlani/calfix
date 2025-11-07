@@ -8,12 +8,10 @@ import { getEventStartTime, isAllDayEvent } from '../utils/dateHelpers';
 import { isMeeting } from '../utils/eventCategorizer';
 import {
   analyzeGaps,
-  calculateHealthScore,
   countBackToBack,
   countFocusBlocks,
   countInsufficientBuffers,
   generateInsights,
-  getHealthScoreInterpretation,
   detectDoubleBookings,
   findMeetingsWithoutVideoLinks,
   findDeclinedTwoPersonMeetings,
@@ -46,8 +44,6 @@ export const calculateAnalytics = (
       backToBackCount: 0,
       insufficientBufferCount: 0,
       focusBlockCount: 0,
-      healthScore: 100,
-      healthInterpretation: getHealthScoreInterpretation(100),
       gaps: [],
       insights: generateInsights([]),
       doubleBookings: [],
@@ -92,8 +88,6 @@ export const calculateAnalytics = (
   const backToBackCount = countBackToBack(timedEvents);
   const insufficientBufferCount = countInsufficientBuffers(timedEvents);
   const focusBlockCount = countFocusBlocks(timedEvents);
-  const healthScore = calculateHealthScore(timedEvents);
-  const healthInterpretation = getHealthScoreInterpretation(healthScore);
   const gaps = analyzeGaps(timedEvents);
   const insights = generateInsights(timedEvents);
 
@@ -131,8 +125,6 @@ export const calculateAnalytics = (
     backToBackCount,
     insufficientBufferCount,
     focusBlockCount,
-    healthScore,
-    healthInterpretation,
     gaps,
     insights,
     doubleBookings,
@@ -374,18 +366,6 @@ export const getRecommendations = (events: CalendarEvent[], calendarOwnerEmail?:
       description: `${analytics.totalMeetingHours.toFixed(1)} hours of meetings. Consider declining optional ones.`,
       action: 'review-meetings',
       color: 'orange'
-    });
-  }
-
-  // Positive reinforcement
-  if (analytics.healthScore >= 80) {
-    recommendations.push({
-      type: 'success',
-      icon: '✅',
-      title: 'Great Calendar Health!',
-      description: 'Your calendar is well-balanced. Keep up the good work!',
-      action: 'none',
-      color: 'green'
     });
   }
 

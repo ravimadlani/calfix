@@ -8,19 +8,19 @@ import React, { useState } from 'react';
 import type { CalendarAnalytics } from '../types/analytics';
 import type { HealthScoreResult } from '../services/healthScoreTrackerSecure';
 import { formatHours } from '../utils/dateHelpers';
+import { getHealthScoreInterpretation } from '../utils/healthCalculator';
 
 interface HealthScoreHeroProps {
   analytics: CalendarAnalytics;
   healthScoreResult?: HealthScoreResult | null;
+  isCalculating?: boolean;
 }
 
-const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScoreResult }) => {
+const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScoreResult, isCalculating = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showUnsnoozed, setShowUnsnoozed] = useState(false);
 
   const {
-    healthScore: analyticsHealthScore,
-    healthInterpretation,
     backToBackCount,
     insufficientBufferCount,
     focusBlockCount,
@@ -29,8 +29,15 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
     doubleBookingCount,
   } = analytics;
 
-  // Use health score from healthScoreResult if available, otherwise fall back to analytics
-  const healthScore = healthScoreResult?.actualScore ?? analyticsHealthScore;
+  // Use health score from healthScoreResult (no fallback - wait for async calculation)
+  const healthScore = healthScoreResult?.actualScore ?? null;
+  const healthInterpretation = healthScore !== null ? getHealthScoreInterpretation(healthScore) : {
+    label: 'Calculating...' as const,
+    color: 'blue' as const,
+    bgColor: 'bg-blue-100',
+    textColor: 'text-blue-800',
+    message: 'Calculating your health score...'
+  };
 
   // Helper function to get impact from healthScoreResult breakdowns
   const getImpactFromBreakdown = (factorCode: string, fallbackImpact: number) => {
@@ -140,7 +147,7 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
   // Calculate circle progress (for SVG)
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
-  const progress = (healthScore / 100) * circumference;
+  const progress = healthScore !== null ? (healthScore / 100) * circumference : 0;
   const offset = circumference - progress;
 
   // Get score color for the ring
@@ -182,8 +189,17 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-bold text-gray-900">{healthScore}</span>
-                <span className="text-xs text-gray-500 font-medium">SCORE</span>
+                {isCalculating || healthScore === null ? (
+                  <>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    <span className="text-xs text-gray-500 font-medium mt-2">Loading</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-3xl font-bold text-gray-900">{healthScore}</span>
+                    <span className="text-xs text-gray-500 font-medium">SCORE</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
