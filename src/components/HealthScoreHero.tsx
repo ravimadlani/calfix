@@ -32,10 +32,6 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
   // Use health score from healthScoreResult if available, otherwise fall back to analytics
   const healthScore = healthScoreResult?.actualScore ?? analyticsHealthScore;
 
-  // Calculate meeting overload factors
-  const meetingOverload6h = totalMeetingHours > 6 ? 1 : 0;
-  const meetingOverload8h = totalMeetingHours > 8 ? 1 : 0;
-
   // Helper function to get impact from healthScoreResult breakdowns
   const getImpactFromBreakdown = (factorCode: string, fallbackImpact: number) => {
     if (!healthScoreResult?.breakdowns) return fallbackImpact;
@@ -47,8 +43,6 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
   const backToBackImpact = getImpactFromBreakdown('back_to_back', backToBackCount * -15);
   const insufficientBufferImpact = getImpactFromBreakdown('insufficient_buffer', insufficientBufferCount * -8);
   const focusBlockImpact = getImpactFromBreakdown('focus_block', Math.min(focusBlockCount, 5) * 8);
-  const overload6hImpact = getImpactFromBreakdown('meeting_overload', meetingOverload6h * -10);
-  const overload8hImpact = getImpactFromBreakdown('extreme_meeting_overload', meetingOverload8h * -20);
   const doubleBookingImpact = getImpactFromBreakdown('double_booking', doubleBookingCount * -20);
   const outOfHoursImpact = getImpactFromBreakdown('out_of_hours', outOfHoursMeetingCount * -10);
 
@@ -80,24 +74,6 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
       borderColor: 'border-green-200',
       impactColor: 'text-green-600',
       isActive: focusBlockCount > 0
-    },
-    {
-      label: 'Overload 6h+',
-      value: meetingOverload6h > 0 ? `${formatHours(totalMeetingHours)}` : 0,
-      impact: overload6hImpact,
-      subtext: 'meetings',
-      borderColor: 'border-yellow-200',
-      impactColor: 'text-yellow-600',
-      isActive: meetingOverload6h > 0
-    },
-    {
-      label: 'Overload 8h+',
-      value: meetingOverload8h > 0 ? `${formatHours(totalMeetingHours)}` : 0,
-      impact: overload8hImpact,
-      subtext: 'meetings',
-      borderColor: 'border-red-200',
-      impactColor: 'text-red-600',
-      isActive: meetingOverload8h > 0
     },
     {
       label: 'Out of Hours',
@@ -138,18 +114,6 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
       value: focusBlockCount,
       subtext: 'blocks',
       isActive: focusBlockCount > 0
-    },
-    {
-      label: 'Overload 6h+',
-      value: meetingOverload6h,
-      subtext: 'occurrences',
-      isActive: meetingOverload6h > 0
-    },
-    {
-      label: 'Overload 8h+',
-      value: meetingOverload8h,
-      subtext: 'occurrences',
-      isActive: meetingOverload8h > 0
     },
     {
       label: 'Out of Hours',
