@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import type { CalendarListEntry } from '../../src/types';
+import type { CalendarListEntry } from '../../src/types/index.js';
 import { createClient } from '@supabase/supabase-js';
 
 console.log('[Calendar Sync] API endpoint loaded');

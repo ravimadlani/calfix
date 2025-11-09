@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Score Breakdown Modal - CalFix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        .health-score-ring {
+            position: relative;
+            width: 140px;
+            height: 140px;
+        }
+        .health-score-progress {
+            transform: rotate(-90deg);
+            transform-origin: center;
+        }
+        .factor-card {
+            transition: all 0.2s;
+        }
+        .factor-card:hover {
+            transform: translateX(4px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <!-- Dimmed Background (Dashboard Behind) -->
+    <div class="max-w-7xl mx-auto space-y-6 opacity-40">
+        <h1 class="text-2xl font-bold text-gray-900">Calendar Dashboard</h1>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-white rounded-xl shadow-md p-6 h-32"></div>
+            <div class="bg-white rounded-xl shadow-md p-6 h-32"></div>
+            <div class="bg-white rounded-xl shadow-md p-6 h-32"></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 h-64"></div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div class="fixed inset-0 modal-overlay flex items-center justify-center p-4 z-50">
+        <!-- Modal Container -->
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden slide-up">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Health Score Breakdown</h2>
+                        <p class="text-sm text-indigo-100">Today • Wednesday, Nov 6, 2024</p>
+                    </div>
+                </div>
+                <button class="text-white hover:bg-white/20 rounded-lg p-2 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="overflow-y-auto max-h-[calc(90vh-80px)]">
+                <div class="p-6 space-y-6">
+
+                    <!-- Score Overview Section -->
+                    <div class="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-6 border-2 border-yellow-200">
+                        <div class="flex flex-col md:flex-row items-center gap-6">
+                            <!-- Score Circle -->
+                            <div class="flex-shrink-0">
+                                <div class="relative">
+                                    <svg class="health-score-ring" viewBox="0 0 140 140">
+                                        <circle cx="70" cy="70" r="60" stroke="#e5e7eb" stroke-width="12" fill="none"/>
+                                        <circle cx="70" cy="70" r="60" stroke="#f59e0b" stroke-width="12" fill="none"
+                                            stroke-dasharray="377" stroke-dashoffset="83" stroke-linecap="round" class="health-score-progress"/>
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span class="text-5xl font-bold text-gray-900">78.5</span>
+                                        <span class="text-xs text-gray-500 font-semibold mt-1">OUT OF 100</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Score Summary -->
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-yellow-200 text-yellow-900">
+                                        Fair
+                                    </span>
+                                    <span class="text-sm text-gray-600">↑ 2.3 points from yesterday</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 mb-2">Your calendar health is fair today</h3>
+                                <p class="text-sm text-gray-700 mb-4">
+                                    You're doing well with focus blocks, but have several back-to-back meetings affecting your score.
+                                    Adding buffers between meetings could improve your score by <span class="font-semibold text-green-600">+45 points</span>.
+                                </p>
+
+                                <!-- Score Calculation Summary -->
+                                <div class="bg-white/70 rounded-lg p-4 space-y-2 text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">Base score</span>
+                                        <span class="font-semibold text-gray-900">100</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-red-600">
+                                        <span>Deductions</span>
+                                        <span class="font-semibold">-71</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-green-600">
+                                        <span>Bonuses</span>
+                                        <span class="font-semibold">+16</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-purple-600">
+                                        <span>Snoozed deductions</span>
+                                        <span class="font-semibold">+5.3</span>
+                                    </div>
+                                    <div class="border-t border-gray-300 pt-2 mt-2 flex items-center justify-between font-bold text-gray-900">
+                                        <span>Actual Score</span>
+                                        <span class="text-xl">78.5</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs text-gray-500 pt-1">
+                                        <span>Unsnoozed score (without snoozes)</span>
+                                        <span class="font-medium">73.2</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Health Factors Breakdown -->
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">📊 Factor Breakdown</h3>
+                        <div class="space-y-3">
+
+                            <!-- Back-to-Back Meetings (Negative) -->
+                            <div class="factor-card border-l-4 border-red-500 bg-red-50 rounded-lg p-4">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-bold text-gray-900">Back-to-Back Meetings</h4>
+                                            <span class="text-xs px-2 py-0.5 bg-red-200 text-red-900 rounded font-medium">CRITICAL</span>
+                                        </div>
+                                        <p class="text-sm text-gray-700">Meetings with no buffer time between them</p>
+                                    </div>
+                                    <div class="text-right ml-4">
+                                        <p class="text-2xl font-bold text-red-600">-45</p>
+                                        <p class="text-xs text-gray-600">points</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4 text-sm mb-3">
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Occurrences:</span>
+                                        <span class="font-semibold text-gray-900">3</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Impact per occurrence:</span>
+                                        <span class="font-semibold text-red-600">-15 pts</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Snoozed:</span>
+                                        <span class="font-semibold text-purple-600">0</span>
+                                    </div>
+                                </div>
+                                <div class="bg-white/60 rounded-lg p-3 text-xs space-y-1">
+                                    <p class="font-semibold text-gray-900 mb-2">Affected Events:</p>
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-gray-700">• 10:00 AM - "Team Standup" → "Product Review"</span>
+                                        <button class="text-indigo-600 hover:text-indigo-700 font-medium">Add Buffer</button>
+                                    </div>
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-gray-700">• 2:00 PM - "Client Call" → "Design Review"</span>
+                                        <button class="text-indigo-600 hover:text-indigo-700 font-medium">Add Buffer</button>
+                                    </div>
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-gray-700">• 4:00 PM - "1:1 Meeting" → "Team Sync"</span>
+                                        <button class="text-indigo-600 hover:text-indigo-700 font-medium">Add Buffer</button>
+                                    </div>
+                                </div>
+                                <button class="mt-3 w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add Buffers to All 3 Meetings
+                                </button>
+                            </div>
+
+                            <!-- Insufficient Buffer (Negative) -->
+                            <div class="factor-card border-l-4 border-orange-500 bg-orange-50 rounded-lg p-4">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-bold text-gray-900">Insufficient Buffer</h4>
+                                            <span class="text-xs px-2 py-0.5 bg-orange-200 text-orange-900 rounded font-medium">MODERATE</span>
+                                        </div>
+                                        <p class="text-sm text-gray-700">Meetings with less than 10 minutes of gap time</p>
+                                    </div>
+                                    <div class="text-right ml-4">
+                                        <p class="text-2xl font-bold text-orange-600">-16</p>
+                                        <p class="text-xs text-gray-600">points</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4 text-sm mb-3">
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Occurrences:</span>
+                                        <span class="font-semibold text-gray-900">2</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Impact per occurrence:</span>
+                                        <span class="font-semibold text-orange-600">-8 pts</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Snoozed:</span>
+                                        <span class="font-semibold text-purple-600">0</span>
+                                    </div>
+                                </div>
+                                <div class="bg-white/60 rounded-lg p-3 text-xs space-y-1">
+                                    <p class="font-semibold text-gray-900 mb-2">Affected Events:</p>
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-gray-700">• 11:00 AM "Product Review" (5 min gap before next)</span>
+                                        <button class="text-indigo-600 hover:text-indigo-700 font-medium">Extend Buffer</button>
+                                    </div>
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-gray-700">• 3:00 PM "Design Review" (8 min gap before next)</span>
+                                        <button class="text-indigo-600 hover:text-indigo-700 font-medium">Extend Buffer</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Meeting Overload (Negative) -->
+                            <div class="factor-card border-l-4 border-yellow-500 bg-yellow-50 rounded-lg p-4">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-bold text-gray-900">Meeting Overload (>6 hours)</h4>
+                                            <span class="text-xs px-2 py-0.5 bg-yellow-200 text-yellow-900 rounded font-medium">WARNING</span>
+                                        </div>
+                                        <p class="text-sm text-gray-700">More than 6 hours of meetings in a single day</p>
+                                    </div>
+                                    <div class="text-right ml-4">
+                                        <p class="text-2xl font-bold text-yellow-600">-10</p>
+                                        <p class="text-xs text-gray-600">points</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4 text-sm mb-3">
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Total meeting time:</span>
+                                        <span class="font-semibold text-gray-900">6.5 hours</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Impact:</span>
+                                        <span class="font-semibold text-yellow-600">Once per period</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Snoozed:</span>
+                                        <span class="font-semibold text-purple-600">Yes (unavoidable)</span>
+                                    </div>
+                                </div>
+                                <div class="bg-white/60 rounded-lg p-3 text-xs">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="font-semibold text-gray-900">Snoozed until:</span>
+                                        <span class="text-gray-700">End of day</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-semibold text-gray-900">Reason:</span>
+                                        <span class="text-gray-700">"All-day conference event"</span>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-purple-600 mt-2 flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Snoozed factors still affect your unsnoozed score (73.2)
+                                </p>
+                            </div>
+
+                            <!-- Focus Blocks (Positive) -->
+                            <div class="factor-card border-l-4 border-green-500 bg-green-50 rounded-lg p-4">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-bold text-gray-900">Focus Blocks</h4>
+                                            <span class="text-xs px-2 py-0.5 bg-green-200 text-green-900 rounded font-medium">BONUS</span>
+                                        </div>
+                                        <p class="text-sm text-gray-700">60-120 minute gaps for focused work</p>
+                                    </div>
+                                    <div class="text-right ml-4">
+                                        <p class="text-2xl font-bold text-green-600">+16</p>
+                                        <p class="text-xs text-gray-600">points</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4 text-sm mb-3">
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Occurrences:</span>
+                                        <span class="font-semibold text-gray-900">2 blocks</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Bonus per block:</span>
+                                        <span class="font-semibold text-green-600">+8 pts</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-gray-600">Max bonus:</span>
+                                        <span class="font-semibold text-gray-900">5 blocks</span>
+                                    </div>
+                                </div>
+                                <div class="bg-white/60 rounded-lg p-3 text-xs space-y-1">
+                                    <p class="font-semibold text-gray-900 mb-2">Focus Time Blocks:</p>
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-gray-700">• 12:00 PM - 1:30 PM (90 min gap)</span>
+                                        <span class="text-green-600 font-medium">+8 pts</span>
+                                    </div>
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-gray-700">• 5:00 PM - 6:15 PM (75 min gap)</span>
+                                        <span class="text-green-600 font-medium">+8 pts</span>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-green-600 mt-2 flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Great job! You can earn up to 3 more focus block bonuses today
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Score History Section -->
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">📈 Score Trend (Last 7 Days)</h3>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center gap-2 overflow-x-auto pb-2">
+                                <div class="flex-1 min-w-[80px] text-center p-2 bg-white rounded-lg border-2 border-yellow-400">
+                                    <p class="text-xs text-gray-600 mb-1">Today</p>
+                                    <p class="text-2xl font-bold text-gray-900">78.5</p>
+                                    <p class="text-xs text-green-600 font-semibold mt-1">↑ 2.3</p>
+                                </div>
+                                <div class="flex-1 min-w-[80px] text-center p-2 bg-white rounded-lg">
+                                    <p class="text-xs text-gray-600 mb-1">Nov 5</p>
+                                    <p class="text-xl font-bold text-gray-900">76.2</p>
+                                    <p class="text-xs text-red-600 font-semibold mt-1">↓ 1.8</p>
+                                </div>
+                                <div class="flex-1 min-w-[80px] text-center p-2 bg-white rounded-lg">
+                                    <p class="text-xs text-gray-600 mb-1">Nov 4</p>
+                                    <p class="text-xl font-bold text-gray-900">78.0</p>
+                                    <p class="text-xs text-green-600 font-semibold mt-1">↑ 3.1</p>
+                                </div>
+                                <div class="flex-1 min-w-[80px] text-center p-2 bg-white rounded-lg">
+                                    <p class="text-xs text-gray-600 mb-1">Nov 3</p>
+                                    <p class="text-xl font-bold text-gray-900">74.9</p>
+                                    <p class="text-xs text-red-600 font-semibold mt-1">↓ 2.5</p>
+                                </div>
+                                <div class="flex-1 min-w-[80px] text-center p-2 bg-white rounded-lg">
+                                    <p class="text-xs text-gray-600 mb-1">Nov 2</p>
+                                    <p class="text-xl font-bold text-gray-900">77.4</p>
+                                    <p class="text-xs text-green-600 font-semibold mt-1">↑ 1.2</p>
+                                </div>
+                                <div class="flex-1 min-w-[80px] text-center p-2 bg-white rounded-lg">
+                                    <p class="text-xs text-gray-600 mb-1">Nov 1</p>
+                                    <p class="text-xl font-bold text-gray-900">76.2</p>
+                                    <p class="text-xs text-red-600 font-semibold mt-1">↓ 1.9</p>
+                                </div>
+                                <div class="flex-1 min-w-[80px] text-center p-2 bg-white rounded-lg">
+                                    <p class="text-xs text-gray-600 mb-1">Oct 31</p>
+                                    <p class="text-xl font-bold text-gray-900">78.1</p>
+                                    <p class="text-xs text-green-600 font-semibold mt-1">↑ 2.7</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-gray-200 text-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600">7-day average:</span>
+                                    <span class="font-semibold text-gray-900">76.8</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Modal Footer with Actions -->
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between gap-4">
+                    <button class="px-4 py-2 text-gray-700 hover:bg-gray-200 font-medium rounded-lg transition-colors">
+                        Close
+                    </button>
+                    <div class="flex gap-3">
+                        <button class="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+                            </svg>
+                            Share Breakdown
+                        </button>
+                        <button class="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all transform hover:scale-105 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Fix All Issues
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

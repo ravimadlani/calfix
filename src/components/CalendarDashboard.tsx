@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ViewSelector from './ViewSelector';
-import StatsCard from './StatsCard';
 import DayActionsPanel from './DayActionsPanel';
 import DayFilterPills from './DayFilterPills';
 import EventsTimeline from './EventsTimeline';
@@ -13,17 +12,67 @@ import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
 import CalendarConnectPrompt from './CalendarConnectPrompt';
 import UpgradeModal from './UpgradeModal';
+import HealthScoreHero from './HealthScoreHero';
 
-import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange, formatHours } from '../utils/dateHelpers';
+import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type { CalendarEvent, CalendarProviderId } from '../types';
-import MeetingAudienceSummary from './MeetingAudienceSummary';
+// Use secure versions of the services
+import secureActivityLogger, { logUserAction } from '../services/activityLoggerSecure';
+import secureHealthScoreTracker from '../services/healthScoreTrackerSecure';
+
+// Helper to map view names to TimeHorizon type
+const getTimeHorizon = (view: string): 'today' | 'tomorrow' | 'week' | 'next_week' | 'month' | 'next_month' => {
+  const map: Record<string, 'today' | 'tomorrow' | 'week' | 'next_week' | 'month' | 'next_month'> = {
+    'today': 'today',
+    'tomorrow': 'tomorrow',
+    'week': 'week',
+    'nextWeek': 'next_week',
+    'thisMonth': 'month',
+    'nextMonth': 'next_month'
+  };
+  return map[view] || 'today';
+};
+
+// Helper to get date range for current view
+const getDateRange = (view: string): { startDate: Date, endDate: Date } => {
+  let range;
+  switch (view) {
+    case 'today':
+      range = getTodayRange();
+      break;
+    case 'tomorrow':
+      range = getTomorrowRange();
+      break;
+    case 'week':
+      range = getThisWeekRange();
+      break;
+    case 'nextWeek':
+      range = getNextWeekRange();
+      break;
+    case 'thisMonth':
+      range = getThisMonthRange();
+      break;
+    case 'nextMonth':
+      range = getNextMonthRange();
+      break;
+    default:
+      range = getTodayRange();
+  }
+
+  // Convert timeMin/timeMax to Date objects
+  return {
+    startDate: new Date(range.timeMin),
+    endDate: new Date(range.timeMax)
+  };
+};
 
 const CalendarDashboard = () => {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
   const {
     activeProvider,
     activeProviderId,
@@ -87,6 +136,9 @@ const CalendarDashboard = () => {
   });
   const [availableCalendars, setAvailableCalendars] = useState([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
+  const [loggingInitialized, setLoggingInitialized] = useState(false);
+  const [healthScoreResult, setHealthScoreResult] = useState(null);
+  const [isCalculatingHealthScore, setIsCalculatingHealthScore] = useState(false);
 
   const primaryClerkEmail =
     clerkUser?.primaryEmailAddress?.emailAddress ||
@@ -403,6 +455,25 @@ const CalendarDashboard = () => {
       const analyticsData = calculateAnalytics(filteredEvents, extendedEvents, calendarOwnerEmail);
       setAnalytics(analyticsData);
 
+      // Log analytics view based on current view
+      const viewActionMap = {
+        'today': 'analytics_view_today',
+        'tomorrow': 'analytics_view_tomorrow',
+        'week': 'analytics_view_week',
+        'nextWeek': 'analytics_view_next_week',
+        'thisMonth': 'analytics_view_month',
+        'nextMonth': 'analytics_view_next_month'
+      };
+
+      const actionName = viewActionMap[currentView] || 'analytics_view_today';
+      logUserAction(actionName, {
+        calendarId: calendarIdString,
+        timeHorizon: getTimeHorizon(currentView),
+        metadata: {
+          eventCount: filteredEvents.length
+        }
+      });
+
       // Get events with gap information using filtered events
       const eventsWithGapData = getEventsWithGaps(filteredEvents);
 
@@ -460,6 +531,15 @@ const CalendarDashboard = () => {
 
     console.log(`[Calendar Switch] State updated, calling loadEvents for calendar: ${trimmedId}`);
 
+    // Log the calendar switch
+    logUserAction('calendar_switch', {
+      calendarId: trimmedId,
+      metadata: {
+        previousCalendar: managedCalendarId,
+        newCalendar: trimmedId
+      }
+    });
+
     try {
       await loadEvents(trimmedId);
       console.log(`[Calendar Switch] Successfully loaded events for ${trimmedId}`);
@@ -494,6 +574,14 @@ const CalendarDashboard = () => {
 
     if (oauthSuccess) {
       console.log('[CalendarDashboard] OAuth successful');
+
+      // Log the successful OAuth connection
+      logUserAction('oauth_calendar_connected', {
+        metadata: {
+          provider: targetProviderId,
+          success: true
+        }
+      });
     }
 
     const authenticated = isProviderAuthenticated(targetProviderId);
@@ -511,6 +599,46 @@ const CalendarDashboard = () => {
       checkSubscription();
     }
   }, [checkSubscription, clerkUser?.id]);
+
+  // Initialize logging services when user is authenticated
+  useEffect(() => {
+    const initializeLogging = async () => {
+      if (clerkUser?.id && !loggingInitialized) {
+        try {
+          console.log('[CalendarDashboard] Initializing secure activity logging services...');
+
+          // Create a function that gets the token
+          const tokenGetter = async () => {
+            try {
+              return await getToken();
+            } catch (error) {
+              console.error('Failed to get Clerk token:', error);
+              return null;
+            }
+          };
+
+          // Initialize both secure services with user ID and token getter
+          await secureActivityLogger.initialize(
+            clerkUser.id,
+            tokenGetter
+          );
+
+          await secureHealthScoreTracker.initialize(
+            clerkUser.id,
+            tokenGetter
+          );
+
+          setLoggingInitialized(true);
+          console.log('[CalendarDashboard] Secure activity logging services initialized successfully');
+        } catch (error) {
+          console.error('[CalendarDashboard] Failed to initialize logging services:', error);
+          // Don't fail the whole app if logging fails
+        }
+      }
+    };
+
+    initializeLogging();
+  }, [clerkUser?.id, loggingInitialized, getToken]);
 
   // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {
@@ -536,6 +664,87 @@ const CalendarDashboard = () => {
     }
   }, [currentView, isCalendarConnected, loadEvents, subscriptionLoaded]);
 
+  // Calculate and save health score when both services are initialized and analytics are available
+  useEffect(() => {
+    const calculateAndSaveHealthScore = async () => {
+      console.log('[CalendarDashboard] Health score useEffect - checking conditions:', {
+        loggingInitialized,
+        hasTracker: !!secureHealthScoreTracker,
+        hasAnalytics: !!analytics
+      });
+
+      if (loggingInitialized && secureHealthScoreTracker && analytics) {
+        console.log('[CalendarDashboard] All conditions met - calculating health score...');
+        setIsCalculatingHealthScore(true);
+        try {
+          const { startDate, endDate } = getDateRange(currentView);
+          const calendarId = managedCalendarId || 'primary';
+          console.log('[CalendarDashboard] Health score params:', {
+            calendarId,
+            timeHorizon: getTimeHorizon(currentView),
+            startDate,
+            endDate
+          });
+
+          const healthScore = await secureHealthScoreTracker.calculateHealthScore(
+            analytics,
+            calendarId,
+            getTimeHorizon(currentView),
+            startDate,
+            endDate
+          );
+          console.log('[CalendarDashboard] Health score successfully calculated and saved:', healthScore);
+          setHealthScoreResult(healthScore);
+        } catch (error) {
+          console.error('[CalendarDashboard] Failed to calculate health score:', error);
+        } finally {
+          setIsCalculatingHealthScore(false);
+        }
+      }
+    };
+
+    calculateAndSaveHealthScore();
+  }, [loggingInitialized, analytics, currentView, managedCalendarId]);
+
+  // Memoized filtered events and analytics for display
+  const filteredEvents = useMemo(() => {
+    if (!selectedDay || (currentView !== 'week' && currentView !== 'nextWeek' && currentView !== 'thisMonth' && currentView !== 'nextMonth')) {
+      return eventsWithGaps;
+    }
+
+    // selectedDay is now a date key in format YYYY-MM-DD
+    return eventsWithGaps.filter(event => {
+      let startTime;
+      if (event.start?.dateTime) {
+        startTime = new Date(event.start.dateTime);
+      } else if (event.start?.date) {
+        const [year, month, day] = event.start.date.split('-').map(Number);
+        startTime = new Date(year, month - 1, day);
+      } else {
+        return false;
+      }
+
+      const dateKey = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
+      return dateKey === selectedDay;
+    });
+  }, [selectedDay, currentView, eventsWithGaps]);
+
+  const displayAnalytics = useMemo(() => {
+    return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
+      ? calculateAnalytics(
+          filteredEvents,
+          extendedEventsForFlights.length > 0 ? extendedEventsForFlights : null,
+          calendarOwnerEmail
+        )
+      : analytics;
+  }, [selectedDay, currentView, filteredEvents, extendedEventsForFlights, calendarOwnerEmail, analytics]);
+
+  const displayRecommendations = useMemo(() => {
+    return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
+      ? getRecommendations(filteredEvents, calendarOwnerEmail)
+      : recommendations;
+  }, [selectedDay, currentView, filteredEvents, calendarOwnerEmail, recommendations]);
+
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer before this event?')) {
@@ -554,6 +763,13 @@ const CalendarDashboard = () => {
     setActionLoading(true);
     try {
       await helper(event);
+
+      // Log the action
+      logUserAction('quick_action_add_prep', {
+        calendarId: managedCalendarId,
+        eventId: event.id,
+        timeHorizon: getTimeHorizon(currentView)
+      });
 
       if (!options.skipRefresh) {
         await loadEvents();
@@ -591,6 +807,13 @@ const CalendarDashboard = () => {
     setActionLoading(true);
     try {
       await helper(event);
+
+      // Log the action
+      logUserAction('quick_action_add_wrap', {
+        calendarId: managedCalendarId,
+        eventId: event.id,
+        timeHorizon: getTimeHorizon(currentView)
+      });
 
       if (!options.skipRefresh) {
         await loadEvents();
@@ -640,6 +863,17 @@ const CalendarDashboard = () => {
     setActionLoading(true);
     try {
       await move(event.id, event, nextSlot);
+
+      // Log the action
+      logUserAction('meeting_reschedule', {
+        calendarId: managedCalendarId,
+        eventId: event.id,
+        timeHorizon: getTimeHorizon(currentView),
+        metadata: {
+          newStartTime: nextSlot.toISOString()
+        }
+      });
+
       await loadEvents();
       alert('Event moved successfully!');
     } catch (err) {
@@ -686,6 +920,16 @@ const CalendarDashboard = () => {
           }
 
           await bufferHelper(selectedEvents, 'after');
+
+          // Log the batch action
+          logUserAction('workflow_batch_add_buffers', {
+            calendarId: managedCalendarId,
+            timeHorizon: getTimeHorizon(currentView),
+            metadata: {
+              actionType,
+              eventCount: selectedEvents.length
+            }
+          });
         }
         break;
 
@@ -735,6 +979,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Added ${locationSuccessCount} location event${locationSuccessCount !== 1 ? 's' : ''}. ${locationFailCount} failed.`);
         }
+
+        // Log the location tracking action
+        logUserAction('workflow_add_flight_locations', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: locationSuccessCount,
+            failCount: locationFailCount,
+            totalFlights: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -793,6 +1048,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Added ${travelBlockSuccessCount} travel block${travelBlockSuccessCount !== 1 ? 's' : ''}. ${travelBlockFailCount} failed.`);
         }
+
+        // Log the travel block action
+        logUserAction('workflow_add_travel_blocks', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: travelBlockSuccessCount,
+            failCount: travelBlockFailCount,
+            totalFlights: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -816,6 +1082,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Deleted ${deleteSuccessCount} meeting${deleteSuccessCount !== 1 ? 's' : ''}. ${deleteFailCount} failed.`);
         }
+
+        // Log the declined meeting cleanup
+        logUserAction('workflow_delete_declined_meetings', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: deleteSuccessCount,
+            failCount: deleteFailCount,
+            totalMeetings: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -839,6 +1116,17 @@ const CalendarDashboard = () => {
         } else {
           alert(`Declined and deleted ${outOfHoursDeleteSuccessCount} meeting${outOfHoursDeleteSuccessCount !== 1 ? 's' : ''}. ${outOfHoursDeleteFailCount} failed.`);
         }
+
+        // Log the out-of-hours meeting deletion
+        logUserAction('workflow_delete_out_of_hours_meetings', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            successCount: outOfHoursDeleteSuccessCount,
+            failCount: outOfHoursDeleteFailCount,
+            totalMeetings: selectedEvents.length
+          }
+        });
         break;
       }
 
@@ -860,8 +1148,13 @@ const CalendarDashboard = () => {
           break;
         }
 
+        let videoLinkSuccessCount = 0;
+        let videoLinkFailCount = 0;
+
         if (providerBatchAddConferenceLinks) {
           const meetResults = await providerBatchAddConferenceLinks(eventsToUpdate, managedCalendarId);
+          videoLinkSuccessCount = meetResults.successCount;
+          videoLinkFailCount = meetResults.failCount;
 
           if (meetResults.failCount === 0) {
             alert(`Successfully added video links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}!`);
@@ -869,26 +1162,36 @@ const CalendarDashboard = () => {
             alert(`Added video links to ${meetResults.successCount} meeting${meetResults.successCount !== 1 ? 's' : ''}. ${meetResults.failCount} failed.`);
           }
         } else if (providerAddConferenceLink) {
-          let successCount = 0;
-          let failCount = 0;
-
           for (const event of eventsToUpdate) {
             try {
               await providerAddConferenceLink(event.id, event, managedCalendarId);
-              successCount++;
+              videoLinkSuccessCount++;
             } catch (error) {
               console.error('Failed to add conference link:', error);
-              failCount++;
+              videoLinkFailCount++;
             }
           }
 
-          if (failCount === 0) {
-            alert(`Successfully added video links to ${successCount} meeting${successCount !== 1 ? 's' : ''}!`);
+          if (videoLinkFailCount === 0) {
+            alert(`Successfully added video links to ${videoLinkSuccessCount} meeting${videoLinkSuccessCount !== 1 ? 's' : ''}!`);
           } else {
-            alert(`Added video links to ${successCount} meeting${successCount !== 1 ? 's' : ''}. ${failCount} failed.`);
+            alert(`Added video links to ${videoLinkSuccessCount} meeting${videoLinkSuccessCount !== 1 ? 's' : ''}. ${videoLinkFailCount} failed.`);
           }
         } else {
           alert('Conference link automation is not supported for this calendar provider yet.');
+        }
+
+        // Log the video link addition
+        if (videoLinkSuccessCount > 0 || videoLinkFailCount > 0) {
+          logUserAction('workflow_add_video_links', {
+            calendarId: managedCalendarId,
+            timeHorizon: getTimeHorizon(currentView),
+            metadata: {
+              successCount: videoLinkSuccessCount,
+              failCount: videoLinkFailCount,
+              totalMeetings: eventsToUpdate.length
+            }
+          });
         }
         break;
       }
@@ -907,6 +1210,16 @@ const CalendarDashboard = () => {
         try {
           await deleteProviderEvent(selectedEventIds[0], managedCalendarId);
           alert('Event declined and deleted successfully!');
+
+          // Log the single event deletion (double booking resolution)
+          logUserAction('workflow_resolve_double_booking', {
+            calendarId: managedCalendarId,
+            eventId: selectedEventIds[0],
+            timeHorizon: getTimeHorizon(currentView),
+            metadata: {
+              action: 'delete_conflicting_event'
+            }
+          });
         } catch (error) {
           console.error('Failed to delete event:', error);
           throw new Error(`Failed to delete event: ${error.message}`);
@@ -933,6 +1246,17 @@ const CalendarDashboard = () => {
     }
 
     await helper(placeholderEvent);
+
+    // Log the action
+    logUserAction('calendar_event_delete', {
+      calendarId: managedCalendarId,
+      eventId: placeholderEvent.id,
+      timeHorizon: getTimeHorizon(currentView),
+      metadata: {
+        eventType: 'placeholder',
+        eventTitle: placeholderEvent.summary
+      }
+    });
 
     // Only refresh if not in bulk mode (bulk mode will refresh once at the end)
     if (!options.skipRefresh) {
@@ -1035,22 +1359,6 @@ const CalendarDashboard = () => {
       return dateKey === selectedDay;
     });
   };
-
-  const filteredEvents = getFilteredEvents();
-
-  // Calculate analytics for the filtered view (day-specific if a day is selected)
-  const displayAnalytics = selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-    ? calculateAnalytics(
-        filteredEvents,
-        extendedEventsForFlights.length > 0 ? extendedEventsForFlights : null,
-        calendarOwnerEmail
-      )
-    : analytics;
-
-  // Calculate recommendations for the filtered view
-  const displayRecommendations = selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-    ? getRecommendations(filteredEvents, calendarOwnerEmail)
-    : recommendations;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
@@ -1174,7 +1482,14 @@ const CalendarDashboard = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
           <button
-            onClick={() => setShowTeamScheduler(true)}
+            onClick={() => {
+              setShowTeamScheduler(true);
+              // Log opening the team scheduling modal
+              logUserAction('team_scheduling_modal_opened', {
+                calendarId: managedCalendarId,
+                timeHorizon: getTimeHorizon(currentView)
+              });
+            }}
             className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
           >
             <span>👥</span>
@@ -1190,53 +1505,13 @@ const CalendarDashboard = () => {
         currentTier={(subscriptionTier || 'basic') as 'basic' | 'ea' | 'ea_pro'}
       />
 
-      {/* Statistics Grid */}
+      {/* Health Score Hero (replaces stats grid) */}
       {displayAnalytics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-          <StatsCard
-            icon="📅"
-            label="Total Events"
-            value={displayAnalytics.totalEvents}
-            subtext={`${displayAnalytics.totalMeetings} meetings`}
-            color="indigo"
-          />
-          <StatsCard
-            icon="👥"
-            label="Total Meetings"
-            value={displayAnalytics.totalMeetings}
-            subtext={`${formatHours(displayAnalytics.totalMeetingHours)} hours`}
-            color="blue"
-          />
-          <MeetingAudienceSummary
-            totalMeetings={displayAnalytics.totalMeetings}
-            totalMeetingHours={displayAnalytics.totalMeetingHours}
-            internalMeetingCount={displayAnalytics.internalMeetingCount}
-            internalMeetingHours={displayAnalytics.internalMeetingHours}
-            externalMeetingCount={displayAnalytics.externalMeetingCount}
-            externalMeetingHours={displayAnalytics.externalMeetingHours}
-          />
-          <StatsCard
-            icon="🔴"
-            label="Back-to-Back"
-            value={displayAnalytics.backToBackCount}
-            subtext="Needs buffers"
-            color={displayAnalytics.backToBackCount > 0 ? 'red' : 'green'}
-          />
-          <StatsCard
-            icon="🎯"
-            label="Focus Blocks"
-            value={displayAnalytics.focusBlockCount}
-            subtext="60+ min gaps"
-            color="green"
-          />
-          <StatsCard
-            icon="🌙"
-            label="Out of Hours"
-            value={displayAnalytics.outOfHoursMeetingCount}
-            subtext="In foreign timezone"
-            color={displayAnalytics.outOfHoursMeetingCount > 0 ? 'orange' : 'green'}
-          />
-        </div>
+        <HealthScoreHero
+          analytics={displayAnalytics}
+          healthScoreResult={healthScoreResult}
+          isCalculating={isCalculatingHealthScore}
+        />
       )}
 
       {/* Day Filter Pills for Week and Month Views */}

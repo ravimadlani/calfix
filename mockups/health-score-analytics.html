@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Score Analytics - CalFix Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .stat-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .score-excellent { color: #10b981; }
+        .score-good { color: #84cc16; }
+        .score-fair { color: #f59e0b; }
+        .score-poor { color: #f97316; }
+        .score-critical { color: #ef4444; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-slate-800 mb-2">Health Score Analytics</h1>
+            <p class="text-slate-600">Calendar health metrics, factor impacts, and improvement tracking</p>
+        </div>
+
+        <!-- Score Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- Average Score -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Avg Health Score</p>
+                        <p class="text-xs text-slate-400">All users (30d)</p>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold score-good">78.5</p>
+                <div class="mt-3 text-xs text-slate-500">
+                    <span class="text-green-600 font-semibold">↑ 3.2</span> from last period
+                </div>
+            </div>
+
+            <!-- Users Above 80 -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Healthy Users</p>
+                        <p class="text-xs text-slate-400">Score ≥ 80</p>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">643</p>
+                <div class="mt-3 text-xs text-slate-500">
+                    51.5% of all users
+                </div>
+            </div>
+
+            <!-- Total Improvements -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Score Improvements</p>
+                        <p class="text-xs text-slate-400">Actions taken</p>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">4,827</p>
+                <div class="mt-3 text-xs text-slate-500">
+                    <span class="text-green-600 font-semibold">↑ 18%</span> from last period
+                </div>
+            </div>
+
+            <!-- Avg Snooze Rate -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Snooze Rate</p>
+                        <p class="text-xs text-slate-400">% of alerts snoozed</p>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-slate-800">14.2%</p>
+                <div class="mt-3 text-xs text-slate-500">
+                    1,734 total snoozes
+                </div>
+            </div>
+        </div>
+
+        <!-- Score Distribution -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Health Score Distribution</h2>
+            <p class="text-sm text-slate-500 mb-6">Shows how many users fall into each score range</p>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-slate-200">
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Score Range</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Category</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">User Count</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Percentage</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Visual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4 text-sm font-semibold score-excellent">90 - 100</td>
+                            <td class="py-4 px-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Excellent</span>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">387</td>
+                            <td class="py-4 px-4 text-right text-slate-600">31.0%</td>
+                            <td class="py-4 px-4">
+                                <div class="w-full bg-slate-200 rounded-full h-3 max-w-xs">
+                                    <div class="bg-green-600 h-3 rounded-full" style="width: 31%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4 text-sm font-semibold score-good">80 - 89</td>
+                            <td class="py-4 px-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-lime-100 text-lime-800">Good</span>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">256</td>
+                            <td class="py-4 px-4 text-right text-slate-600">20.5%</td>
+                            <td class="py-4 px-4">
+                                <div class="w-full bg-slate-200 rounded-full h-3 max-w-xs">
+                                    <div class="bg-lime-600 h-3 rounded-full" style="width: 20.5%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4 text-sm font-semibold score-fair">70 - 79</td>
+                            <td class="py-4 px-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Fair</span>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">318</td>
+                            <td class="py-4 px-4 text-right text-slate-600">25.5%</td>
+                            <td class="py-4 px-4">
+                                <div class="w-full bg-slate-200 rounded-full h-3 max-w-xs">
+                                    <div class="bg-yellow-600 h-3 rounded-full" style="width: 25.5%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4 text-sm font-semibold score-poor">60 - 69</td>
+                            <td class="py-4 px-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Poor</span>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">189</td>
+                            <td class="py-4 px-4 text-right text-slate-600">15.2%</td>
+                            <td class="py-4 px-4">
+                                <div class="w-full bg-slate-200 rounded-full h-3 max-w-xs">
+                                    <div class="bg-orange-600 h-3 rounded-full" style="width: 15.2%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-4 px-4 text-sm font-semibold score-critical">< 60</td>
+                            <td class="py-4 px-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Critical</span>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">97</td>
+                            <td class="py-4 px-4 text-right text-slate-600">7.8%</td>
+                            <td class="py-4 px-4">
+                                <div class="w-full bg-slate-200 rounded-full h-3 max-w-xs">
+                                    <div class="bg-red-600 h-3 rounded-full" style="width: 7.8%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Health Factor Impact Rankings -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Top Health Factor Impacts</h2>
+                <p class="text-sm text-slate-500 mb-4">Factors causing the most score deductions</p>
+                <div class="space-y-4">
+                    <!-- Back-to-back meetings -->
+                    <div class="border-l-4 border-red-500 pl-4 py-3 bg-red-50 rounded">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Back-to-Back Meetings</p>
+                                <p class="text-xs text-slate-600 mt-1">Meetings with no buffer time between them</p>
+                            </div>
+                            <span class="text-lg font-bold text-red-600">-15</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs text-slate-600">
+                            <span>Total occurrences: <span class="font-semibold">3,847</span></span>
+                            <span>Affected users: <span class="font-semibold">892</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Meeting Overload 8h -->
+                    <div class="border-l-4 border-red-500 pl-4 py-3 bg-red-50 rounded">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Meeting Overload (>8 hours)</p>
+                                <p class="text-xs text-slate-600 mt-1">More than 8 hours of meetings in a day</p>
+                            </div>
+                            <span class="text-lg font-bold text-red-600">-20</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs text-slate-600">
+                            <span>Total occurrences: <span class="font-semibold">1,234</span></span>
+                            <span>Affected users: <span class="font-semibold">547</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Insufficient Buffer -->
+                    <div class="border-l-4 border-orange-500 pl-4 py-3 bg-orange-50 rounded">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Insufficient Buffer</p>
+                                <p class="text-xs text-slate-600 mt-1">Meetings with less than 10 min gap</p>
+                            </div>
+                            <span class="text-lg font-bold text-orange-600">-8</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs text-slate-600">
+                            <span>Total occurrences: <span class="font-semibold">2,156</span></span>
+                            <span>Affected users: <span class="font-semibold">734</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Meeting Overload 6h -->
+                    <div class="border-l-4 border-yellow-500 pl-4 py-3 bg-yellow-50 rounded">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Meeting Overload (>6 hours)</p>
+                                <p class="text-xs text-slate-600 mt-1">More than 6 hours of meetings in a day</p>
+                            </div>
+                            <span class="text-lg font-bold text-yellow-600">-10</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs text-slate-600">
+                            <span>Total occurrences: <span class="font-semibold">1,892</span></span>
+                            <span>Affected users: <span class="font-semibold">678</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Focus Blocks (Positive) -->
+                    <div class="border-l-4 border-green-500 pl-4 py-3 bg-green-50 rounded">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Focus Blocks</p>
+                                <p class="text-xs text-slate-600 mt-1">60-120 min gaps for focused work</p>
+                            </div>
+                            <span class="text-lg font-bold text-green-600">+8</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs text-slate-600">
+                            <span>Total occurrences: <span class="font-semibold">4,521</span></span>
+                            <span>Affected users: <span class="font-semibold">1,089</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Score Trends & Improvements -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Score Trends (Last 7 Days)</h2>
+                <p class="text-sm text-slate-500 mb-4">Average health score by day</p>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Nov 6, 2024</p>
+                            <p class="text-xs text-slate-500">Today</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold score-good">78.5</p>
+                            <p class="text-xs text-green-600 font-semibold">↑ 1.2</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Nov 5, 2024</p>
+                            <p class="text-xs text-slate-500">Yesterday</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold score-good">77.3</p>
+                            <p class="text-xs text-red-600 font-semibold">↓ 0.8</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Nov 4, 2024</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold score-good">78.1</p>
+                            <p class="text-xs text-green-600 font-semibold">↑ 2.4</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Nov 3, 2024</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold score-fair">75.7</p>
+                            <p class="text-xs text-red-600 font-semibold">↓ 1.5</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Nov 2, 2024</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold score-fair">77.2</p>
+                            <p class="text-xs text-green-600 font-semibold">↑ 0.9</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Nov 1, 2024</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold score-fair">76.3</p>
+                            <p class="text-xs text-red-600 font-semibold">↓ 2.1</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Oct 31, 2024</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-bold score-good">78.4</p>
+                            <p class="text-xs text-green-600 font-semibold">↑ 1.7</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Improvement Actions (Last 7 Days)</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-600">Buffers Added</span>
+                            <span class="text-sm font-semibold text-slate-800">1,847</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-600">Meetings Rescheduled</span>
+                            <span class="text-sm font-semibold text-slate-800">423</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-600">Focus Blocks Created</span>
+                            <span class="text-sm font-semibold text-slate-800">892</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-600">Double-Bookings Resolved</span>
+                            <span class="text-sm font-semibold text-slate-800">156</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Snooze Analytics -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Most Snoozed Health Factors</h2>
+            <p class="text-sm text-slate-500 mb-4">Factors users choose to snooze most often (indicates unavoidable situations)</p>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-slate-200">
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Factor</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Total Snoozes</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600">Snooze Rate</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Top Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Back-to-Back Meetings</p>
+                                    <p class="text-xs text-slate-500">No buffer between meetings</p>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">687</td>
+                            <td class="py-4 px-4 text-right">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">17.9%</span>
+                            </td>
+                            <td class="py-4 px-4 text-sm text-slate-600">Client meeting (unavoidable)</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Meeting Overload (>6h)</p>
+                                    <p class="text-xs text-slate-500">More than 6 hours of meetings</p>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">423</td>
+                            <td class="py-4 px-4 text-right">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">22.4%</span>
+                            </td>
+                            <td class="py-4 px-4 text-sm text-slate-600">Conference day</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Out-of-Hours Meetings</p>
+                                    <p class="text-xs text-slate-500">Meetings outside business hours</p>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">312</td>
+                            <td class="py-4 px-4 text-right">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">28.7%</span>
+                            </td>
+                            <td class="py-4 px-4 text-sm text-slate-600">International timezone</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Insufficient Buffer</p>
+                                    <p class="text-xs text-slate-500">Less than 10 min between meetings</p>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">198</td>
+                            <td class="py-4 px-4 text-right">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">9.2%</span>
+                            </td>
+                            <td class="py-4 px-4 text-sm text-slate-600">Executive schedule</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="py-4 px-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Meeting Overload (>8h)</p>
+                                    <p class="text-xs text-slate-500">More than 8 hours of meetings</p>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-right text-slate-800 font-semibold">114</td>
+                            <td class="py-4 px-4 text-right">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">9.2%</span>
+                            </td>
+                            <td class="py-4 px-4 text-sm text-slate-600">All-day event/summit</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
