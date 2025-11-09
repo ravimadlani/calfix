@@ -6,3 +6,4 @@ export * from './calendar';
 export * from './analytics';
 export * from './airport';
 export * from './recurring';
+export * from './naturalLanguage';
