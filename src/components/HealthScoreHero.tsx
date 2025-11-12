@@ -7,7 +7,6 @@
 import React, { useState } from 'react';
 import type { CalendarAnalytics } from '../types/analytics';
 import type { HealthScoreResult } from '../services/healthScoreTrackerSecure';
-import { formatHours } from '../utils/dateHelpers';
 import { getHealthScoreInterpretation } from '../utils/healthCalculator';
 
 interface HealthScoreHeroProps {
@@ -24,7 +23,6 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
     backToBackCount,
     insufficientBufferCount,
     focusBlockCount,
-    totalMeetingHours,
     outOfHoursMeetingCount,
     doubleBookingCount,
   } = analytics;

@@ -13,13 +13,14 @@ import TeamSchedulingModal from './TeamSchedulingModal';
 import CalendarConnectPrompt from './CalendarConnectPrompt';
 import UpgradeModal from './UpgradeModal';
 import HealthScoreHero from './HealthScoreHero';
+import AgentChatWidget from './AgentChatWidget';
 
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
-import type { CalendarEvent, CalendarProviderId } from '../types';
+import type { CalendarEvent, CalendarProviderId, IntentActionHandlers } from '../types';
 // Use secure versions of the services
 import secureActivityLogger, { logUserAction } from '../services/activityLoggerSecure';
 import secureHealthScoreTracker from '../services/healthScoreTrackerSecure';
@@ -97,6 +98,7 @@ const CalendarDashboard = () => {
     addBufferAfter: providerAddBufferAfter,
     batchAddBuffers: providerBatchAddBuffers,
     deletePlaceholderAndLog: providerDeletePlaceholderAndLog,
+    createFocusBlock: providerCreateFocusBlock,
     createTravelBlock: providerCreateTravelBlock,
     createLocationEvent: providerCreateLocationEvent,
     batchAddConferenceLinks: providerBatchAddConferenceLinks,
@@ -745,6 +747,70 @@ const CalendarDashboard = () => {
       : recommendations;
   }, [selectedDay, currentView, filteredEvents, calendarOwnerEmail, recommendations]);
 
+  const assistantActions = useMemo<IntentActionHandlers>(() => ({
+    applyBuffers: async ({ position, events: targetEvents, bufferMinutes = 15 }) => {
+      if (!targetEvents || targetEvents.length === 0) {
+        return { appliedCount: 0 };
+      }
+
+      if (!providerBatchAddBuffers) {
+        throw new Error('Bulk buffer creation is not supported for this calendar provider yet.');
+      }
+
+      setActionLoading(true);
+      try {
+        await providerBatchAddBuffers(targetEvents, position, bufferMinutes);
+        logUserAction('assistant_apply_buffers', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            position,
+            bufferMinutes,
+            eventCount: targetEvents.length
+          }
+        });
+        await loadEvents();
+        return { appliedCount: targetEvents.length };
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    createFocusBlock: async slot => {
+      if (!providerCreateFocusBlock) {
+        throw new Error('Focus block creation is not supported for this calendar provider yet.');
+      }
+
+      const start = new Date(slot.start);
+      if (Number.isNaN(start.getTime())) {
+        throw new Error('Could not parse the focus block time.');
+      }
+
+      const durationMinutes = slot.durationMinutes ?? 120;
+
+      setActionLoading(true);
+      try {
+        await providerCreateFocusBlock(start, durationMinutes, '🎯 Focus Time');
+        logUserAction('assistant_create_focus_block', {
+          calendarId: managedCalendarId,
+          timeHorizon: getTimeHorizon(currentView),
+          metadata: {
+            start: start.toISOString(),
+            durationMinutes
+          }
+        });
+        await loadEvents();
+      } finally {
+        setActionLoading(false);
+      }
+    }
+  }), [
+    currentView,
+    loadEvents,
+    managedCalendarId,
+    providerBatchAddBuffers,
+    providerCreateFocusBlock
+  ]);
+
   // Handle adding buffer before event
   const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer before this event?')) {
@@ -1337,29 +1403,6 @@ const CalendarDashboard = () => {
     return new Date(year, month - 1, day);
   };
 
-  // Filter events by selected day if in week or month view
-  const getFilteredEvents = () => {
-    if (!selectedDay || (currentView !== 'week' && currentView !== 'nextWeek' && currentView !== 'thisMonth' && currentView !== 'nextMonth')) {
-      return eventsWithGaps;
-    }
-
-    // selectedDay is now a date key in format YYYY-MM-DD
-    return eventsWithGaps.filter(event => {
-      let startTime;
-      if (event.start?.dateTime) {
-        startTime = new Date(event.start.dateTime);
-      } else if (event.start?.date) {
-        const [year, month, day] = event.start.date.split('-').map(Number);
-        startTime = new Date(year, month - 1, day);
-      } else {
-        return false;
-      }
-
-      const dateKey = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
-      return dateKey === selectedDay;
-    });
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Calendar Management Section */}
@@ -1585,6 +1628,16 @@ const CalendarDashboard = () => {
           }}
         />
       )}
+
+      <AgentChatWidget
+        events={events}
+        extendedEvents={extendedEventsForFlights}
+        eventsWithGaps={eventsWithGaps}
+        analytics={displayAnalytics}
+        assistantActions={assistantActions}
+        currentView={currentView}
+        timeRange={currentTimeRange}
+      />
     </div>
   );
 };
