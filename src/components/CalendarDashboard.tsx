@@ -81,6 +81,14 @@ const CalendarDashboard = () => {
     isAuthenticated: isProviderAuthenticated
   } = useCalendarProvider();
 
+  // Feature flag: Enable chatbot only with URL parameter ?chatbot=true
+  const [isChatbotEnabled, setIsChatbotEnabled] = useState(false);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    setIsChatbotEnabled(urlParams.get('chatbot') === 'true');
+  }, []);
+
   const calendarApi = activeProvider.calendar;
   const helperApi = activeProvider.helpers;
   const providerCapabilities = activeProvider.capabilities;
@@ -1629,15 +1637,17 @@ const CalendarDashboard = () => {
         />
       )}
 
-      <AgentChatWidget
-        events={events}
-        extendedEvents={extendedEventsForFlights}
-        eventsWithGaps={eventsWithGaps}
-        analytics={displayAnalytics}
-        assistantActions={assistantActions}
-        currentView={currentView}
-        timeRange={currentTimeRange}
-      />
+      {isChatbotEnabled && (
+        <AgentChatWidget
+          events={events}
+          extendedEvents={extendedEventsForFlights}
+          eventsWithGaps={eventsWithGaps}
+          analytics={displayAnalytics}
+          assistantActions={assistantActions}
+          currentView={currentView}
+          timeRange={currentTimeRange}
+        />
+      )}
     </div>
   );
 };
