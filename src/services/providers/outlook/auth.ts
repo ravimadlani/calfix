@@ -275,7 +275,7 @@ function isAuthenticated(): boolean {
 /**
  * Get user information
  */
-async function getUserInfo(): Promise<any> {
+async function getUserInfo(): Promise<unknown> {
   const token = await getAccessToken();
 
   if (!token) {
@@ -325,5 +325,6 @@ export {
   TENANT_ID,
   CLIENT_ID,
   REDIRECT_URI,
-  SCOPES
+  SCOPES,
+  getUserInfo
 };
