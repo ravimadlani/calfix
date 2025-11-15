@@ -1,9 +1,11 @@
 import type { CalendarProviderId, CalendarProviderMetadata } from '../../types';
 import type { CalendarProvider, CalendarProviderFactory } from './CalendarProvider';
 import { createGoogleCalendarProvider } from './google';
+import { createOutlookCalendarProvider } from './outlook';
 
 const providerFactories: Partial<Record<CalendarProviderId, CalendarProviderFactory>> = {
-  google: createGoogleCalendarProvider
+  google: createGoogleCalendarProvider,
+  outlook: createOutlookCalendarProvider
 };
 
 const providerCache: Partial<Record<CalendarProviderId, CalendarProvider>> = {};
@@ -34,22 +36,7 @@ export const getProviderMetadata = (): CalendarProviderMetadata[] => {
   }));
 
   const planned: CalendarProviderMetadata[] = [
-    {
-      id: 'outlook',
-      label: 'Microsoft Outlook',
-      description: 'Microsoft 365 / Outlook.com calendar integration (coming soon)',
-      icon: 'microsoft',
-      capabilities: {
-        supportsBuffers: true,
-        supportsTravelBlocks: true,
-        supportsFocusBlocks: true,
-        supportsConferenceLinks: true,
-        supportsBatchConferenceLinks: false,
-        supportsFreeBusy: true,
-        supportsColorMetadata: true,
-        supportsLocationTracking: true
-      }
-    }
+    // Outlook is now implemented and moved to providerFactories
   ];
 
   return [...implemented, ...planned];
