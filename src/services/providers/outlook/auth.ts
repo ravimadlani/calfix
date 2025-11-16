@@ -98,10 +98,8 @@ async function exchangeCodeForToken(code: string): Promise<boolean> {
     code_verifier: codeVerifier
   });
 
-  // Add client secret if available (not required for PKCE)
-  if (CLIENT_SECRET) {
-    params.append('client_secret', CLIENT_SECRET);
-  }
+  // NOTE: Do not include client_secret for public clients (SPAs)
+  // Azure AD public clients use PKCE only, not client secrets
 
   try {
     const response = await fetch(TOKEN_ENDPOINT, {
@@ -161,10 +159,8 @@ async function refreshAccessToken(): Promise<boolean> {
     scope: SCOPES
   });
 
-  // Add client secret if available
-  if (CLIENT_SECRET) {
-    params.append('client_secret', CLIENT_SECRET);
-  }
+  // NOTE: Do not include client_secret for public clients (SPAs)
+  // Azure AD public clients don't use client secrets
 
   try {
     const response = await fetch(TOKEN_ENDPOINT, {
