@@ -10,7 +10,8 @@ import DayFilterPills from './DayFilterPills';
 import EventsTimeline from './EventsTimeline';
 import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
-import CalendarConnectPrompt from './CalendarConnectPrompt';
+import ProviderSelection from './ProviderSelection';
+import ProviderSwitcher from './ProviderSwitcher';
 import UpgradeModal from './UpgradeModal';
 import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
@@ -1355,9 +1356,21 @@ const CalendarDashboard = () => {
     );
   }
 
-  // Show Google Calendar connection prompt if not connected
+  // Show provider selection if not connected
   if (!isCalendarConnected) {
-    return <CalendarConnectPrompt />;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-4xl w-full">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Welcome to CalFix</h1>
+            <p className="mt-2 text-lg text-gray-600">
+              Connect your calendar to get started
+            </p>
+          </div>
+          <ProviderSelection />
+        </div>
+      </div>
+    );
   }
 
   if (loading && events.length === 0) {
@@ -1415,6 +1428,12 @@ const CalendarDashboard = () => {
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Calendar Management Section */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">Provider:</span>
+            <ProviderSwitcher />
+          </div>
+        </div>
         {hasMultiCalendarAccess ? (
           <>
             <div className="flex items-center gap-4">

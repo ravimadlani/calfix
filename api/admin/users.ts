@@ -10,7 +10,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Simple admin authentication check (you can enhance this)
   const adminEmail = req.headers['x-admin-email'];
 
-  if (adminEmail !== 'ravi@madlanilabs.com') {
+  // List of allowed admin emails
+  const allowedAdmins = [
+    'ravi@madlanilabs.com',
+    'ravi.madlani@madlanilabs.com'
+  ];
+
+  if (!adminEmail || !allowedAdmins.includes(adminEmail as string)) {
     return res.status(403).json({ error: 'Forbidden: Admin access only' });
   }
 

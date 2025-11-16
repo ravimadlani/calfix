@@ -3,7 +3,7 @@
  * Generates realistic calendar events with various issues for testing CalFix
  */
 
-import { createEvent } from './googleCalendar';
+import type { CalendarProvider } from './providers/CalendarProvider';
 
 interface TestDataResult {
   totalEvents: number;
@@ -42,8 +42,9 @@ const SAMPLE_ATTENDEES = [
 
 /**
  * Generate 2 months of test calendar data
+ * @param provider The active calendar provider to use for creating events
  */
-export const generateTestCalendarData = async (): Promise<TestDataResult> => {
+export const generateTestCalendarData = async (provider: CalendarProvider): Promise<TestDataResult> => {
   const result: TestDataResult = {
     totalEvents: 0,
     backToBack: 0,
@@ -72,24 +73,24 @@ export const generateTestCalendarData = async (): Promise<TestDataResult> => {
     // Different event patterns for different days
     if (day % 5 === 0) {
       // Day 0, 5, 10, 15... - Heavy meeting days with back-to-back
-      await generateHeavyMeetingDay(currentDate, result);
+      await generateHeavyMeetingDay(currentDate, result, provider);
     } else if (day % 5 === 1) {
       // Day 1, 6, 11, 16... - Double booking day
-      await generateDoubleBookingDay(currentDate, result);
+      await generateDoubleBookingDay(currentDate, result, provider);
     } else if (day % 5 === 2) {
       // Day 2, 7, 12, 17... - Flight day
-      await generateFlightDay(currentDate, result, day);
+      await generateFlightDay(currentDate, result, day, provider);
     } else if (day % 5 === 3) {
       // Day 3, 8, 13, 18... - Light meeting day with focus blocks
-      await generateFocusDay(currentDate, result);
+      await generateFocusDay(currentDate, result, provider);
     } else {
       // Day 4, 9, 14, 19... - Regular meeting day
-      await generateRegularDay(currentDate, result);
+      await generateRegularDay(currentDate, result, provider);
     }
 
     // Randomly add declined meetings
     if (day % 7 === 0) {
-      await generateDeclinedMeeting(currentDate, result);
+      await generateDeclinedMeeting(currentDate, result, provider);
     }
   }
 
@@ -99,7 +100,7 @@ export const generateTestCalendarData = async (): Promise<TestDataResult> => {
 /**
  * Heavy meeting day with back-to-back meetings
  */
-const generateHeavyMeetingDay = async (date: Date, result: TestDataResult): Promise<void> => {
+const generateHeavyMeetingDay = async (date: Date, result: TestDataResult, provider: CalendarProvider): Promise<void> => {
   const meetings = [
     { start: 9, duration: 60, buffer: 0 },  // 9:00-10:00 (back-to-back)
     { start: 10, duration: 60, buffer: 0 }, // 10:00-11:00 (back-to-back)
@@ -121,7 +122,7 @@ const generateHeavyMeetingDay = async (date: Date, result: TestDataResult): Prom
 
     const hasVideoLink = i < meetings.length - 1; // Last meeting has no video link
 
-    await createEvent({
+    await provider.calendar.createEvent({
       summary: SAMPLE_MEETING_TITLES[i % SAMPLE_MEETING_TITLES.length],
       start: { dateTime: startTime.toISOString(), timeZone: 'Europe/London' },
       end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },
@@ -153,7 +154,7 @@ const generateHeavyMeetingDay = async (date: Date, result: TestDataResult): Prom
 /**
  * Day with double bookings
  */
-const generateDoubleBookingDay = async (date: Date, result: TestDataResult): Promise<void> => {
+const generateDoubleBookingDay = async (date: Date, result: TestDataResult, provider: CalendarProvider): Promise<void> => {
   // Create overlapping meetings
   const overlaps = [
     { start: 10, duration: 60 },
@@ -170,7 +171,7 @@ const generateDoubleBookingDay = async (date: Date, result: TestDataResult): Pro
     const endTime = new Date(startTime);
     endTime.setMinutes(startTime.getMinutes() + meeting.duration);
 
-    await createEvent({
+    await provider.calendar.createEvent({
       summary: `${SAMPLE_MEETING_TITLES[i % SAMPLE_MEETING_TITLES.length]} ${i % 2 === 0 ? '(Conflict)' : '(Overlap)'}`,
       start: { dateTime: startTime.toISOString(), timeZone: 'Europe/London' },
       end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },
@@ -193,7 +194,7 @@ const generateDoubleBookingDay = async (date: Date, result: TestDataResult): Pro
 /**
  * Day with flights
  */
-const generateFlightDay = async (date: Date, result: TestDataResult, dayOffset: number): Promise<void> => {
+const generateFlightDay = async (date: Date, result: TestDataResult, dayOffset: number, provider: CalendarProvider): Promise<void> => {
   const isInternational = dayOffset % 10 === 2; // Every 10th day is international
 
   if (isInternational) {
@@ -204,7 +205,7 @@ const generateFlightDay = async (date: Date, result: TestDataResult, dayOffset: 
     const arrivalTime = new Date(departureTime);
     arrivalTime.setHours(arrivalTime.getHours() + 11); // 11-hour flight
 
-    await createEvent({
+    await provider.calendar.createEvent({
       summary: 'Flight: BA283 LHR to SFO',
       start: { dateTime: departureTime.toISOString(), timeZone: 'Europe/London' },
       end: { dateTime: arrivalTime.toISOString(), timeZone: 'America/Los_Angeles' },
@@ -223,7 +224,7 @@ const generateFlightDay = async (date: Date, result: TestDataResult, dayOffset: 
     const meetingEnd = new Date(nextDay);
     meetingEnd.setHours(7, 0, 0, 0);
 
-    await createEvent({
+    await provider.calendar.createEvent({
       summary: 'Early Morning Sync with UK Team',
       start: { dateTime: nextDay.toISOString(), timeZone: 'America/Los_Angeles' },
       end: { dateTime: meetingEnd.toISOString(), timeZone: 'America/Los_Angeles' },
@@ -243,7 +244,7 @@ const generateFlightDay = async (date: Date, result: TestDataResult, dayOffset: 
     const arrivalTime = new Date(departureTime);
     arrivalTime.setHours(arrivalTime.getHours() + 1, arrivalTime.getMinutes() + 30);
 
-    await createEvent({
+    await provider.calendar.createEvent({
       summary: 'Flight: BA1449 LHR to EDI',
       start: { dateTime: departureTime.toISOString(), timeZone: 'Europe/London' },
       end: { dateTime: arrivalTime.toISOString(), timeZone: 'Europe/London' },
@@ -258,14 +259,14 @@ const generateFlightDay = async (date: Date, result: TestDataResult, dayOffset: 
 /**
  * Focus day with proper spacing and focus blocks
  */
-const generateFocusDay = async (date: Date, result: TestDataResult): Promise<void> => {
+const generateFocusDay = async (date: Date, result: TestDataResult, provider: CalendarProvider): Promise<void> => {
   // Morning focus block
   const focusStart1 = new Date(date);
   focusStart1.setHours(9, 0, 0, 0);
   const focusEnd1 = new Date(focusStart1);
   focusEnd1.setHours(11, 0, 0, 0);
 
-  await createEvent({
+  await provider.calendar.createEvent({
     summary: '🎯 Deep Work: Product Planning',
     start: { dateTime: focusStart1.toISOString(), timeZone: 'Europe/London' },
     end: { dateTime: focusEnd1.toISOString(), timeZone: 'Europe/London' },
@@ -281,7 +282,7 @@ const generateFocusDay = async (date: Date, result: TestDataResult): Promise<voi
   const meetingEnd = new Date(meetingStart);
   meetingEnd.setHours(14, 0, 0, 0);
 
-  await createEvent({
+  await provider.calendar.createEvent({
     summary: 'Weekly Team Sync',
     start: { dateTime: meetingStart.toISOString(), timeZone: 'Europe/London' },
     end: { dateTime: meetingEnd.toISOString(), timeZone: 'Europe/London' },
@@ -303,7 +304,7 @@ const generateFocusDay = async (date: Date, result: TestDataResult): Promise<voi
   const focusEnd2 = new Date(focusStart2);
   focusEnd2.setHours(17, 0, 0, 0);
 
-  await createEvent({
+  await provider.calendar.createEvent({
     summary: '🎯 Focus Time: Code Review',
     start: { dateTime: focusStart2.toISOString(), timeZone: 'Europe/London' },
     end: { dateTime: focusEnd2.toISOString(), timeZone: 'Europe/London' },
@@ -317,7 +318,7 @@ const generateFocusDay = async (date: Date, result: TestDataResult): Promise<voi
 /**
  * Regular day with proper meeting spacing
  */
-const generateRegularDay = async (date: Date, result: TestDataResult): Promise<void> => {
+const generateRegularDay = async (date: Date, result: TestDataResult, provider: CalendarProvider): Promise<void> => {
   const meetings = [
     { start: 9, duration: 60 },
     { start: 11, duration: 30 },
@@ -333,7 +334,7 @@ const generateRegularDay = async (date: Date, result: TestDataResult): Promise<v
     const endTime = new Date(startTime);
     endTime.setMinutes(startTime.getMinutes() + meeting.duration);
 
-    await createEvent({
+    await provider.calendar.createEvent({
       summary: SAMPLE_MEETING_TITLES[(i + 5) % SAMPLE_MEETING_TITLES.length],
       start: { dateTime: startTime.toISOString(), timeZone: 'Europe/London' },
       end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },
@@ -353,14 +354,14 @@ const generateRegularDay = async (date: Date, result: TestDataResult): Promise<v
 /**
  * Generate a declined meeting
  */
-const generateDeclinedMeeting = async (date: Date, result: TestDataResult): Promise<void> => {
+const generateDeclinedMeeting = async (date: Date, result: TestDataResult, provider: CalendarProvider): Promise<void> => {
   const startTime = new Date(date);
   startTime.setHours(10, 0, 0, 0);
 
   const endTime = new Date(startTime);
   endTime.setHours(11, 0, 0, 0);
 
-  await createEvent({
+  await provider.calendar.createEvent({
     summary: '[DECLINED] Quarterly Review',
     start: { dateTime: startTime.toISOString(), timeZone: 'Europe/London' },
     end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },

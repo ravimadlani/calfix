@@ -86,7 +86,7 @@ const AdminPanel = () => {
     setSuccessMessage(null);
 
     try {
-      const result = await generateTestCalendarData();
+      const result = await generateTestCalendarData(activeProvider);
       setSuccessMessage(`Successfully created ${result.totalEvents} test events!`);
 
       // Show breakdown
