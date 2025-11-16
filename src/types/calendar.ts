@@ -107,7 +107,9 @@ export interface CalendarEvent {
   colorId?: string;
   transparency?: 'opaque' | 'transparent';
   status?: 'confirmed' | 'tentative' | 'cancelled';
-  htmlLink?: string;
+  htmlLink?: string;        // Direct web link from API (if available)
+  providerUrl?: string;     // Constructed link to open in provider
+  providerType?: 'google' | 'outlook';  // Which provider owns this event
   hangoutLink?: string;
   conferenceData?: ConferenceData;
   reminders?: {
