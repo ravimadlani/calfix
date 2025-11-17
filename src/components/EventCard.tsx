@@ -6,6 +6,7 @@
 
 import { formatTime, calculateDuration, isAllDayEvent } from '../utils/dateHelpers';
 import { getEventColors, getEventIcon } from '../utils/eventCategorizer';
+import { EventProviderLink } from './EventProviderLink';
 
 const EventCard = ({ event, gapAfter, onAddBufferBefore, onAddBufferAfter, onMoveEvent }) => {
   const colors = getEventColors(event);
@@ -46,7 +47,7 @@ const EventCard = ({ event, gapAfter, onAddBufferBefore, onAddBufferAfter, onMov
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden group">
       {/* Event header with category color */}
       <div className={`h-2 ${colors.border.replace('border', 'bg')}`}></div>
 
@@ -57,9 +58,16 @@ const EventCard = ({ event, gapAfter, onAddBufferBefore, onAddBufferAfter, onMov
             {icon}
           </span>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
-              {event.summary || 'Untitled Event'}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">
+                {event.summary || 'Untitled Event'}
+              </h3>
+              {/* Provider link - shows on hover */}
+              <EventProviderLink
+                event={event}
+                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              />
+            </div>
 
             {/* Category badge */}
             <div className="flex flex-wrap gap-2 mt-1">

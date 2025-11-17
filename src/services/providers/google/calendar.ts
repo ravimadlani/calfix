@@ -65,13 +65,26 @@ const makeApiRequest = async (endpoint: string, options: RequestInit = {}) => {
 const normalizeEvent = (event: GoogleRawCalendarEvent, calendarId = PRIMARY_CALENDAR): CalendarEvent => {
   const meetingUrl = event.hangoutLink || event.htmlLink || undefined;
 
+  // Generate Google Calendar URL - using htmlLink directly if available
+  const providerUrl = event.htmlLink || (event.id ? generateGoogleCalendarUrl(event.id) : undefined);
+
   return {
     ...event,
     providerId: GOOGLE_PROVIDER_ID,
     calendarId,
     meetingUrl,
+    htmlLink: event.htmlLink,  // Direct link from API
+    providerUrl,  // Constructed link to open in provider
+    providerType: 'google',  // Provider type
     raw: event
   } as CalendarEvent;
+};
+
+// Helper function to generate Google Calendar URL
+const generateGoogleCalendarUrl = (eventId: string): string => {
+  // Simple direct link format that works for most cases
+  // Note: The eid parameter in Google Calendar URLs automatically handles the right calendar
+  return `https://calendar.google.com/calendar/event?eid=${encodeURIComponent(eventId)}`;
 };
 
 const normalizeEventArray = (events: GoogleRawCalendarEvent[] = [], calendarId = PRIMARY_CALENDAR): CalendarEvent[] => {

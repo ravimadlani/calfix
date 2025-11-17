@@ -209,6 +209,9 @@ function normalizeEvent(event: MicrosoftGraphEvent, calendarId = 'primary'): Cal
   const meetingUrl = event.onlineMeeting?.joinUrl || event.webLink || undefined;
   const isAllDay = event.isAllDay || false;
 
+  // Generate Outlook provider URL - using webLink directly if available
+  const providerUrl = event.webLink || (event.id ? generateOutlookCalendarUrl(event.id) : undefined);
+
   const normalizedEvent: CalendarEvent = {
     providerId: OUTLOOK_PROVIDER_ID,
     calendarId,
@@ -250,6 +253,9 @@ function normalizeEvent(event: MicrosoftGraphEvent, calendarId = 'primary'): Cal
       }]
     } : undefined,
     meetingUrl,
+    htmlLink: event.webLink,  // Direct link from API
+    providerUrl,  // Constructed link to open in provider
+    providerType: 'outlook',  // Provider type
     conferenceData: event.onlineMeeting ? {
       entryPoints: [{
         entryPointType: 'video',
@@ -267,6 +273,12 @@ function normalizeEvent(event: MicrosoftGraphEvent, calendarId = 'primary'): Cal
   };
 
   return normalizedEvent;
+}
+
+// Helper function to generate Outlook Calendar URL
+function generateOutlookCalendarUrl(eventId: string): string {
+  // Outlook Web App deep link
+  return `https://outlook.office365.com/calendar/item/${encodeURIComponent(eventId)}`;
 }
 
 /**

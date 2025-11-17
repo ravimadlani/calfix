@@ -13,7 +13,7 @@ export const OUTLOOK_PROVIDER_ID: CalendarProviderId = 'outlook';
 // OAuth configuration from environment variables
 const TENANT_ID = import.meta.env.VITE_OUTLOOK_TENANT_ID || 'common';
 const CLIENT_ID = import.meta.env.VITE_OUTLOOK_CLIENT_ID;
-const CLIENT_SECRET = import.meta.env.VITE_OUTLOOK_CLIENT_SECRET; // Optional for PKCE
+// const CLIENT_SECRET = import.meta.env.VITE_OUTLOOK_CLIENT_SECRET; // Not used for public clients (SPAs)
 const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:3001/oauth/callback';
 
 // Microsoft Identity Platform endpoints
