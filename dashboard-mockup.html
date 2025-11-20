@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalFix Dashboard - Health Alerts & Pending Invitations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f8fafc;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .stat-change.positive {
+            color: #10b981;
+        }
+
+        .stat-change.negative {
+            color: #ef4444;
+        }
+
+        /* Main Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Inbox Sections */
+        .inbox-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .inbox-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .inbox-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            background: #ef4444;
+            color: white;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #f9fafb;
+        }
+
+        .filter-btn.active {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
+        }
+
+        .inbox-content {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        /* Alert Items */
+        .alert-item, .event-item {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .alert-item:hover, .event-item:hover {
+            background: #f9fafb;
+        }
+
+        .alert-header, .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .alert-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .alert-icon.critical {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .alert-icon.warning {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+
+        .alert-icon.info {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .alert-details {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+
+        .alert-description {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .alert-time {
+            font-size: 12px;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+
+        .alert-actions, .event-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .action-btn {
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .action-btn.primary {
+            background: #6366f1;
+            color: white;
+        }
+
+        .action-btn.primary:hover {
+            background: #4f46e5;
+        }
+
+        .action-btn.secondary {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .action-btn.secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .action-btn.accept {
+            background: #10b981;
+            color: white;
+        }
+
+        .action-btn.accept:hover {
+            background: #059669;
+        }
+
+        .action-btn.decline {
+            background: #ef4444;
+            color: white;
+        }
+
+        .action-btn.decline:hover {
+            background: #dc2626;
+        }
+
+        /* Event Items */
+        .event-organizer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .organizer-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .event-title {
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+
+        .event-details {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .event-detail {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .attendee-list {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .attendee-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            border: 2px solid white;
+            margin-left: -8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        .attendee-avatar:first-child {
+            margin-left: 0;
+        }
+
+        .attendee-count {
+            margin-left: 8px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        /* Empty State */
+        .empty-state {
+            padding: 48px 24px;
+            text-align: center;
+            color: #94a3b8;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-text {
+            font-size: 14px;
+        }
+
+        /* Scrollbar Styling */
+        .inbox-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .inbox-content::-webkit-scrollbar-track {
+            background: #f9fafb;
+        }
+
+        .inbox-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .inbox-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">📅</div>
+                <div class="logo-text">CalFix</div>
+            </div>
+            <div class="user-info">
+                <span style="color: #64748b; font-size: 14px;">Sarah Johnson</span>
+                <div class="user-avatar">SJ</div>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-label">Calendar Health</div>
+                <div class="stat-value">72</div>
+                <div class="stat-change negative">↓ 8 from last week</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Alerts</div>
+                <div class="stat-value">12</div>
+                <div class="stat-change negative">↑ 3 new today</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pending Invites</div>
+                <div class="stat-value">8</div>
+                <div class="stat-change">2 expiring soon</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Conflicts</div>
+                <div class="stat-value">4</div>
+                <div class="stat-change negative">Needs resolution</div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Calendar Health Alerts -->
+            <div class="inbox-section">
+                <div class="inbox-header">
+                    <div class="inbox-title">
+                        ⚠️ Calendar Health Alerts
+                        <span class="badge">12</span>
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" onclick="filterAlerts('all', this)">All</button>
+                        <button class="filter-btn" data-filter="critical" onclick="filterAlerts('critical', this)">Critical</button>
+                        <button class="filter-btn" data-filter="warning" onclick="filterAlerts('warning', this)">Warning</button>
+                        <button class="filter-btn" data-filter="info" onclick="filterAlerts('info', this)">Info</button>
+                    </div>
+                </div>
+                <div class="inbox-content" id="alerts-list">
+                    <!-- Critical Alert -->
+                    <div class="alert-item" data-priority="critical">
+                        <div class="alert-header">
+                            <div class="alert-type">
+                                <div class="alert-icon critical">🔴</div>
+                                <div class="alert-details">
+                                    <div class="alert-title">Double Booking Detected</div>
+                                    <div class="alert-description">You have conflicting meetings tomorrow at 2:00 PM: "Product Review" and "Client Call with Acme Corp"</div>
+                                </div>
+                            </div>
+                            <div class="alert-time">2 min ago</div>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="action-btn primary">Resolve Conflict</button>
+                            <button class="action-btn secondary">View Details</button>
+                        </div>
+                    </div>
+
+                    <!-- Critical Alert -->
+                    <div class="alert-item" data-priority="critical">
+                        <div class="alert-header">
+                            <div class="alert-type">
+                                <div class="alert-icon critical">🔴</div>
+                                <div class="alert-details">
+                                    <div class="alert-title">Back-to-Back International Calls</div>
+                                    <div class="alert-description">3 consecutive meetings scheduled with no buffer time, including calls with Tokyo and London offices</div>
+                                </div>
+                            </div>
+                            <div class="alert-time">1 hour ago</div>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="action-btn primary">Add Buffer Time</button>
+                            <button class="action-btn secondary">Reschedule</button>
+                        </div>
+                    </div>
+
+                    <!-- Warning Alert -->
+                    <div class="alert-item" data-priority="warning">
+                        <div class="alert-header">
+                            <div class="alert-type">
+                                <div class="alert-icon warning">⚠️</div>
+                                <div class="alert-details">
+                                    <div class="alert-title">Meeting Overload Wednesday</div>
+                                    <div class="alert-description">You have 7 hours of meetings scheduled on Wednesday with only 30 minutes for lunch</div>
+                                </div>
+                            </div>
+                            <div class="alert-time">3 hours ago</div>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="action-btn primary">Review Schedule</button>
+                            <button class="action-btn secondary">Block Focus Time</button>
+                        </div>
+                    </div>
+
+                    <!-- Warning Alert -->
+                    <div class="alert-item" data-priority="warning">
+                        <div class="alert-header">
+                            <div class="alert-type">
+                                <div class="alert-icon warning">⚠️</div>
+                                <div class="alert-details">
+                                    <div class="alert-title">Flight Without Travel Buffer</div>
+                                    <div class="alert-description">Your flight BA242 to NYC on Friday doesn't have travel time blocked before/after</div>
+                                </div>
+                            </div>
+                            <div class="alert-time">5 hours ago</div>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="action-btn primary">Add Travel Blocks</button>
+                            <button class="action-btn secondary">Ignore</button>
+                        </div>
+                    </div>
+
+                    <!-- Info Alert -->
+                    <div class="alert-item" data-priority="info">
+                        <div class="alert-header">
+                            <div class="alert-type">
+                                <div class="alert-icon info">ℹ️</div>
+                                <div class="alert-details">
+                                    <div class="alert-title">No Focus Time This Week</div>
+                                    <div class="alert-description">You haven't scheduled any deep work blocks this week</div>
+                                </div>
+                            </div>
+                            <div class="alert-time">Yesterday</div>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="action-btn primary">Schedule Focus Time</button>
+                            <button class="action-btn secondary">Dismiss</button>
+                        </div>
+                    </div>
+
+                    <!-- Info Alert -->
+                    <div class="alert-item" data-priority="info">
+                        <div class="alert-header">
+                            <div class="alert-type">
+                                <div class="alert-icon info">ℹ️</div>
+                                <div class="alert-details">
+                                    <div class="alert-title">Recurring Meeting Pattern</div>
+                                    <div class="alert-description">Your weekly team standup overlaps with lunch 3 out of 5 days</div>
+                                </div>
+                            </div>
+                            <div class="alert-time">Yesterday</div>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="action-btn primary">Adjust Recurring</button>
+                            <button class="action-btn secondary">Keep As Is</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Invitations -->
+            <div class="inbox-section">
+                <div class="inbox-header">
+                    <div class="inbox-title">
+                        📨 Pending Invitations
+                        <span class="badge">8</span>
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" onclick="filterEvents('all', this)">All</button>
+                        <button class="filter-btn" data-filter="urgent" onclick="filterEvents('urgent', this)">Response Needed</button>
+                        <button class="filter-btn" data-filter="conflicts" onclick="filterEvents('conflicts', this)">Conflicts</button>
+                    </div>
+                </div>
+                <div class="inbox-content" id="events-list">
+                    <!-- Event 1 - Urgent/Conflict -->
+                    <div class="event-item" data-category="urgent conflicts">
+                        <div class="event-organizer">
+                            <div class="organizer-avatar" style="background: #e0e7ff; color: #6366f1;">MK</div>
+                            <span style="font-size: 13px; color: #64748b;">Michael Kim invited you</span>
+                            <span style="font-size: 11px; color: #ef4444; margin-left: 8px;">⚠️ CONFLICTS WITH EXISTING</span>
+                        </div>
+                        <div class="event-title">Q4 Planning Session</div>
+                        <div class="event-details">
+                            <div class="event-detail">📅 Today, 3:00 PM - 4:30 PM</div>
+                            <div class="event-detail">📍 Conference Room A</div>
+                            <div class="event-detail" style="color: #ef4444;">⚠️ Conflicts with "Product Review"</div>
+                        </div>
+                        <div class="attendee-responses">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Attendee Responses:</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Michael Kim (Organizer)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Jennifer Davis
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #f59e0b;">?</span> Alex Smith
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #ef4444;">✗</span> Rachel Taylor
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> Tom Wilson (No response)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> 3 others awaiting
+                                </span>
+                            </div>
+                        </div>
+                        <div class="event-actions">
+                            <button class="action-btn accept">Accept</button>
+                            <button class="action-btn secondary">Maybe</button>
+                            <button class="action-btn decline">Decline</button>
+                        </div>
+                    </div>
+
+                    <!-- Event 2 - Urgent -->
+                    <div class="event-item" data-category="urgent">
+                        <div class="event-organizer">
+                            <div class="organizer-avatar" style="background: #fce7f3; color: #ec4899;">JD</div>
+                            <span style="font-size: 13px; color: #64748b;">Jessica Davidson invited you</span>
+                            <span style="font-size: 11px; color: #f59e0b; margin-left: 8px;">⏰ STARTING SOON</span>
+                        </div>
+                        <div class="event-title">Design Review: Mobile App v2.0</div>
+                        <div class="event-details">
+                            <div class="event-detail">📅 Today, 5:00 PM - 5:30 PM</div>
+                            <div class="event-detail">🔗 Zoom Meeting</div>
+                        </div>
+                        <div class="attendee-responses">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Attendee Responses:</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Jessica Davidson (Organizer)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Thomas Wright
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Kevin Liu
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> You (Awaiting response)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="event-actions">
+                            <button class="action-btn accept">Accept</button>
+                            <button class="action-btn secondary">Maybe</button>
+                            <button class="action-btn decline">Decline</button>
+                        </div>
+                    </div>
+
+                    <!-- Event 3 -->
+                    <div class="event-item" data-category="normal">
+                        <div class="event-organizer">
+                            <div class="organizer-avatar" style="background: #dcfce7; color: #22c55e;">AS</div>
+                            <span style="font-size: 13px; color: #64748b;">Andrew Sullivan invited you</span>
+                        </div>
+                        <div class="event-title">Customer Success Sync</div>
+                        <div class="event-details">
+                            <div class="event-detail">📅 Tomorrow, 10:00 AM - 11:00 AM</div>
+                            <div class="event-detail">📍 Room 302</div>
+                        </div>
+                        <div class="attendee-responses">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Attendee Responses:</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Andrew Sullivan (Organizer)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Barbara Thompson
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Carlos Rodriguez
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #f59e0b;">?</span> Diana Martinez
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> You (Awaiting response)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="event-actions">
+                            <button class="action-btn accept">Accept</button>
+                            <button class="action-btn secondary">Maybe</button>
+                            <button class="action-btn decline">Decline</button>
+                        </div>
+                    </div>
+
+                    <!-- Event 4 - Conflicts -->
+                    <div class="event-item" data-category="conflicts">
+                        <div class="event-organizer">
+                            <div class="organizer-avatar" style="background: #fef3c7; color: #f59e0b;">RT</div>
+                            <span style="font-size: 13px; color: #64748b;">Robert Turner invited you</span>
+                            <span style="font-size: 11px; color: #ef4444; margin-left: 8px;">⚠️ CONFLICTS WITH EXISTING</span>
+                        </div>
+                        <div class="event-title">Board Presentation Prep</div>
+                        <div class="event-details">
+                            <div class="event-detail">📅 Thursday, 2:00 PM - 4:00 PM</div>
+                            <div class="event-detail">📍 Executive Conference Room</div>
+                            <div class="event-detail" style="color: #ef4444;">⚠️ Conflicts with "Team Standup"</div>
+                        </div>
+                        <div class="attendee-responses">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Attendee Responses:</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Robert Turner (Organizer)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Patricia Chen (CEO)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> James Mitchell (CFO)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #f59e0b;">?</span> Linda Anderson (VP Sales)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> You (Awaiting response)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> 2 others awaiting
+                                </span>
+                            </div>
+                        </div>
+                        <div class="event-actions">
+                            <button class="action-btn accept">Accept</button>
+                            <button class="action-btn secondary">Maybe</button>
+                            <button class="action-btn decline">Decline</button>
+                        </div>
+                    </div>
+
+                    <!-- Event 5 -->
+                    <div class="event-item" data-category="normal">
+                        <div class="event-organizer">
+                            <div class="organizer-avatar" style="background: #e0e7ff; color: #6366f1;">PM</div>
+                            <span style="font-size: 13px; color: #64748b;">Paul Morgan invited you</span>
+                        </div>
+                        <div class="event-title">Feature Prioritization Workshop</div>
+                        <div class="event-details">
+                            <div class="event-detail">📅 Friday, 9:00 AM - 12:00 PM</div>
+                            <div class="event-detail">🔗 Teams Meeting</div>
+                        </div>
+                        <div class="attendee-responses">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Attendee Responses:</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Paul Morgan (Product Manager)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Emily Nguyen (Engineering)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> David Singh (Design)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> Maria Garcia (QA)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #ef4444;">✗</span> Oliver Brown (UX)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> You (Awaiting response)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> 5 others awaiting
+                                </span>
+                            </div>
+                        </div>
+                        <div class="event-actions">
+                            <button class="action-btn accept">Accept</button>
+                            <button class="action-btn secondary">Maybe</button>
+                            <button class="action-btn decline">Decline</button>
+                        </div>
+                    </div>
+
+                    <!-- Event 6 -->
+                    <div class="event-item" data-category="normal">
+                        <div class="event-organizer">
+                            <div class="organizer-avatar" style="background: #fce7f3; color: #ec4899;">SH</div>
+                            <span style="font-size: 13px; color: #64748b;">Susan Harris (HR) invited you</span>
+                        </div>
+                        <div class="event-title">Monthly All Hands Meeting</div>
+                        <div class="event-details">
+                            <div class="event-detail">📅 Next Monday, 4:00 PM - 5:00 PM</div>
+                            <div class="event-detail">📍 Main Auditorium + Virtual</div>
+                        </div>
+                        <div class="attendee-responses">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Company-wide Event (250+ invitees)</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #10b981;">✓</span> 187 confirmed
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #f59e0b;">?</span> 23 tentative
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #ef4444;">✗</span> 12 declined
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #94a3b8;">-</span> 28 no response (including you)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="event-actions">
+                            <button class="action-btn accept">Accept</button>
+                            <button class="action-btn secondary">Maybe</button>
+                            <button class="action-btn decline">Decline</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Filter alerts by priority
+        function filterAlerts(priority, button) {
+            const alerts = document.querySelectorAll('.alert-item');
+            const alertsSection = document.querySelector('#alerts-list').parentElement;
+            const buttons = alertsSection.querySelectorAll('.filter-btn');
+
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            // Show/hide alerts
+            let visibleCount = 0;
+            alerts.forEach(alert => {
+                if (priority === 'all' || alert.dataset.priority === priority) {
+                    alert.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    alert.style.display = 'none';
+                }
+            });
+
+            // Update badge count
+            const badge = alertsSection.querySelector('.badge');
+            if (badge) {
+                badge.textContent = visibleCount;
+            }
+        }
+
+        // Filter events by category
+        function filterEvents(category, button) {
+            const events = document.querySelectorAll('.event-item');
+            const eventsSection = document.querySelector('#events-list').parentElement;
+            const buttons = eventsSection.querySelectorAll('.filter-btn');
+
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            // Show/hide events
+            let visibleCount = 0;
+            events.forEach(event => {
+                const categories = event.dataset.category ? event.dataset.category.split(' ') : [];
+                if (category === 'all' || categories.includes(category)) {
+                    event.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    event.style.display = 'none';
+                }
+            });
+
+            // Update badge count
+            const badge = eventsSection.querySelector('.badge');
+            if (badge) {
+                badge.textContent = visibleCount;
+            }
+        }
+
+        // Add click handlers to action buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            // Alert action buttons
+            document.querySelectorAll('.alert-item .action-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const action = btn.textContent;
+                    const alertItem = btn.closest('.alert-item');
+                    const alertTitle = alertItem.querySelector('.alert-title').textContent;
+                    console.log(`Action "${action}" clicked for alert: ${alertTitle}`);
+
+                    // Simulate action
+                    if (btn.classList.contains('primary')) {
+                        alertItem.style.opacity = '0.5';
+                        setTimeout(() => {
+                            alertItem.style.display = 'none';
+                            updateBadgeCounts();
+                        }, 300);
+                    }
+                });
+            });
+
+            // Event action buttons
+            document.querySelectorAll('.event-item .action-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const action = btn.textContent;
+                    const eventItem = btn.closest('.event-item');
+                    const eventTitle = eventItem.querySelector('.event-title').textContent;
+                    console.log(`Action "${action}" clicked for event: ${eventTitle}`);
+
+                    // Simulate response
+                    if (btn.classList.contains('accept') || btn.classList.contains('decline')) {
+                        eventItem.style.opacity = '0.5';
+                        setTimeout(() => {
+                            eventItem.style.display = 'none';
+                            updateBadgeCounts();
+                        }, 300);
+                    }
+                });
+            });
+
+            // Click on alert/event items
+            document.querySelectorAll('.alert-item, .event-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    console.log('Item clicked - would open detail view');
+                });
+            });
+        });
+
+        // Update badge counts
+        function updateBadgeCounts() {
+            const alertsCount = document.querySelectorAll('.alert-item:not([style*="display: none"])').length;
+            const eventsCount = document.querySelectorAll('.event-item:not([style*="display: none"])').length;
+
+            document.querySelector('.inbox-title .badge').textContent = alertsCount;
+            document.querySelectorAll('.inbox-title .badge')[1].textContent = eventsCount;
+        }
+    </script>
+</body>
+</html>
