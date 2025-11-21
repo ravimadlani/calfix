@@ -47,30 +47,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
 
             {/* Navigation Links */}
-            {isSignedIn && (
-              <div className="hidden md:flex items-center gap-6">
-                <Link
-                  to="/dashboard"
-                  className={`text-sm font-medium transition-colors ${
-                    isActive('/dashboard')
-                      ? 'text-indigo-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/recurring"
-                  className={`text-sm font-medium transition-colors ${
-                    isActive('/recurring')
-                      ? 'text-indigo-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Recurring
-                </Link>
-              </div>
-            )}
+            <div className="hidden md:flex items-center gap-8">
+              <a
+                href="#product"
+                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Product
+              </a>
+              <a
+                href="#features"
+                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Features
+              </a>
+              <a
+                href="#applications"
+                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Applications
+              </a>
+              <a
+                href="#pricing"
+                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Pricing
+              </a>
+              <a
+                href="#resources"
+                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Resources
+              </a>
+            </div>
 
             {/* User Menu / Auth Buttons */}
             <div className="flex items-center gap-4">
