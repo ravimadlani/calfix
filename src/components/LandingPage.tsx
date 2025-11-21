@@ -21,7 +21,7 @@ const LandingPage: React.FC = () => {
               Calendar Management
               <br />
               <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Made Intelligent
+                Zero Conflicts
               </span>
             </h1>
             <p className="text-xl sm:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
