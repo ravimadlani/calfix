@@ -45,10 +45,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="text-3xl">📅</div>
               <div>
-                <span className="text-2xl font-bold text-blue-600">
+                <span className="text-2xl font-light text-blue-600">
                   CalendarZero.com
                 </span>
-                <p className="text-xs text-gray-500 -mt-1">Zero Conflicts</p>
+                <p className="text-xs text-blue-500 font-light -mt-1">Zero Conflicts</p>
               </div>
             </Link>
 
@@ -132,11 +132,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">📅</span>
-                <span className="text-xl font-bold text-blue-600">
+                <span className="text-xl font-light text-blue-600">
                   CalendarZero.com
                 </span>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-blue-500 font-light">
                 Intelligent calendar management for executive assistants and professionals.
               </p>
             </div>
@@ -207,7 +207,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
 
           <div className="mt-8 pt-8 border-t border-gray-200">
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm text-blue-500 font-light">
               © {new Date().getFullYear()} CalendarZero.com. All rights reserved.
             </p>
           </div>
