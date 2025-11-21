@@ -15,44 +15,58 @@ const LandingPage: React.FC = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
-          <div className="text-center">
-            <div className="text-6xl mb-6 animate-bounce">📅</div>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-gray-900 mb-6">
-              Calendar Management
-              <br />
-              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Zero Conflicts
-              </span>
-            </h1>
-            <p className="text-xl sm:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              CalendarZero automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              {isSignedIn ? (
-                <Link
-                  to="/dashboard"
-                  className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
-                >
-                  Go to Dashboard
-                </Link>
-              ) : (
-                <>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left side - Content */}
+            <div className="text-center lg:text-left">
+              <div className="text-6xl mb-6 animate-bounce lg:inline-block">📅</div>
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-gray-900 mb-6">
+                Calendar Management
+                <br />
+                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Zero Conflicts
+                </span>
+              </h1>
+              <p className="text-xl sm:text-2xl text-gray-600 mb-8">
+                CalendarZero automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center items-center">
+                {isSignedIn ? (
                   <Link
-                    to="/sign-up"
+                    to="/dashboard"
                     className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
                   >
-                    Start Free Trial
+                    Go to Dashboard
                   </Link>
-                  <Link
-                    to="/sign-in"
-                    className="px-8 py-4 text-lg font-semibold text-gray-700 bg-white hover:bg-gray-50 rounded-xl transition-colors border-2 border-gray-200"
-                  >
-                    Sign In
-                  </Link>
-                </>
-              )}
+                ) : (
+                  <>
+                    <Link
+                      to="/sign-up"
+                      className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
+                    >
+                      Start Free Trial
+                    </Link>
+                    <Link
+                      to="/sign-in"
+                      className="px-8 py-4 text-lg font-semibold text-gray-700 bg-white hover:bg-gray-50 rounded-xl transition-colors border-2 border-gray-200"
+                    >
+                      Sign In
+                    </Link>
+                  </>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 mt-4">7-day free trial • No credit card required</p>
             </div>
-            <p className="text-sm text-gray-500 mt-4">7-day free trial • No credit card required</p>
+
+            {/* Right side - Demo Video */}
+            <div className="relative">
+              <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl shadow-2xl flex items-center justify-center border-4 border-white">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">🎥</div>
+                  <p className="text-gray-600 font-semibold">Demo Video</p>
+                  <p className="text-sm text-gray-500 mt-2">Coming Soon</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
