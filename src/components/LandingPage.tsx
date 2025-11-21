@@ -148,9 +148,38 @@ const LandingPage: React.FC = () => {
             <h2 className="text-4xl font-light text-blue-600 mb-4">
               Applications
             </h2>
-            <p className="text-xl text-blue-500 font-light">
-              Perfect for executive assistants, office managers, and busy professionals.
+            <p className="text-xl text-blue-500 font-light mb-12">
+              Built for Every Scenario
             </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Executive Assistant */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-4xl mb-4">👔</div>
+              <h3 className="text-2xl font-light text-blue-600 mb-3">Executive Assistant</h3>
+              <p className="text-blue-500 font-light">
+                Manage multiple executive calendars effortlessly. Detect conflicts, optimize schedules, and ensure seamless coordination across time zones.
+              </p>
+            </div>
+
+            {/* Office Manager */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-4xl mb-4">🏢</div>
+              <h3 className="text-2xl font-light text-blue-600 mb-3">Office Manager</h3>
+              <p className="text-blue-500 font-light">
+                Coordinate team schedules, meeting rooms, and resources. Keep everyone on track with automated conflict detection and smart scheduling.
+              </p>
+            </div>
+
+            {/* Busy Professional */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-4xl mb-4">💼</div>
+              <h3 className="text-2xl font-light text-blue-600 mb-3">Busy Professional</h3>
+              <p className="text-blue-500 font-light">
+                Take control of your own schedule. Automatically add buffers between meetings, manage travel time, and maintain work-life balance.
+              </p>
+            </div>
           </div>
         </div>
       </section>
