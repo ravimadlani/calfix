@@ -12,8 +12,8 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="bg-white">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      {/* Hero Section / Product Section */}
+      <section id="product" className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Content */}
@@ -137,6 +137,20 @@ const LandingPage: React.FC = () => {
                 Get daily calendar health scores, insights, and recommendations to optimize your executive's schedule.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Applications Section */}
+      <section id="applications" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-light text-blue-600 mb-4">
+              Applications
+            </h2>
+            <p className="text-xl text-blue-500 font-light">
+              Perfect for executive assistants, office managers, and busy professionals.
+            </p>
           </div>
         </div>
       </section>
@@ -275,6 +289,20 @@ const LandingPage: React.FC = () => {
                 Try the App
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Resources Section */}
+      <section id="resources" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-light text-blue-600 mb-4">
+              Resources
+            </h2>
+            <p className="text-xl text-blue-500 font-light">
+              Documentation, guides, and support to help you get the most out of CalendarZero.
+            </p>
           </div>
         </div>
       </section>
