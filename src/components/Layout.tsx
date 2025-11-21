@@ -42,14 +42,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="text-3xl">📅</div>
-              <div>
-                <span className="text-2xl font-light text-blue-600">
-                  CalendarZero.com
-                </span>
-                <p className="text-xs text-blue-500 font-light -mt-1">Zero Conflicts</p>
-              </div>
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <img src="/src/assets/cz_logo.png" alt="CalendarZero" className="h-10" />
             </Link>
 
             {/* Navigation Links */}
@@ -130,11 +124,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">📅</span>
-                <span className="text-xl font-light text-blue-600">
-                  CalendarZero.com
-                </span>
+              <div className="mb-4">
+                <img src="/src/assets/cz_logo.png" alt="CalendarZero" className="h-8" />
               </div>
               <p className="text-sm text-blue-500 font-light">
                 Intelligent calendar management for executive assistants and professionals.
