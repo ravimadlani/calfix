@@ -37,9 +37,9 @@ const LandingPage: React.FC = () => {
                   <>
                     <Link
                       to="/sign-up"
-                      className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
+                      className="px-8 py-4 text-lg font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
                     >
-                      Start Free Trial
+                      Try the App
                     </Link>
                     <Link
                       to="/sign-in"
@@ -187,9 +187,9 @@ const LandingPage: React.FC = () => {
               </ul>
               <Link
                 to="/sign-up"
-                className="block w-full py-3 text-center font-semibold text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="block w-full py-3 text-center font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-colors"
               >
-                Start Free Trial
+                Try the App
               </Link>
             </div>
 
@@ -233,7 +233,7 @@ const LandingPage: React.FC = () => {
                 to="/sign-up"
                 className="block w-full py-3 text-center font-light text-blue-600 bg-white hover:bg-gray-50 rounded-lg transition-colors"
               >
-                Start Free Trial
+                Try the App
               </Link>
             </div>
 
@@ -270,9 +270,9 @@ const LandingPage: React.FC = () => {
               </ul>
               <Link
                 to="/sign-up"
-                className="block w-full py-3 text-center font-semibold text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="block w-full py-3 text-center font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-colors"
               >
-                Start Free Trial
+                Try the App
               </Link>
             </div>
           </div>
@@ -290,9 +290,9 @@ const LandingPage: React.FC = () => {
           </p>
           <Link
             to="/sign-up"
-            className="inline-block px-8 py-4 text-lg font-light text-blue-600 bg-white hover:bg-gray-50 rounded-xl transition-all transform hover:scale-105 shadow-lg"
+            className="inline-block px-8 py-4 text-lg font-light text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
           >
-            Start Free Trial - No Credit Card Required
+            Try the App - No Credit Card Required
           </Link>
         </div>
       </section>
