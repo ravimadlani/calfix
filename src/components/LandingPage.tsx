@@ -20,11 +20,7 @@ const LandingPage: React.FC = () => {
             <div className="text-center lg:text-left">
               <div className="text-6xl mb-6 animate-bounce lg:inline-block">📅</div>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light text-blue-600 mb-6">
-                Calendar Management
-                <br />
-                <span className="text-blue-600">
-                  Zero Conflicts
-                </span>
+                CalendarZero
               </h1>
               <p className="text-xl sm:text-2xl text-blue-500 font-light mb-8">
                 CalendarZero automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
