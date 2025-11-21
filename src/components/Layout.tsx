@@ -46,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="text-3xl">📅</div>
               <div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  CalFix
+                  CalendarZero
                 </span>
                 <p className="text-xs text-gray-500 -mt-1">Calendar Intelligence</p>
               </div>
@@ -133,7 +133,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">📅</span>
                 <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  CalFix
+                  CalendarZero
                 </span>
               </div>
               <p className="text-sm text-gray-600">
@@ -208,7 +208,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <div className="mt-8 pt-8 border-t border-gray-200">
             <p className="text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} CalFix. All rights reserved.
+              © {new Date().getFullYear()} CalendarZero. All rights reserved.
             </p>
           </div>
         </div>

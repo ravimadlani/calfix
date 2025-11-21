@@ -25,7 +25,7 @@ const LandingPage: React.FC = () => {
               </span>
             </h1>
             <p className="text-xl sm:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              CalFix automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
+              CalendarZero automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               {isSignedIn ? (
@@ -69,7 +69,7 @@ const LandingPage: React.FC = () => {
               Intelligent Calendar Automation
             </h2>
             <p className="text-xl text-gray-600">
-              Stop firefighting calendar issues. Let CalFix handle it automatically.
+              Stop firefighting calendar issues. Let CalendarZero handle it automatically.
             </p>
           </div>
 
@@ -276,7 +276,7 @@ const LandingPage: React.FC = () => {
             Ready to fix your calendars?
           </h2>
           <p className="text-xl text-indigo-100 mb-8">
-            Join executive assistants who save hours every week with CalFix.
+            Join executive assistants who save hours every week with CalendarZero.
           </p>
           <Link
             to="/sign-up"
