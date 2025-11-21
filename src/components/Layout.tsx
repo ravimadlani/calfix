@@ -45,7 +45,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="text-3xl">📅</div>
               <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <span className="text-2xl font-bold text-blue-600">
                   CalendarZero.com
                 </span>
                 <p className="text-xs text-gray-500 -mt-1">Zero Conflicts</p>
@@ -132,7 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">📅</span>
-                <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <span className="text-xl font-bold text-blue-600">
                   CalendarZero.com
                 </span>
               </div>
