@@ -128,77 +128,77 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
+      <section id="features" className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-light text-blue-600 mb-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-light text-blue-600 mb-3">
               Intelligent Calendar Automation
             </h2>
-            <p className="text-xl text-blue-500 font-light">
+            <p className="text-lg text-blue-500 font-light">
               Stop firefighting calendar issues. Let CalendarZero handle it automatically.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {/* Feature 1 */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">🤖</div>
-              <h3 className="text-xl font-light text-blue-600 mb-3">Smart Detection</h3>
-              <p className="text-blue-500 font-light">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">🤖</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Smart Detection</h3>
+              <p className="text-sm text-blue-500 font-light">
                 Automatically detects back-to-back meetings, double bookings, flights without travel blocks, and out-of-hours meetings.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">⚡</div>
-              <h3 className="text-xl font-light text-blue-600 mb-3">One-Click Fixes</h3>
-              <p className="text-blue-500 font-light">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">⚡</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">One-Click Fixes</h3>
+              <p className="text-sm text-blue-500 font-light">
                 Fix all issues with one click. Add buffers, create travel blocks, decline conflicts, and optimize schedules instantly.
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">👥</div>
-              <h3 className="text-xl font-light text-blue-600 mb-3">Multi-Calendar Management</h3>
-              <p className="text-blue-500 font-light">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">👥</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Multi-Calendar Management</h3>
+              <p className="text-sm text-blue-500 font-light">
                 Manage up to 15 executive calendars from one dashboard. Perfect for EAs supporting multiple executives.
               </p>
             </div>
 
             {/* Feature 4 */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">🌍</div>
-              <h3 className="text-xl font-light text-blue-600 mb-3">Timezone Intelligence</h3>
-              <p className="text-blue-500 font-light">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">🌍</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Timezone Intelligence</h3>
+              <p className="text-sm text-blue-500 font-light">
                 Track executives across timezones. Automatically detect out-of-hours meetings in foreign locations.
               </p>
             </div>
 
             {/* Feature 5 */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">✈️</div>
-              <h3 className="text-xl font-light text-blue-600 mb-3">Travel Detection</h3>
-              <p className="text-blue-500 font-light">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">✈️</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Travel Detection</h3>
+              <p className="text-sm text-blue-500 font-light">
                 Automatically finds international flights, suggests travel blocks, and creates location tracking events.
               </p>
             </div>
 
             {/* Feature 6 */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">📊</div>
-              <h3 className="text-xl font-light text-blue-600 mb-3">Health Analytics</h3>
-              <p className="text-blue-500 font-light">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">📊</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Health Analytics</h3>
+              <p className="text-sm text-blue-500 font-light">
                 Get daily calendar health scores, insights, and recommendations to optimize your executive's schedule.
               </p>
             </div>
 
             {/* Feature 7 - Integrations */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">🔗</div>
-              <h3 className="text-xl font-light text-blue-600 mb-3">Seamless Integration</h3>
-              <p className="text-blue-500 font-light">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">🔗</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Seamless Integration</h3>
+              <p className="text-sm text-blue-500 font-light">
                 Native support for Google Calendar and Microsoft Outlook. Connect in seconds and start optimizing immediately.
               </p>
             </div>
