@@ -167,25 +167,16 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Feature 4 */}
+            {/* Feature 4 - Travel & Timezone */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-3xl mb-3">🌍</div>
-              <h3 className="text-lg font-light text-blue-600 mb-2">Timezone Intelligence</h3>
+              <div className="text-3xl mb-3">🌍✈️</div>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Travel & Timezone Intelligence</h3>
               <p className="text-sm text-blue-500 font-light">
-                Track executives across timezones. Automatically detect out-of-hours meetings in foreign locations.
+                Track executives across timezones, detect international flights, and automatically create travel blocks and location tracking events.
               </p>
             </div>
 
             {/* Feature 5 */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
-              <div className="text-3xl mb-3">✈️</div>
-              <h3 className="text-lg font-light text-blue-600 mb-2">Travel Detection</h3>
-              <p className="text-sm text-blue-500 font-light">
-                Automatically finds international flights, suggests travel blocks, and creates location tracking events.
-              </p>
-            </div>
-
-            {/* Feature 6 */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
               <div className="text-3xl mb-3">📊</div>
               <h3 className="text-lg font-light text-blue-600 mb-2">Health Analytics</h3>
@@ -194,7 +185,7 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Feature 7 - Integrations */}
+            {/* Feature 6 */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
               <div className="text-3xl mb-3">🔗</div>
               <h3 className="text-lg font-light text-blue-600 mb-2">Seamless Integration</h3>
