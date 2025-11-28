@@ -49,12 +49,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Navigation Links */}
             <div className="hidden md:flex items-center gap-8">
               <a
-                href="#product"
-                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Product
-              </a>
-              <a
                 href="#features"
                 className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
               >
