@@ -127,6 +127,20 @@ const LandingPage: React.FC = () => {
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
       </section>
 
+      {/* Calendar Zero Philosophy Section */}
+      <section className="py-12 bg-gradient-to-r from-blue-600 to-indigo-600">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-light text-white mb-4">
+            Inbox Zero for Calendars
+          </h2>
+          <p className="text-lg text-blue-100 font-light leading-relaxed">
+            Just like Inbox Zero transformed email management, <span className="font-medium text-white">Calendar Zero</span> brings that same clarity to your schedule.
+            A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
+            and nothing slips through the cracks. Stop constantly firefighting scheduling issues—achieve Calendar Zero.
+          </p>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
