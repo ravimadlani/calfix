@@ -18,11 +18,11 @@ const LandingPage: React.FC = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Content */}
             <div className="text-center lg:text-left">
-              <div className="text-6xl mb-6 animate-bounce lg:inline-block">📅</div>
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light text-blue-600 mb-6">
+              <div className="text-6xl mb-4 animate-bounce lg:inline-block">📅</div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light text-blue-600 mb-3">
                 CalendarZero
               </h1>
-              <p className="text-xl sm:text-2xl text-blue-500 font-light mb-6">
+              <p className="text-lg sm:text-xl text-blue-500 font-light mb-5">
                 CalendarZero automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
               </p>
 
