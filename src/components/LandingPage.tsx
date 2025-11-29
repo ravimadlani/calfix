@@ -19,7 +19,7 @@ const LandingPage: React.FC = () => {
             {/* Left side - Content */}
             <div className="text-center lg:text-left">
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-blue-600 mb-4">
-                CalendarZero
+                Zero Calendar Conflicts. Zero Scheduling Stress.
               </h1>
               <p className="text-sm sm:text-base text-blue-600 font-light mb-4 leading-relaxed">
                 Just like Inbox Zero transformed email management, Calendar Zero brings that same clarity to your schedule.
