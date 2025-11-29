@@ -59,23 +59,6 @@ const LandingPage: React.FC = () => {
                 </ul>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center items-center">
-                <Link
-                  to="/sign-up"
-                  className="px-8 py-4 text-lg font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
-                >
-                  Try the App
-                </Link>
-                {!isSignedIn && (
-                  <Link
-                    to="/sign-in"
-                    className="px-8 py-4 text-lg font-semibold text-gray-700 bg-white hover:bg-gray-50 rounded-xl transition-colors border-2 border-gray-200"
-                  >
-                    Sign In
-                  </Link>
-                )}
-              </div>
-
               {/* Platform Support Badges */}
               <div className="mt-5">
                 <p className="text-xs text-blue-500 font-light mb-2 text-center lg:text-left">Works seamlessly with:</p>
