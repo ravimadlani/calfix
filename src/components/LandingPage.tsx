@@ -14,24 +14,24 @@ const LandingPage: React.FC = () => {
     <div className="bg-white">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Content */}
             <div className="text-center lg:text-left">
-              <div className="text-6xl mb-4 animate-bounce lg:inline-block">📅</div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light text-blue-600 mb-3">
+              <div className="text-5xl mb-3 animate-bounce lg:inline-block">📅</div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-blue-600 mb-2">
                 CalendarZero
               </h1>
-              <p className="text-base sm:text-lg text-blue-600 font-light mb-6 leading-relaxed">
+              <p className="text-sm sm:text-base text-blue-600 font-light mb-4 leading-relaxed">
                 Just like Inbox Zero transformed email management, Calendar Zero brings that same clarity to your schedule.
                 A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
                 and nothing slips through the cracks.
               </p>
 
               {/* Key Features */}
-              <div className="mb-8">
-                <h3 className="text-lg font-medium text-blue-600 mb-4 text-center lg:text-left">Smart Calendar Intelligence</h3>
-                <ul className="space-y-2 max-w-xl">
+              <div className="mb-5">
+                <h3 className="text-base font-medium text-blue-600 mb-3 text-center lg:text-left">Smart Calendar Intelligence</h3>
+                <ul className="space-y-1.5 max-w-xl">
                   <li className="flex items-start gap-2">
                     <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -77,8 +77,8 @@ const LandingPage: React.FC = () => {
               </div>
 
               {/* Platform Support Badges */}
-              <div className="mt-8">
-                <p className="text-sm text-blue-500 font-light mb-3 text-center lg:text-left">Works seamlessly with:</p>
+              <div className="mt-5">
+                <p className="text-xs text-blue-500 font-light mb-2 text-center lg:text-left">Works seamlessly with:</p>
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
                   <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-md border border-blue-200 hover:shadow-lg transition-shadow">
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
@@ -99,7 +99,7 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-sm text-blue-400 font-light mt-4">7-day free trial • No credit card required</p>
+              <p className="text-xs text-blue-400 font-light mt-3">7-day free trial • No credit card required</p>
             </div>
 
             {/* Right side - Demo Video */}
