@@ -22,19 +22,11 @@ const LandingPage: React.FC = () => {
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light text-blue-600 mb-3">
                 CalendarZero
               </h1>
-              <p className="text-lg sm:text-xl text-blue-500 font-light mb-5">
-                CalendarZero automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
+              <p className="text-base sm:text-lg text-blue-600 font-light mb-6 leading-relaxed">
+                Just like Inbox Zero transformed email management, Calendar Zero brings that same clarity to your schedule.
+                A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
+                and nothing slips through the cracks. Stop constantly firefighting scheduling issues—achieve Calendar Zero.
               </p>
-
-              {/* Calendar Zero Philosophy */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl">
-                <h2 className="text-xl font-medium text-white mb-2">Inbox Zero for Calendars</h2>
-                <p className="text-sm text-blue-100 font-light leading-relaxed">
-                  Just like Inbox Zero transformed email management, <span className="font-medium text-white">Calendar Zero</span> brings that same clarity to your schedule.
-                  A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
-                  and nothing slips through the cracks. Stop constantly firefighting scheduling issues—achieve Calendar Zero.
-                </p>
-              </div>
 
               {/* Key Features */}
               <div className="mb-8">
