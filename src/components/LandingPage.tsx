@@ -25,7 +25,7 @@ const LandingPage: React.FC = () => {
               <p className="text-base sm:text-lg text-blue-600 font-light mb-6 leading-relaxed">
                 Just like Inbox Zero transformed email management, Calendar Zero brings that same clarity to your schedule.
                 A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
-                and nothing slips through the cracks. Stop constantly firefighting scheduling issues—achieve Calendar Zero.
+                and nothing slips through the cracks.
               </p>
 
               {/* Key Features */}
@@ -128,7 +128,7 @@ const LandingPage: React.FC = () => {
               Intelligent Calendar Automation
             </h2>
             <p className="text-lg text-blue-500 font-light">
-              Stop firefighting calendar issues. Let CalendarZero handle it automatically.
+              Stop constantly firefighting scheduling issues—achieve Calendar Zero.
             </p>
           </div>
 
