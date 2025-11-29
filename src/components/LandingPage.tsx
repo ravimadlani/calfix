@@ -26,6 +26,16 @@ const LandingPage: React.FC = () => {
                 CalendarZero automatically detects issues, optimizes schedules, and saves executive assistants hours every week.
               </p>
 
+              {/* Calendar Zero Philosophy */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl">
+                <h2 className="text-xl font-medium text-white mb-2">Inbox Zero for Calendars</h2>
+                <p className="text-sm text-blue-100 font-light leading-relaxed">
+                  Just like Inbox Zero transformed email management, <span className="font-medium text-white">Calendar Zero</span> brings that same clarity to your schedule.
+                  A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
+                  and nothing slips through the cracks. Stop constantly firefighting scheduling issues—achieve Calendar Zero.
+                </p>
+              </div>
+
               {/* Key Features */}
               <div className="mb-8">
                 <h3 className="text-lg font-medium text-blue-600 mb-4 text-center lg:text-left">Smart Calendar Intelligence</h3>
@@ -58,28 +68,19 @@ const LandingPage: React.FC = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center items-center">
-                {isSignedIn ? (
+                <Link
+                  to="/sign-up"
+                  className="px-8 py-4 text-lg font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
+                >
+                  Try the App
+                </Link>
+                {!isSignedIn && (
                   <Link
-                    to="/dashboard"
-                    className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
+                    to="/sign-in"
+                    className="px-8 py-4 text-lg font-semibold text-gray-700 bg-white hover:bg-gray-50 rounded-xl transition-colors border-2 border-gray-200"
                   >
-                    Go to Dashboard
+                    Sign In
                   </Link>
-                ) : (
-                  <>
-                    <Link
-                      to="/sign-up"
-                      className="px-8 py-4 text-lg font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
-                    >
-                      Try the App
-                    </Link>
-                    <Link
-                      to="/sign-in"
-                      className="px-8 py-4 text-lg font-semibold text-gray-700 bg-white hover:bg-gray-50 rounded-xl transition-colors border-2 border-gray-200"
-                    >
-                      Sign In
-                    </Link>
-                  </>
                 )}
               </div>
 
@@ -125,20 +126,6 @@ const LandingPage: React.FC = () => {
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-      </section>
-
-      {/* Calendar Zero Philosophy Section */}
-      <section className="py-12 bg-gradient-to-r from-blue-600 to-indigo-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-light text-white mb-4">
-            Inbox Zero for Calendars
-          </h2>
-          <p className="text-lg text-blue-100 font-light leading-relaxed">
-            Just like Inbox Zero transformed email management, <span className="font-medium text-white">Calendar Zero</span> brings that same clarity to your schedule.
-            A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
-            and nothing slips through the cracks. Stop constantly firefighting scheduling issues—achieve Calendar Zero.
-          </p>
-        </div>
       </section>
 
       {/* Features Section */}

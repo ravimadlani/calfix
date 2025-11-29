@@ -48,6 +48,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Navigation Links */}
             <div className="hidden md:flex items-center gap-8">
+              {isSignedIn && (
+                <Link
+                  to="/dashboard"
+                  className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              )}
               <a
                 href="#features"
                 className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
