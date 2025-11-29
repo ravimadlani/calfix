@@ -18,8 +18,8 @@ const LandingPage: React.FC = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Content */}
             <div className="text-center lg:text-left">
-              <div className="text-5xl mb-3 animate-bounce lg:inline-block">📅</div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-blue-600 mb-2">
+              <div className="text-5xl mb-3 lg:inline-block">📅</div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-blue-600 mb-4">
                 CalendarZero
               </h1>
               <p className="text-sm sm:text-base text-blue-600 font-light mb-4 leading-relaxed">
