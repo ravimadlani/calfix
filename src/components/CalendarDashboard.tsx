@@ -16,7 +16,7 @@ import AgentChatWidget from './AgentChatWidget';
 import DashboardTabs from './DashboardTabs';
 
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
-import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
+import { calculateAnalytics, getEventsWithGaps } from '../services/calendarAnalytics';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
@@ -123,7 +123,6 @@ const CalendarDashboard = () => {
   const [events, setEvents] = useState([]);
   const [eventsWithGaps, setEventsWithGaps] = useState([]);
   const [analytics, setAnalytics] = useState(null);
-  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [, setActionLoading] = useState(false);
@@ -504,10 +503,6 @@ const CalendarDashboard = () => {
 
       setEventsWithGaps(eventsWithAllData);
 
-      // Get recommendations using filtered events
-      const recs = getRecommendations(filteredEvents, calendarOwnerEmail);
-      setRecommendations(recs);
-
     } catch (err) {
       console.error('Error loading events:', err);
 
@@ -745,12 +740,6 @@ const CalendarDashboard = () => {
         )
       : analytics;
   }, [selectedDay, currentView, filteredEvents, extendedEventsForFlights, calendarOwnerEmail, analytics]);
-
-  const displayRecommendations = useMemo(() => {
-    return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-      ? getRecommendations(filteredEvents, calendarOwnerEmail)
-      : recommendations;
-  }, [selectedDay, currentView, filteredEvents, calendarOwnerEmail, recommendations]);
 
   const assistantActions = useMemo<IntentActionHandlers>(() => ({
     applyBuffers: async ({ position, events: targetEvents, bufferMinutes = 15 }) => {
@@ -1305,26 +1294,6 @@ const CalendarDashboard = () => {
     );
   }
 
-  // Helper to get readable view label
-  const getViewLabel = (view) => {
-    const labels = {
-      today: 'Today',
-      tomorrow: 'Tomorrow',
-      week: 'This Week',
-      nextWeek: 'Next Week'
-    };
-    return labels[view] || 'Today';
-  };
-
-  // Helper to get the date object for selected day
-  const getSelectedDayDate = () => {
-    if (!selectedDay || !events.length) return null;
-
-    // selectedDay is in format YYYY-MM-DD
-    const [year, month, day] = selectedDay.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Calendar Management Section */}
@@ -1489,12 +1458,8 @@ const CalendarDashboard = () => {
       <DashboardTabs
         events={filteredEvents}
         analytics={displayAnalytics}
-        recommendations={displayRecommendations}
         calendarOwnerEmail={calendarOwnerEmail}
-        viewLabel={selectedDay ? getSelectedDayDate()?.toLocaleDateString('en-US', { weekday: 'long' }) || '' : getViewLabel(currentView)}
-        selectedDayDate={selectedDay ? getSelectedDayDate() : null}
         onActionClick={handleOpenWorkflow}
-        healthScoreResult={healthScoreResult}
       />
 
       {/* Day Filter Pills for Week and Month Views */}

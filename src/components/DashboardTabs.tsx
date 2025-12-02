@@ -6,28 +6,44 @@
 import React, { useState, useMemo } from 'react';
 import type { CalendarEvent, CalendarAnalytics } from '../types';
 
-interface HealthScoreResult {
-  score: number;
-  interpretation: {
-    label: string;
-    color: string;
-    message: string;
-  };
-}
+// Helper to get domain from email
+const getDomainFromEmail = (email?: string | null): string | null => {
+  if (!email) return null;
+  const trimmed = email.trim().toLowerCase();
+  const atIndex = trimmed.indexOf('@');
+  if (atIndex === -1 || atIndex === trimmed.length - 1) return null;
+  return trimmed.slice(atIndex + 1);
+};
+
+// Check if event has external attendees
+const isExternalMeeting = (event: CalendarEvent, calendarOwnerEmail: string | null): boolean => {
+  if (!event.attendees || event.attendees.length === 0 || !calendarOwnerEmail) return false;
+
+  const ownerDomain = getDomainFromEmail(calendarOwnerEmail);
+  if (!ownerDomain) return false;
+
+  return event.attendees.some(att => {
+    if (!att.email) return false;
+    const attendeeEmail = att.email.trim().toLowerCase();
+    if (attendeeEmail === calendarOwnerEmail.toLowerCase()) return false;
+
+    const attendeeDomain = getDomainFromEmail(attendeeEmail);
+    if (!attendeeDomain || attendeeDomain.includes('calendar.google.com')) return false;
+
+    return attendeeDomain !== ownerDomain;
+  });
+};
 
 interface DashboardTabsProps {
   events: CalendarEvent[];
   analytics: CalendarAnalytics | null;
-  recommendations: unknown[];
   calendarOwnerEmail: string | null;
-  viewLabel: string;
-  selectedDayDate: Date | null;
   onActionClick: (actionType: string) => void;
-  healthScoreResult?: HealthScoreResult | null;
 }
 
 type MainTab = 'inbox' | 'alerts';
 type InboxSubTab = 'sent' | 'received';
+type InboxFilter = 'all' | 'internal' | 'external' | 'action';
 
 interface CategorizedEvents {
   sent: CalendarEvent[];
@@ -97,12 +113,11 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
   events,
   analytics,
   calendarOwnerEmail,
-  viewLabel,
-  onActionClick,
-  healthScoreResult
+  onActionClick
 }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('inbox');
   const [inboxSubTab, setInboxSubTab] = useState<InboxSubTab>('received');
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>('all');
 
   // Categorize events into Sent and Received
   const categorizedEvents = useMemo<CategorizedEvents>(() => {
@@ -138,6 +153,50 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
       return summary.needsAction > 0;
     }).length;
   }, [categorizedEvents.sent]);
+
+  // Get current events based on sub-tab
+  const currentEvents = inboxSubTab === 'sent' ? categorizedEvents.sent : categorizedEvents.received;
+
+  // Filter counts for pills
+  const filterCounts = useMemo(() => {
+    const internalCount = currentEvents.filter(e => !isExternalMeeting(e, calendarOwnerEmail)).length;
+    const externalCount = currentEvents.filter(e => isExternalMeeting(e, calendarOwnerEmail)).length;
+    const actionCount = inboxSubTab === 'received'
+      ? currentEvents.filter(event => {
+          const status = getUserResponseStatus(event, calendarOwnerEmail);
+          return status === 'needsAction' || !status;
+        }).length
+      : currentEvents.filter(event => {
+          const summary = getAttendeeResponseSummary(event);
+          return summary.needsAction > 0;
+        }).length;
+
+    return { internal: internalCount, external: externalCount, action: actionCount };
+  }, [currentEvents, calendarOwnerEmail, inboxSubTab]);
+
+  // Apply filter to events
+  const filteredInboxEvents = useMemo(() => {
+    if (inboxFilter === 'all') return currentEvents;
+
+    return currentEvents.filter(event => {
+      if (inboxFilter === 'internal') {
+        return !isExternalMeeting(event, calendarOwnerEmail);
+      }
+      if (inboxFilter === 'external') {
+        return isExternalMeeting(event, calendarOwnerEmail);
+      }
+      if (inboxFilter === 'action') {
+        if (inboxSubTab === 'received') {
+          const status = getUserResponseStatus(event, calendarOwnerEmail);
+          return status === 'needsAction' || !status;
+        } else {
+          const summary = getAttendeeResponseSummary(event);
+          return summary.needsAction > 0;
+        }
+      }
+      return true;
+    });
+  }, [currentEvents, inboxFilter, calendarOwnerEmail, inboxSubTab]);
 
   const formatEventTime = (event: CalendarEvent) => {
     if (event.start?.date) {
@@ -297,9 +356,9 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
         {activeTab === 'inbox' && (
           <div>
             {/* Inbox Sub-tabs */}
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-2 mb-4">
               <button
-                onClick={() => setInboxSubTab('received')}
+                onClick={() => { setInboxSubTab('received'); setInboxFilter('all'); }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   inboxSubTab === 'received'
                     ? 'bg-indigo-100 text-indigo-700'
@@ -315,7 +374,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                 <span className="ml-1 text-gray-400">({categorizedEvents.received.length})</span>
               </button>
               <button
-                onClick={() => setInboxSubTab('sent')}
+                onClick={() => { setInboxSubTab('sent'); setInboxFilter('all'); }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   inboxSubTab === 'sent'
                     ? 'bg-indigo-100 text-indigo-700'
@@ -332,110 +391,151 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
               </button>
             </div>
 
+            {/* Filter Pills */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setInboxFilter('all')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  inboxFilter === 'all'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                All ({currentEvents.length})
+              </button>
+              <button
+                onClick={() => setInboxFilter('internal')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  inboxFilter === 'internal'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                }`}
+              >
+                Internal ({filterCounts.internal})
+              </button>
+              <button
+                onClick={() => setInboxFilter('external')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  inboxFilter === 'external'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                }`}
+              >
+                External ({filterCounts.external})
+              </button>
+              <button
+                onClick={() => setInboxFilter('action')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  inboxFilter === 'action'
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                }`}
+              >
+                Action Required ({filterCounts.action})
+              </button>
+            </div>
+
             {/* Event List */}
             <div className="space-y-3">
-              {inboxSubTab === 'received' && (
+              {filteredInboxEvents.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                  <p>No {inboxSubTab === 'received' ? 'received' : 'sent'} invitations {inboxFilter !== 'all' ? 'matching this filter' : 'in this time period'}</p>
+                </div>
+              ) : (
                 <>
-                  {categorizedEvents.received.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                      </svg>
-                      <p>No received invitations in this time period</p>
-                    </div>
-                  ) : (
-                    categorizedEvents.received.map(event => {
-                      const responseStatus = getUserResponseStatus(event, calendarOwnerEmail);
-                      const needsResponse = responseStatus === 'needsAction' || !responseStatus;
+                  {inboxSubTab === 'received' && filteredInboxEvents.map(event => {
+                    const responseStatus = getUserResponseStatus(event, calendarOwnerEmail);
+                    const needsResponse = responseStatus === 'needsAction' || !responseStatus;
+                    const isExternal = isExternalMeeting(event, calendarOwnerEmail);
 
-                      return (
-                        <div
-                          key={event.id}
-                          className={`p-4 rounded-lg border ${
-                            needsResponse
-                              ? 'border-orange-200 bg-orange-50'
-                              : 'border-gray-200 bg-white'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-medium text-gray-900 truncate">
-                                  {event.summary || 'Untitled Event'}
-                                </h4>
-                                {renderResponseBadge(responseStatus)}
-                              </div>
-                              <p className="text-sm text-gray-500">
-                                {formatEventDate(event)} • {formatEventTime(event)}
-                              </p>
-                              {event.organizer && (
-                                <p className="text-xs text-gray-400 mt-1">
-                                  From: {event.organizer.displayName || event.organizer.email}
-                                </p>
-                              )}
+                    return (
+                      <div
+                        key={event.id}
+                        className={`p-4 rounded-lg border ${
+                          needsResponse
+                            ? 'border-orange-200 bg-orange-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-gray-900 truncate">
+                                {event.summary || 'Untitled Event'}
+                              </h4>
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                isExternal ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {isExternal ? 'External' : 'Internal'}
+                              </span>
+                              {renderResponseBadge(responseStatus)}
                             </div>
-                            {needsResponse && (
-                              <div className="flex gap-2">
-                                <button className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                  Accept
-                                </button>
-                                <button className="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                  Decline
-                                </button>
-                              </div>
+                            <p className="text-sm text-gray-500">
+                              {formatEventDate(event)} • {formatEventTime(event)}
+                            </p>
+                            {event.organizer && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                From: {event.organizer.displayName || event.organizer.email}
+                              </p>
                             )}
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </>
-              )}
-
-              {inboxSubTab === 'sent' && (
-                <>
-                  {categorizedEvents.sent.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      <p>No sent invitations in this time period</p>
-                    </div>
-                  ) : (
-                    categorizedEvents.sent.map(event => {
-                      const summary = getAttendeeResponseSummary(event);
-                      const hasAwaitingResponses = summary.needsAction > 0;
-
-                      return (
-                        <div
-                          key={event.id}
-                          className={`p-4 rounded-lg border ${
-                            hasAwaitingResponses
-                              ? 'border-orange-200 bg-orange-50'
-                              : 'border-gray-200 bg-white'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3 mb-1">
-                                <h4 className="font-medium text-gray-900 truncate">
-                                  {event.summary || 'Untitled Event'}
-                                </h4>
-                                {renderAttendeesSummary(event)}
-                              </div>
-                              <p className="text-sm text-gray-500">
-                                {formatEventDate(event)} • {formatEventTime(event)}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {summary.total} attendee{summary.total !== 1 ? 's' : ''} invited
-                              </p>
-                              {hasAwaitingResponses && renderAttendeesWhoNeedChasing(event)}
+                          {needsResponse && (
+                            <div className="flex gap-2">
+                              <button className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                Accept
+                              </button>
+                              <button className="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                Decline
+                              </button>
                             </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {inboxSubTab === 'sent' && filteredInboxEvents.map(event => {
+                    const summary = getAttendeeResponseSummary(event);
+                    const hasAwaitingResponses = summary.needsAction > 0;
+                    const isExternal = isExternalMeeting(event, calendarOwnerEmail);
+
+                    return (
+                      <div
+                        key={event.id}
+                        className={`p-4 rounded-lg border ${
+                          hasAwaitingResponses
+                            ? 'border-orange-200 bg-orange-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-1">
+                              <h4 className="font-medium text-gray-900 truncate">
+                                {event.summary || 'Untitled Event'}
+                              </h4>
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                isExternal ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {isExternal ? 'External' : 'Internal'}
+                              </span>
+                              {renderAttendeesSummary(event)}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {formatEventDate(event)} • {formatEventTime(event)}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {summary.total} attendee{summary.total !== 1 ? 's' : ''} invited
+                            </p>
+                            {hasAwaitingResponses && renderAttendeesWhoNeedChasing(event)}
                           </div>
                         </div>
-                      );
-                    })
-                  )}
+                      </div>
+                    );
+                  })}
                 </>
               )}
             </div>
@@ -453,21 +553,6 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Health Score Summary */}
-                {healthScoreResult && (
-                  <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Calendar Health Score</h3>
-                        <p className="text-sm text-gray-600">Based on your schedule for {viewLabel}</p>
-                      </div>
-                      <div className="text-4xl font-bold text-indigo-600">
-                        {healthScoreResult.score}/100
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Alert Items */}
                 <div className="space-y-3">
                   {/* Double Bookings */}
