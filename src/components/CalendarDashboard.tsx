@@ -5,9 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ViewSelector from './ViewSelector';
-import DayActionsPanel from './DayActionsPanel';
 import DayFilterPills from './DayFilterPills';
-import EventsTimeline from './EventsTimeline';
 import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
 import ProviderSelection from './ProviderSelection';
@@ -104,16 +102,13 @@ const CalendarDashboard = () => {
   } = calendarApi;
 
   const {
-    addBufferBefore: providerAddBufferBefore,
     addBufferAfter: providerAddBufferAfter,
     batchAddBuffers: providerBatchAddBuffers,
     deletePlaceholderAndLog: providerDeletePlaceholderAndLog,
     createFocusBlock: providerCreateFocusBlock,
     createTravelBlock: providerCreateTravelBlock,
     createLocationEvent: providerCreateLocationEvent,
-    batchAddConferenceLinks: providerBatchAddConferenceLinks,
-    findNextAvailableSlot: providerFindNextAvailableSlot,
-    moveEvent: providerMoveEvent
+    batchAddConferenceLinks: providerBatchAddConferenceLinks
   } = helperApi;
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -821,50 +816,6 @@ const CalendarDashboard = () => {
     providerCreateFocusBlock
   ]);
 
-  // Handle adding buffer before event
-  const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
-    if (!options.skipNotification && !window.confirm('Add a 15-minute buffer before this event?')) {
-      return;
-    }
-
-    const helper = requireHelper(
-      providerAddBufferBefore,
-      'Buffer creation is not supported for this calendar provider yet.'
-    );
-
-    if (!helper) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      await helper(event);
-
-      // Log the action
-      logUserAction('quick_action_add_prep', {
-        calendarId: managedCalendarId,
-        eventId: event.id,
-        timeHorizon: getTimeHorizon(currentView)
-      });
-
-      if (!options.skipRefresh) {
-        await loadEvents();
-      }
-
-      if (!options.skipNotification) {
-        alert('Buffer added successfully!');
-      }
-    } catch (err) {
-      if (!options.skipNotification) {
-        const message = err instanceof Error ? err.message : String(err);
-        alert(`Failed to add buffer: ${message}`);
-      }
-      throw err;
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   // Handle adding buffer after event
   const handleAddBufferAfter = async (event: CalendarEvent, options: ActionOptions = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer after this event?')) {
@@ -904,57 +855,6 @@ const CalendarDashboard = () => {
         alert(`Failed to add buffer: ${message}`);
       }
       throw err;
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Handle moving event
-  const handleMoveEvent = async (event: CalendarEvent) => {
-    const findSlot = requireHelper(
-      providerFindNextAvailableSlot,
-      'Automatic rescheduling is not supported for this calendar provider yet.'
-    );
-    const move = requireHelper(
-      providerMoveEvent,
-      'Automatic rescheduling is not supported for this calendar provider yet.'
-    );
-
-    if (!findSlot || !move) {
-      return;
-    }
-
-    const nextSlot = findSlot(events, 60, new Date(event.end.dateTime || event.end.date));
-
-    if (!nextSlot) {
-      alert('No available time slots found');
-      return;
-    }
-
-    const confirmMessage = `Move "${event.summary}" to ${nextSlot.toLocaleString()}?`;
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      await move(event.id, event, nextSlot);
-
-      // Log the action
-      logUserAction('meeting_reschedule', {
-        calendarId: managedCalendarId,
-        eventId: event.id,
-        timeHorizon: getTimeHorizon(currentView),
-        metadata: {
-          newStartTime: nextSlot.toISOString()
-        }
-      });
-
-      await loadEvents();
-      alert('Event moved successfully!');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      alert(`Failed to move event: ${message}`);
     } finally {
       setActionLoading(false);
     }
@@ -1608,17 +1508,6 @@ const CalendarDashboard = () => {
         />
       )}
 
-      {/* Day-Specific Actions */}
-      {displayAnalytics && (
-        <DayActionsPanel
-          analytics={displayAnalytics}
-          recommendations={displayRecommendations}
-          viewLabel={selectedDay ? getSelectedDayDate()?.toLocaleDateString('en-US', { weekday: 'long' }) : getViewLabel(currentView)}
-          selectedDayDate={selectedDay ? getSelectedDayDate() : null}
-          onActionClick={handleOpenWorkflow}
-        />
-      )}
-
       {/* Action Workflow Modal */}
       <ActionWorkflowModal
         isOpen={workflowModal.isOpen}
@@ -1630,25 +1519,6 @@ const CalendarDashboard = () => {
         onDeletePlaceholder={handleDeletePlaceholder}
         onAddBuffer={handleAddBufferAfter}
       />
-
-      {/* Events Timeline */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-          <span role="img" aria-label="Calendar">
-            📋
-          </span>
-          Your Schedule
-        </h2>
-
-        <EventsTimeline
-          events={filteredEvents}
-          showDayHeadings={(currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth') && !selectedDay}
-          timeRange={currentTimeRange}
-          onAddBufferBefore={handleAddBufferBefore}
-          onAddBufferAfter={handleAddBufferAfter}
-          onMoveEvent={handleMoveEvent}
-        />
-      </div>
 
       {/* Team Scheduling Modal */}
       {showTeamScheduler && (
