@@ -118,7 +118,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('inbox');
   const [inboxSubTab, setInboxSubTab] = useState<InboxSubTab>('received');
-  const [inboxFilter, setInboxFilter] = useState<InboxFilter>('all');
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>('action');
   const [respondingEventId, setRespondingEventId] = useState<string | null>(null);
 
   // Handle accepting or declining an event
@@ -386,24 +386,24 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
             {/* Inbox Sub-tabs */}
             <div className="flex gap-2 mb-4">
               <button
-                onClick={() => { setInboxSubTab('received'); setInboxFilter('all'); }}
+                onClick={() => { setInboxSubTab('received'); setInboxFilter('action'); }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   inboxSubTab === 'received'
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Received ({categorizedEvents.received.length})
+                Received ({needsActionCount})
               </button>
               <button
-                onClick={() => { setInboxSubTab('sent'); setInboxFilter('all'); }}
+                onClick={() => { setInboxSubTab('sent'); setInboxFilter('action'); }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   inboxSubTab === 'sent'
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Sent ({categorizedEvents.sent.length})
+                Sent ({needsChasingCount})
               </button>
             </div>
 
