@@ -714,7 +714,44 @@ const CalendarDashboard = () => {
       return eventsWithGaps;
     }
 
-    // selectedDay is now a date key in format YYYY-MM-DD
+    // Check if this is a week selection (format: "week-N")
+    const isWeekSelection = selectedDay.startsWith('week-');
+
+    if (isWeekSelection && currentTimeRange) {
+      // Parse week number and calculate week boundaries
+      const weekNumber = parseInt(selectedDay.replace('week-', ''), 10);
+      const rangeStart = new Date(currentTimeRange.timeMin);
+
+      // Get the start of the first week in the range
+      const day = rangeStart.getDay();
+      const firstWeekStart = new Date(rangeStart);
+      firstWeekStart.setDate(firstWeekStart.getDate() - day);
+      firstWeekStart.setHours(0, 0, 0, 0);
+
+      // Calculate this week's start and end
+      const weekStart = new Date(firstWeekStart);
+      weekStart.setDate(weekStart.getDate() + (weekNumber - 1) * 7);
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      return eventsWithGaps.filter(event => {
+        let startTime;
+        if (event.start?.dateTime) {
+          startTime = new Date(event.start.dateTime);
+        } else if (event.start?.date) {
+          const [year, month, eventDay] = event.start.date.split('-').map(Number);
+          startTime = new Date(year, month - 1, eventDay);
+        } else {
+          return false;
+        }
+
+        return startTime >= weekStart && startTime <= weekEnd;
+      });
+    }
+
+    // Day selection (format: "YYYY-MM-DD")
     return eventsWithGaps.filter(event => {
       let startTime;
       if (event.start?.dateTime) {
@@ -729,7 +766,7 @@ const CalendarDashboard = () => {
       const dateKey = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
       return dateKey === selectedDay;
     });
-  }, [selectedDay, currentView, eventsWithGaps]);
+  }, [selectedDay, currentView, eventsWithGaps, currentTimeRange]);
 
   const displayAnalytics = useMemo(() => {
     return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
