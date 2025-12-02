@@ -365,13 +365,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Received
-                {needsActionCount > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-orange-500 text-white rounded-full">
-                    {needsActionCount}
-                  </span>
-                )}
-                <span className="ml-1 text-gray-400">({categorizedEvents.received.length} events)</span>
+                Received ({categorizedEvents.received.length})
               </button>
               <button
                 onClick={() => { setInboxSubTab('sent'); setInboxFilter('all'); }}
@@ -381,13 +375,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Sent
-                {needsChasingCount > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-orange-500 text-white rounded-full">
-                    {needsChasingCount}
-                  </span>
-                )}
-                <span className="ml-1 text-gray-400">({categorizedEvents.sent.length} events)</span>
+                Sent ({categorizedEvents.sent.length})
               </button>
             </div>
 
