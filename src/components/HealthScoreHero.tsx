@@ -159,11 +159,11 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
   return (
     <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-md border border-indigo-100">
       {/* Main Content */}
-      <div className="p-6">
-        <div className="flex items-center gap-6">
+      <div className="px-5 py-4">
+        <div className="flex items-center gap-5">
           {/* Score Circle */}
           <div className="flex-shrink-0">
-            <div className="relative w-[100px] h-[100px]">
+            <div className="relative w-[80px] h-[80px]">
               <svg viewBox="0 0 100 100" className="transform -rotate-90">
                 <circle
                   cx="50"
@@ -189,13 +189,13 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 {isCalculating || healthScore === null ? (
                   <>
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    <span className="text-xs text-gray-500 font-medium mt-2">Loading</span>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                    <span className="text-[10px] text-gray-500 font-medium mt-1">Loading</span>
                   </>
                 ) : (
                   <>
-                    <span className="text-3xl font-bold text-gray-900">{healthScore}</span>
-                    <span className="text-xs text-gray-500 font-medium">SCORE</span>
+                    <span className="text-2xl font-bold text-gray-900">{healthScore}</span>
+                    <span className="text-[10px] text-gray-500 font-medium">SCORE</span>
                   </>
                 )}
               </div>
@@ -203,17 +203,14 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
           </div>
 
           {/* Title and Summary */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-bold text-gray-900">Calendar Health Score</h3>
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${badgeClasses}`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="text-base font-bold text-gray-900">Calendar Health Score</h3>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${badgeClasses}`}>
                 {healthInterpretation.label}
               </span>
-              <span className="text-xs text-gray-600">
-                {/* TODO: Add trend comparison */}
-              </span>
             </div>
-            <p className="text-sm text-gray-700 mb-3">
+            <p className="text-sm text-gray-600 mb-2">
               {activeFactors.length > 0
                 ? `${activeFactors.length} active factor${activeFactors.length !== 1 ? 's' : ''} affecting your score`
                 : 'No health factors detected - great job!'}
@@ -221,19 +218,19 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
 
             {/* Active Factors Grid */}
             {activeFactors.length > 0 && (
-              <div className={`grid gap-3 ${activeFactors.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+              <div className={`grid gap-2 ${activeFactors.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
                 {activeFactors.map((factor, index) => (
                   <div
                     key={index}
-                    className={`bg-white/60 rounded-lg p-3 border ${factor.borderColor}`}
+                    className={`bg-white/60 rounded-lg px-3 py-2 border ${factor.borderColor}`}
                   >
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-600 font-medium">{factor.label}</span>
                       <span className={`font-bold text-sm ${factor.impactColor}`}>
                         {factor.impact > 0 ? '+' : ''}{factor.impact}
                       </span>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900">{factor.value}</p>
+                    <p className="text-xl font-bold text-gray-900">{factor.value}</p>
                     <p className="text-xs text-gray-500">{factor.subtext}</p>
                   </div>
                 ))}
@@ -245,7 +242,7 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
           {inactiveFactors.length > 0 && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex-shrink-0 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-lg p-2 transition-colors"
+              className="flex-shrink-0 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-lg p-1.5 transition-colors"
               aria-label={isExpanded ? 'Collapse' : 'Expand'}
             >
               <svg
@@ -263,20 +260,20 @@ const HealthScoreHero: React.FC<HealthScoreHeroProps> = ({ analytics, healthScor
 
       {/* Expanded Section (Inactive Factors) */}
       {isExpanded && inactiveFactors.length > 0 && (
-        <div className="px-6 pb-6 pt-2 border-t border-indigo-200">
-          <p className="text-xs text-gray-600 mb-3 font-medium">All Health Factors (Including Inactive):</p>
+        <div className="px-5 pb-4 pt-2 border-t border-indigo-200">
+          <p className="text-xs text-gray-600 mb-2 font-medium">All Health Factors (Including Inactive):</p>
           <div className="grid grid-cols-6 gap-2">
             {inactiveFactors.map((factor, index) => (
               <div
                 key={index}
                 className="bg-white/40 rounded-lg p-2 border border-gray-200 text-center"
               >
-                <p className="text-xs text-gray-500 mb-1">{factor.label}</p>
-                <p className="text-lg font-bold text-gray-400">{factor.value}</p>
+                <p className="text-xs text-gray-500 mb-0.5">{factor.label}</p>
+                <p className="text-base font-bold text-gray-400">{factor.value}</p>
               </div>
             ))}
           </div>
-          <div className="mt-3 text-xs text-gray-500">
+          <div className="mt-2 text-xs text-gray-500">
             <label className="flex items-center gap-1.5 cursor-pointer hover:text-gray-700">
               <input
                 type="checkbox"
