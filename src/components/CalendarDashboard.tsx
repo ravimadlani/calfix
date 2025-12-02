@@ -15,6 +15,7 @@ import ProviderSwitcher from './ProviderSwitcher';
 import UpgradeModal from './UpgradeModal';
 import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
+import DashboardTabs from './DashboardTabs';
 
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
@@ -1583,6 +1584,18 @@ const CalendarDashboard = () => {
           isCalculating={isCalculatingHealthScore}
         />
       )}
+
+      {/* New Dashboard Tabs - Calendar Inbox & Alerts */}
+      <DashboardTabs
+        events={filteredEvents}
+        analytics={displayAnalytics}
+        recommendations={displayRecommendations}
+        calendarOwnerEmail={calendarOwnerEmail}
+        viewLabel={selectedDay ? getSelectedDayDate()?.toLocaleDateString('en-US', { weekday: 'long' }) || '' : getViewLabel(currentView)}
+        selectedDayDate={selectedDay ? getSelectedDayDate() : null}
+        onActionClick={handleOpenWorkflow}
+        healthScoreResult={healthScoreResult}
+      />
 
       {/* Day Filter Pills for Week and Month Views */}
       {(currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth') && currentTimeRange && (

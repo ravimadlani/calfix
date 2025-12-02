@@ -5,7 +5,6 @@
 
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
-import path from 'path';
 
 // Test data
 const GOOGLE_TEST_EMAIL = 'ravi@madlanilabs.com';
