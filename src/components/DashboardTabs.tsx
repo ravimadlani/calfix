@@ -198,6 +198,11 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
     });
   }, [currentEvents, inboxFilter, calendarOwnerEmail, inboxSubTab]);
 
+  // Get event URL for linking
+  const getEventUrl = (event: CalendarEvent): string | null => {
+    return event.htmlLink || event.providerUrl || null;
+  };
+
   const formatEventTime = (event: CalendarEvent) => {
     if (event.start?.date) {
       return 'All day';
@@ -248,13 +253,13 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
         {summary.accepted > 0 && (
           <span className="flex items-center gap-1 text-green-600">
             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-            {summary.accepted}
+            {summary.accepted} accepted
           </span>
         )}
         {summary.tentative > 0 && (
           <span className="flex items-center gap-1 text-yellow-600">
             <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-            {summary.tentative}
+            {summary.tentative} tentative
           </span>
         )}
         {summary.needsAction > 0 && (
@@ -266,7 +271,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
         {summary.declined > 0 && (
           <span className="flex items-center gap-1 text-red-600">
             <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-            {summary.declined}
+            {summary.declined} declined
           </span>
         )}
       </div>
@@ -482,16 +487,31 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                               </p>
                             )}
                           </div>
-                          {needsResponse && (
-                            <div className="flex gap-2">
-                              <button className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                Accept
-                              </button>
-                              <button className="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                Decline
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {getEventUrl(event) && (
+                              <a
+                                href={getEventUrl(event)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                title="Open in calendar"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            )}
+                            {needsResponse && (
+                              <>
+                                <button className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                  Accept
+                                </button>
+                                <button className="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                  Decline
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -532,6 +552,19 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                             </p>
                             {hasAwaitingResponses && renderAttendeesWhoNeedChasing(event)}
                           </div>
+                          {getEventUrl(event) && (
+                            <a
+                              href={getEventUrl(event)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-shrink-0"
+                              title="Open in calendar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          )}
                         </div>
                       </div>
                     );
