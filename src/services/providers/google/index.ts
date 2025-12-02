@@ -9,6 +9,7 @@ import {
   findFreeBusy,
   googleHelperActions,
   handleGoogleApiError,
+  respondToEvent,
   updateEvent
 } from './calendar';
 import { googleAuth, GOOGLE_PROVIDER_ID } from './auth';
@@ -38,7 +39,8 @@ export const createGoogleCalendarProvider = (): CalendarProvider => ({
     deleteEvent,
     fetchCalendarList,
     findFreeBusy,
-    addConferenceLink
+    addConferenceLink,
+    respondToEvent
   },
   helpers: googleHelperActions
 });
