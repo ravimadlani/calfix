@@ -51,17 +51,12 @@ interface CategorizedEvents {
 }
 
 // Helper to check if the calendar owner is the organizer
+// Only use email matching - the 'self' property can be misleading on delegated calendars
 const isOrganizer = (event: CalendarEvent, calendarOwnerEmail: string | null): boolean => {
   if (!calendarOwnerEmail) return false;
 
-  // Check if organizer.self is true
-  if (event.organizer?.self === true) return true;
-
-  // Check if organizer email matches
+  // Check if organizer email matches the calendar owner
   if (event.organizer?.email?.toLowerCase() === calendarOwnerEmail.toLowerCase()) return true;
-
-  // Check if creator email matches (backup check)
-  if (event.creator?.email?.toLowerCase() === calendarOwnerEmail.toLowerCase()) return true;
 
   return false;
 };
