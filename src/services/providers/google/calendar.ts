@@ -301,6 +301,54 @@ const ensureGapiClient = async () => {
   });
 };
 
+/**
+ * Respond to an event invitation (accept, decline, or tentative)
+ */
+export const respondToEvent = async (
+  eventId: string,
+  response: 'accepted' | 'declined' | 'tentative',
+  calendarId = PRIMARY_CALENDAR
+): Promise<CalendarEvent> => {
+  try {
+    // First fetch the current event to get all data including attendees
+    const currentEvent = await makeApiRequest(
+      `/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`
+    ) as GoogleRawCalendarEvent;
+
+    if (!currentEvent) {
+      throw new Error('Event not found');
+    }
+
+    // Find the user's attendee entry and update their response status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawAttendees = currentEvent.attendees as any[] | undefined;
+    const attendees = rawAttendees?.map((attendee) => {
+      if (attendee.self) {
+        return {
+          ...attendee,
+          responseStatus: response
+        };
+      }
+      return attendee;
+    });
+
+    // Update the event with the new attendee status
+    const updatedEvent = await makeApiRequest(
+      `/calendars/${encodeURIComponent(calendarId)}/events/${eventId}?sendUpdates=all`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ attendees })
+      }
+    );
+
+    console.log(`[Google Calendar] Event response updated to ${response}:`, eventId);
+    return normalizeEvent(updatedEvent, calendarId);
+  } catch (error) {
+    console.error('[Google Calendar] Error responding to event', error);
+    throw error instanceof Error ? error : new Error('Failed to respond to event');
+  }
+};
+
 export const addConferenceLink = async (eventId: string, event: CalendarEvent, calendarId = PRIMARY_CALENDAR): Promise<CalendarEvent> => {
   try {
     const updatedEventData = {

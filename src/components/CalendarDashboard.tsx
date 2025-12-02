@@ -849,6 +849,41 @@ const CalendarDashboard = () => {
     }
   };
 
+  // Handle responding to an event (accept/decline)
+  const handleRespondToEvent = async (
+    eventId: string,
+    response: 'accepted' | 'declined' | 'tentative',
+    targetCalendarId?: string
+  ) => {
+    if (!calendarApi.respondToEvent) {
+      alert('Responding to events is not supported for this calendar provider yet.');
+      return;
+    }
+
+    try {
+      await calendarApi.respondToEvent(
+        eventId,
+        response,
+        targetCalendarId || managedCalendarId
+      );
+
+      // Log the action
+      logUserAction('event_response', {
+        calendarId: targetCalendarId || managedCalendarId,
+        eventId,
+        timeHorizon: getTimeHorizon(currentView),
+        metadata: { response }
+      });
+
+      // Refresh events to show updated status
+      await loadEvents();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Failed to respond to event: ${message}`);
+      throw err;
+    }
+  };
+
   // Open workflow modal
   const handleOpenWorkflow = (actionType) => {
     setWorkflowModal({ isOpen: true, actionType });
@@ -1470,7 +1505,9 @@ const CalendarDashboard = () => {
         events={filteredEvents}
         analytics={displayAnalytics}
         calendarOwnerEmail={calendarOwnerEmail}
+        calendarId={managedCalendarId}
         onActionClick={handleOpenWorkflow}
+        onRespondToEvent={handleRespondToEvent}
       />
 
       {/* Action Workflow Modal */}

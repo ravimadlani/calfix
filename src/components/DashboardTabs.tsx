@@ -34,11 +34,15 @@ const isExternalMeeting = (event: CalendarEvent, calendarOwnerEmail: string | nu
   });
 };
 
+type EventResponseStatus = 'accepted' | 'declined' | 'tentative';
+
 interface DashboardTabsProps {
   events: CalendarEvent[];
   analytics: CalendarAnalytics | null;
   calendarOwnerEmail: string | null;
+  calendarId?: string;
   onActionClick: (actionType: string) => void;
+  onRespondToEvent?: (eventId: string, response: EventResponseStatus, calendarId?: string) => Promise<void>;
 }
 
 type MainTab = 'inbox' | 'alerts';
@@ -108,11 +112,28 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
   events,
   analytics,
   calendarOwnerEmail,
-  onActionClick
+  calendarId,
+  onActionClick,
+  onRespondToEvent
 }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('inbox');
   const [inboxSubTab, setInboxSubTab] = useState<InboxSubTab>('received');
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>('all');
+  const [respondingEventId, setRespondingEventId] = useState<string | null>(null);
+
+  // Handle accepting or declining an event
+  const handleRespondToEvent = async (eventId: string, response: EventResponseStatus) => {
+    if (!onRespondToEvent) return;
+
+    setRespondingEventId(eventId);
+    try {
+      await onRespondToEvent(eventId, response, calendarId);
+    } catch (error) {
+      console.error('Failed to respond to event:', error);
+    } finally {
+      setRespondingEventId(null);
+    }
+  };
 
   // Categorize events into Sent and Received
   const categorizedEvents = useMemo<CategorizedEvents>(() => {
@@ -484,12 +505,28 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                                 </svg>
                               </a>
                             )}
-                            {needsResponse && (
+                            {needsResponse && onRespondToEvent && (
                               <>
-                                <button className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                  Accept
+                                <button
+                                  onClick={() => handleRespondToEvent(event.id, 'accepted')}
+                                  disabled={respondingEventId === event.id}
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                    respondingEventId === event.id
+                                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                                      : 'bg-green-600 text-white hover:bg-green-700'
+                                  }`}
+                                >
+                                  {respondingEventId === event.id ? 'Updating...' : 'Accept'}
                                 </button>
-                                <button className="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                <button
+                                  onClick={() => handleRespondToEvent(event.id, 'declined')}
+                                  disabled={respondingEventId === event.id}
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                    respondingEventId === event.id
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                  }`}
+                                >
                                   Decline
                                 </button>
                               </>
