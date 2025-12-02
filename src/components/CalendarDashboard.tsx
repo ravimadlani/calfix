@@ -1438,6 +1438,17 @@ const CalendarDashboard = () => {
         </div>
       </div>
 
+      {/* Day Filter Pills for Week and Month Views */}
+      {(currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth') && currentTimeRange && (
+        <DayFilterPills
+          events={events}
+          selectedDay={selectedDay}
+          onDaySelect={setSelectedDay}
+          viewType={currentView}
+          timeRange={currentTimeRange}
+        />
+      )}
+
       {/* Upgrade Modal */}
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1461,17 +1472,6 @@ const CalendarDashboard = () => {
         calendarOwnerEmail={calendarOwnerEmail}
         onActionClick={handleOpenWorkflow}
       />
-
-      {/* Day Filter Pills for Week and Month Views */}
-      {(currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth') && currentTimeRange && (
-        <DayFilterPills
-          events={events}
-          selectedDay={selectedDay}
-          onDaySelect={setSelectedDay}
-          viewType={currentView}
-          timeRange={currentTimeRange}
-        />
-      )}
 
       {/* Action Workflow Modal */}
       <ActionWorkflowModal

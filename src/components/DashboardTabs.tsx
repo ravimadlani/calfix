@@ -371,7 +371,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                     {needsActionCount}
                   </span>
                 )}
-                <span className="ml-1 text-gray-400">({categorizedEvents.received.length})</span>
+                <span className="ml-1 text-gray-400">({categorizedEvents.received.length} events)</span>
               </button>
               <button
                 onClick={() => { setInboxSubTab('sent'); setInboxFilter('all'); }}
@@ -387,7 +387,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                     {needsChasingCount}
                   </span>
                 )}
-                <span className="ml-1 text-gray-400">({categorizedEvents.sent.length})</span>
+                <span className="ml-1 text-gray-400">({categorizedEvents.sent.length} events)</span>
               </button>
             </div>
 
