@@ -717,7 +717,8 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                   {analytics.backToBackCount === 0 &&
                    analytics.doubleBookingCount === 0 &&
                    analytics.insufficientBufferCount === 0 &&
-                   analytics.missingVideoLinkCount === 0 && (
+                   analytics.missingVideoLinkCount === 0 &&
+                   (!analytics.flightsWithoutTravelBlocks || analytics.flightsWithoutTravelBlocks.length === 0) && (
                     <div className="p-4 rounded-lg border border-green-200 bg-green-50 text-center">
                       <span className="text-4xl block mb-2">🎉</span>
                       <h4 className="font-medium text-green-900">All Clear!</h4>
