@@ -43,7 +43,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <img src="/cz_logo.png" alt="CalendarZero" className="h-10" />
+              <img src="/cz_logo.png" alt="CalendarZero" className="h-11" />
             </Link>
 
             {/* Navigation Links */}
@@ -251,7 +251,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1">
               <div className="mb-4">
-                <img src="/cz_logo.png" alt="CalendarZero" className="h-8" />
+                <img src="/cz_logo.png" alt="CalendarZero" className="h-9" />
               </div>
               <p className="text-sm text-blue-500 font-light">
                 Intelligent calendar management for executive assistants and professionals.
