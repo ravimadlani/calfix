@@ -42,41 +42,161 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="text-3xl">📅</div>
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  CalFix
-                </span>
-                <p className="text-xs text-gray-500 -mt-1">Calendar Intelligence</p>
-              </div>
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <img src="/cz_logo.png" alt="CalendarZero" className="h-11" />
             </Link>
 
             {/* Navigation Links */}
-            {isSignedIn && (
-              <div className="hidden md:flex items-center gap-6">
-                <Link
-                  to="/dashboard"
-                  className={`text-sm font-medium transition-colors ${
-                    isActive('/dashboard')
-                      ? 'text-indigo-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/recurring"
-                  className={`text-sm font-medium transition-colors ${
-                    isActive('/recurring')
-                      ? 'text-indigo-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Recurring
-                </Link>
-              </div>
-            )}
+            <div className="hidden md:flex items-center gap-6">
+              {isSignedIn ? (
+                <>
+                  {/* App Navigation - Darker/Bold */}
+                  <Link
+                    to="/dashboard"
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/dashboard')
+                        ? 'text-indigo-600 underline decoration-2 underline-offset-4'
+                        : 'text-gray-900 hover:text-indigo-600'
+                    }`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/recurring"
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/recurring')
+                        ? 'text-indigo-600 underline decoration-2 underline-offset-4'
+                        : 'text-gray-900 hover:text-indigo-600'
+                    }`}
+                  >
+                    Recurring
+                  </Link>
+
+                  {/* Visual Separator */}
+                  <span className="text-gray-400">•</span>
+
+                  {/* Marketing Links - Lighter */}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#features"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#features'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Features
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#features"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Features
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#pricing"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#pricing'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Pricing
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#pricing"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Pricing
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#resources"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#resources'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Resources
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#resources"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Resources
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Pre-login: Marketing Links Only */}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#features"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#features'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Features
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#features"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Features
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#pricing"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#pricing'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Pricing
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#pricing"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Pricing
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#resources"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#resources'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Resources
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#resources"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Resources
+                    </Link>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* User Menu / Auth Buttons */}
             <div className="flex items-center gap-4">
@@ -109,9 +229,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Link>
                   <Link
                     to="/sign-up"
-                    className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg transition-all transform hover:scale-105"
+                    className="px-4 py-2 text-sm font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all transform hover:scale-105"
                   >
-                    Start Free Trial
+                    Try the App
                   </Link>
                 </div>
               )}
@@ -130,13 +250,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">📅</span>
-                <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  CalFix
-                </span>
+              <div className="mb-4">
+                <img src="/cz_logo.png" alt="CalendarZero" className="h-9" />
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-blue-500 font-light">
                 Intelligent calendar management for executive assistants and professionals.
               </p>
             </div>
@@ -147,6 +264,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <li>
                   <Link to="/dashboard" className="text-sm text-gray-600 hover:text-indigo-600">
                     Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/recurring" className="text-sm text-gray-600 hover:text-indigo-600">
+                    Recurring
                   </Link>
                 </li>
                 <li>
@@ -178,7 +300,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Company</h3>
               <ul className="space-y-2">
                 <li>
-                  <a href="mailto:hello@calfix.pro" className="text-sm text-gray-600 hover:text-indigo-600">
+                  <a href="mailto:hello@calendarzero.com" className="text-sm text-gray-600 hover:text-indigo-600">
                     Contact
                   </a>
                 </li>
@@ -199,16 +321,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Connect</h3>
               <p className="text-sm text-gray-600">
                 Questions? Email us at{' '}
-                <a href="mailto:hello@calfix.pro" className="text-indigo-600 hover:underline">
-                  hello@calfix.pro
+                <a href="mailto:hello@calendarzero.com" className="text-indigo-600 hover:underline">
+                  hello@calendarzero.com
                 </a>
               </p>
             </div>
           </div>
 
           <div className="mt-8 pt-8 border-t border-gray-200">
-            <p className="text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} CalFix. All rights reserved.
+            <p className="text-center text-sm text-blue-500 font-light">
+              © {new Date().getFullYear()} CalendarZero.com. All rights reserved.
             </p>
           </div>
         </div>

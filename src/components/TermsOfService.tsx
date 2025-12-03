@@ -258,20 +258,20 @@ const TermsOfService: React.FC = () => {
             </p>
             <p className="text-gray-700 mb-2">
               Email:{' '}
-              <a href="mailto:legal@calfix.pro" className="text-indigo-600 hover:underline">
-                legal@calfix.pro
+              <a href="mailto:legal@calendarzero.com" className="text-indigo-600 hover:underline">
+                legal@calendarzero.com
               </a>
             </p>
             <p className="text-gray-700 mb-2">
               General Inquiries:{' '}
-              <a href="mailto:hello@calfix.pro" className="text-indigo-600 hover:underline">
-                hello@calfix.pro
+              <a href="mailto:hello@calendarzero.com" className="text-indigo-600 hover:underline">
+                hello@calendarzero.com
               </a>
             </p>
             <p className="text-gray-700">
               Support:{' '}
-              <a href="mailto:support@calfix.pro" className="text-indigo-600 hover:underline">
-                support@calfix.pro
+              <a href="mailto:support@calendarzero.com" className="text-indigo-600 hover:underline">
+                support@calendarzero.com
               </a>
             </p>
           </div>
