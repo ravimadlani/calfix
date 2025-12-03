@@ -127,9 +127,9 @@ const LandingPage: React.FC = () => {
             {/* Feature 2 */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 hover:shadow-xl transition-shadow">
               <div className="text-3xl mb-3">⚡</div>
-              <h3 className="text-lg font-light text-blue-600 mb-2">One-Click Fixes</h3>
+              <h3 className="text-lg font-light text-blue-600 mb-2">Intelligent Actions</h3>
               <p className="text-sm text-blue-500 font-light">
-                Fix all issues with one click. Add buffers, create travel blocks, decline conflicts, and optimize schedules instantly.
+                Take smart action on issues. Add buffers, create travel blocks, decline conflicts, and optimize schedules with AI-powered suggestions.
               </p>
             </div>
 
