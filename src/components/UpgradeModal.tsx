@@ -75,7 +75,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
 
   const handleSelectPlan = (tierId: string) => {
     // TODO: Implement Stripe checkout
-    alert(`Stripe integration coming soon!\n\nSelected: ${tierId.toUpperCase()}\n\nFor now, contact hello@calfix.pro`);
+    alert(`Stripe integration coming soon!\n\nSelected: ${tierId.toUpperCase()}\n\nFor now, contact hello@calendarzero.com`);
   };
 
   return (

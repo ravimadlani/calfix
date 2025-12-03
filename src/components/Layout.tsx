@@ -63,12 +63,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 Features
               </a>
               <a
-                href="#applications"
-                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Applications
-              </a>
-              <a
                 href="#pricing"
                 className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
               >
@@ -179,7 +173,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Company</h3>
               <ul className="space-y-2">
                 <li>
-                  <a href="mailto:hello@calfix.pro" className="text-sm text-gray-600 hover:text-indigo-600">
+                  <a href="mailto:hello@calendarzero.com" className="text-sm text-gray-600 hover:text-indigo-600">
                     Contact
                   </a>
                 </li>
@@ -200,8 +194,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Connect</h3>
               <p className="text-sm text-gray-600">
                 Questions? Email us at{' '}
-                <a href="mailto:hello@calfix.pro" className="text-indigo-600 hover:underline">
-                  hello@calfix.pro
+                <a href="mailto:hello@calendarzero.com" className="text-indigo-600 hover:underline">
+                  hello@calendarzero.com
                 </a>
               </p>
             </div>
