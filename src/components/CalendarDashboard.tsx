@@ -144,7 +144,7 @@ const CalendarDashboard = () => {
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
   const [loggingInitialized, setLoggingInitialized] = useState(false);
   const [healthScoreResult, setHealthScoreResult] = useState(null);
-  const [isCalculatingHealthScore, setIsCalculatingHealthScore] = useState(false);
+  const [isCalculatingHealthScore, setIsCalculatingHealthScore] = useState(true);
 
   const primaryClerkEmail =
     clerkUser?.primaryEmailAddress?.emailAddress ||
