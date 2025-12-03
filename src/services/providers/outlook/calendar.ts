@@ -582,6 +582,42 @@ export async function addConferenceLink(
   return normalizeEvent(updatedEvent, calendarId);
 }
 
+/**
+ * Respond to an event invitation (accept, decline, or tentative)
+ */
+export async function respondToEvent(
+  eventId: string,
+  response: 'accepted' | 'declined' | 'tentative',
+  calendarId?: string
+): Promise<CalendarEvent> {
+  // Map our response status to Microsoft Graph endpoints
+  const endpointMap = {
+    accepted: 'accept',
+    declined: 'decline',
+    tentative: 'tentativelyAccept'
+  };
+
+  const endpoint = endpointMap[response];
+  const url = `${GRAPH_API_BASE}/me/events/${eventId}/${endpoint}`;
+
+  // Microsoft Graph accept/decline endpoints expect a body with optional comment and sendResponse
+  await makeGraphApiRequest<void>(url, {
+    method: 'POST',
+    body: JSON.stringify({
+      sendResponse: true // Send update to organizer
+    })
+  });
+
+  console.log(`[Outlook Calendar] Event response updated to ${response}:`, eventId);
+
+  // Fetch the updated event to return
+  const updatedEvent = await makeGraphApiRequest<MicrosoftGraphEvent>(
+    `${GRAPH_API_BASE}/me/events/${eventId}`
+  );
+
+  return normalizeEvent(updatedEvent, calendarId);
+}
+
 // Helper action implementations
 const createBufferEvent = async (
   startTime: Date,
@@ -838,5 +874,6 @@ export const outlookCalendarApi = {
   deleteEvent,
   fetchCalendarList,
   findFreeBusy,
-  addConferenceLink
+  addConferenceLink,
+  respondToEvent
 };

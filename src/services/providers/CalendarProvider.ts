@@ -22,6 +22,8 @@ export interface CalendarProviderAuth {
   forceReauthentication(): Promise<void>;
 }
 
+export type EventResponseStatus = 'accepted' | 'declined' | 'tentative';
+
 export interface CalendarProviderCalendarApi {
   fetchEvents(options: FetchEventsOptions): Promise<CalendarEvent[]>;
   createEvent(eventData: unknown, calendarId?: string): Promise<CalendarEvent>;
@@ -30,6 +32,7 @@ export interface CalendarProviderCalendarApi {
   fetchCalendarList(): Promise<CalendarListEntry[]>;
   findFreeBusy(timeMin: string, timeMax: string, calendarIds: string | string[]): Promise<FreeBusyResponse>;
   addConferenceLink?(eventId: string, event: CalendarEvent, calendarId?: string): Promise<CalendarEvent>;
+  respondToEvent?(eventId: string, response: EventResponseStatus, calendarId?: string): Promise<CalendarEvent>;
 }
 
 export interface CalendarProviderHelperActions {

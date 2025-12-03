@@ -5,9 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ViewSelector from './ViewSelector';
-import DayActionsPanel from './DayActionsPanel';
 import DayFilterPills from './DayFilterPills';
-import EventsTimeline from './EventsTimeline';
 import ActionWorkflowModal from './ActionWorkflowModal';
 import TeamSchedulingModal from './TeamSchedulingModal';
 import ProviderSelection from './ProviderSelection';
@@ -15,9 +13,10 @@ import ProviderSwitcher from './ProviderSwitcher';
 import UpgradeModal from './UpgradeModal';
 import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
+import DashboardTabs from './DashboardTabs';
 
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
-import { calculateAnalytics, getEventsWithGaps, getRecommendations } from '../services/calendarAnalytics';
+import { calculateAnalytics, getEventsWithGaps } from '../services/calendarAnalytics';
 import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
@@ -103,16 +102,13 @@ const CalendarDashboard = () => {
   } = calendarApi;
 
   const {
-    addBufferBefore: providerAddBufferBefore,
     addBufferAfter: providerAddBufferAfter,
     batchAddBuffers: providerBatchAddBuffers,
     deletePlaceholderAndLog: providerDeletePlaceholderAndLog,
     createFocusBlock: providerCreateFocusBlock,
     createTravelBlock: providerCreateTravelBlock,
     createLocationEvent: providerCreateLocationEvent,
-    batchAddConferenceLinks: providerBatchAddConferenceLinks,
-    findNextAvailableSlot: providerFindNextAvailableSlot,
-    moveEvent: providerMoveEvent
+    batchAddConferenceLinks: providerBatchAddConferenceLinks
   } = helperApi;
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -127,7 +123,6 @@ const CalendarDashboard = () => {
   const [events, setEvents] = useState([]);
   const [eventsWithGaps, setEventsWithGaps] = useState([]);
   const [analytics, setAnalytics] = useState(null);
-  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [, setActionLoading] = useState(false);
@@ -508,10 +503,6 @@ const CalendarDashboard = () => {
 
       setEventsWithGaps(eventsWithAllData);
 
-      // Get recommendations using filtered events
-      const recs = getRecommendations(filteredEvents, calendarOwnerEmail);
-      setRecommendations(recs);
-
     } catch (err) {
       console.error('Error loading events:', err);
 
@@ -723,7 +714,44 @@ const CalendarDashboard = () => {
       return eventsWithGaps;
     }
 
-    // selectedDay is now a date key in format YYYY-MM-DD
+    // Check if this is a week selection (format: "week-N")
+    const isWeekSelection = selectedDay.startsWith('week-');
+
+    if (isWeekSelection && currentTimeRange) {
+      // Parse week number and calculate week boundaries
+      const weekNumber = parseInt(selectedDay.replace('week-', ''), 10);
+      const rangeStart = new Date(currentTimeRange.timeMin);
+
+      // Get the start of the first week in the range
+      const day = rangeStart.getDay();
+      const firstWeekStart = new Date(rangeStart);
+      firstWeekStart.setDate(firstWeekStart.getDate() - day);
+      firstWeekStart.setHours(0, 0, 0, 0);
+
+      // Calculate this week's start and end
+      const weekStart = new Date(firstWeekStart);
+      weekStart.setDate(weekStart.getDate() + (weekNumber - 1) * 7);
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      return eventsWithGaps.filter(event => {
+        let startTime;
+        if (event.start?.dateTime) {
+          startTime = new Date(event.start.dateTime);
+        } else if (event.start?.date) {
+          const [year, month, eventDay] = event.start.date.split('-').map(Number);
+          startTime = new Date(year, month - 1, eventDay);
+        } else {
+          return false;
+        }
+
+        return startTime >= weekStart && startTime <= weekEnd;
+      });
+    }
+
+    // Day selection (format: "YYYY-MM-DD")
     return eventsWithGaps.filter(event => {
       let startTime;
       if (event.start?.dateTime) {
@@ -738,7 +766,7 @@ const CalendarDashboard = () => {
       const dateKey = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
       return dateKey === selectedDay;
     });
-  }, [selectedDay, currentView, eventsWithGaps]);
+  }, [selectedDay, currentView, eventsWithGaps, currentTimeRange]);
 
   const displayAnalytics = useMemo(() => {
     return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
@@ -749,12 +777,6 @@ const CalendarDashboard = () => {
         )
       : analytics;
   }, [selectedDay, currentView, filteredEvents, extendedEventsForFlights, calendarOwnerEmail, analytics]);
-
-  const displayRecommendations = useMemo(() => {
-    return selectedDay && (currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth')
-      ? getRecommendations(filteredEvents, calendarOwnerEmail)
-      : recommendations;
-  }, [selectedDay, currentView, filteredEvents, calendarOwnerEmail, recommendations]);
 
   const assistantActions = useMemo<IntentActionHandlers>(() => ({
     applyBuffers: async ({ position, events: targetEvents, bufferMinutes = 15 }) => {
@@ -820,50 +842,6 @@ const CalendarDashboard = () => {
     providerCreateFocusBlock
   ]);
 
-  // Handle adding buffer before event
-  const handleAddBufferBefore = async (event: CalendarEvent, options: ActionOptions = {}) => {
-    if (!options.skipNotification && !window.confirm('Add a 15-minute buffer before this event?')) {
-      return;
-    }
-
-    const helper = requireHelper(
-      providerAddBufferBefore,
-      'Buffer creation is not supported for this calendar provider yet.'
-    );
-
-    if (!helper) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      await helper(event);
-
-      // Log the action
-      logUserAction('quick_action_add_prep', {
-        calendarId: managedCalendarId,
-        eventId: event.id,
-        timeHorizon: getTimeHorizon(currentView)
-      });
-
-      if (!options.skipRefresh) {
-        await loadEvents();
-      }
-
-      if (!options.skipNotification) {
-        alert('Buffer added successfully!');
-      }
-    } catch (err) {
-      if (!options.skipNotification) {
-        const message = err instanceof Error ? err.message : String(err);
-        alert(`Failed to add buffer: ${message}`);
-      }
-      throw err;
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   // Handle adding buffer after event
   const handleAddBufferAfter = async (event: CalendarEvent, options: ActionOptions = {}) => {
     if (!options.skipNotification && !window.confirm('Add a 15-minute buffer after this event?')) {
@@ -908,54 +886,38 @@ const CalendarDashboard = () => {
     }
   };
 
-  // Handle moving event
-  const handleMoveEvent = async (event: CalendarEvent) => {
-    const findSlot = requireHelper(
-      providerFindNextAvailableSlot,
-      'Automatic rescheduling is not supported for this calendar provider yet.'
-    );
-    const move = requireHelper(
-      providerMoveEvent,
-      'Automatic rescheduling is not supported for this calendar provider yet.'
-    );
-
-    if (!findSlot || !move) {
+  // Handle responding to an event (accept/decline)
+  const handleRespondToEvent = async (
+    eventId: string,
+    response: 'accepted' | 'declined' | 'tentative',
+    targetCalendarId?: string
+  ) => {
+    if (!calendarApi.respondToEvent) {
+      alert('Responding to events is not supported for this calendar provider yet.');
       return;
     }
 
-    const nextSlot = findSlot(events, 60, new Date(event.end.dateTime || event.end.date));
-
-    if (!nextSlot) {
-      alert('No available time slots found');
-      return;
-    }
-
-    const confirmMessage = `Move "${event.summary}" to ${nextSlot.toLocaleString()}?`;
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    setActionLoading(true);
     try {
-      await move(event.id, event, nextSlot);
+      await calendarApi.respondToEvent(
+        eventId,
+        response,
+        targetCalendarId || managedCalendarId
+      );
 
       // Log the action
-      logUserAction('meeting_reschedule', {
-        calendarId: managedCalendarId,
-        eventId: event.id,
+      logUserAction('event_response', {
+        calendarId: targetCalendarId || managedCalendarId,
+        eventId,
         timeHorizon: getTimeHorizon(currentView),
-        metadata: {
-          newStartTime: nextSlot.toISOString()
-        }
+        metadata: { response }
       });
 
+      // Refresh events to show updated status
       await loadEvents();
-      alert('Event moved successfully!');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      alert(`Failed to move event: ${message}`);
-    } finally {
-      setActionLoading(false);
+      alert(`Failed to respond to event: ${message}`);
+      throw err;
     }
   };
 
@@ -1404,26 +1366,6 @@ const CalendarDashboard = () => {
     );
   }
 
-  // Helper to get readable view label
-  const getViewLabel = (view) => {
-    const labels = {
-      today: 'Today',
-      tomorrow: 'Tomorrow',
-      week: 'This Week',
-      nextWeek: 'Next Week'
-    };
-    return labels[view] || 'Today';
-  };
-
-  // Helper to get the date object for selected day
-  const getSelectedDayDate = () => {
-    if (!selectedDay || !events.length) return null;
-
-    // selectedDay is in format YYYY-MM-DD
-    const [year, month, day] = selectedDay.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Calendar Management Section */}
@@ -1568,6 +1510,17 @@ const CalendarDashboard = () => {
         </div>
       </div>
 
+      {/* Day Filter Pills for Week and Month Views */}
+      {(currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth') && currentTimeRange && (
+        <DayFilterPills
+          events={events}
+          selectedDay={selectedDay}
+          onDaySelect={setSelectedDay}
+          viewType={currentView}
+          timeRange={currentTimeRange}
+        />
+      )}
+
       {/* Upgrade Modal */}
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1584,27 +1537,15 @@ const CalendarDashboard = () => {
         />
       )}
 
-      {/* Day Filter Pills for Week and Month Views */}
-      {(currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth') && currentTimeRange && (
-        <DayFilterPills
-          events={events}
-          selectedDay={selectedDay}
-          onDaySelect={setSelectedDay}
-          viewType={currentView}
-          timeRange={currentTimeRange}
-        />
-      )}
-
-      {/* Day-Specific Actions */}
-      {displayAnalytics && (
-        <DayActionsPanel
-          analytics={displayAnalytics}
-          recommendations={displayRecommendations}
-          viewLabel={selectedDay ? getSelectedDayDate()?.toLocaleDateString('en-US', { weekday: 'long' }) : getViewLabel(currentView)}
-          selectedDayDate={selectedDay ? getSelectedDayDate() : null}
-          onActionClick={handleOpenWorkflow}
-        />
-      )}
+      {/* New Dashboard Tabs - Calendar Inbox & Alerts */}
+      <DashboardTabs
+        events={filteredEvents}
+        analytics={displayAnalytics}
+        calendarOwnerEmail={calendarOwnerEmail}
+        calendarId={managedCalendarId}
+        onActionClick={handleOpenWorkflow}
+        onRespondToEvent={handleRespondToEvent}
+      />
 
       {/* Action Workflow Modal */}
       <ActionWorkflowModal
@@ -1617,25 +1558,6 @@ const CalendarDashboard = () => {
         onDeletePlaceholder={handleDeletePlaceholder}
         onAddBuffer={handleAddBufferAfter}
       />
-
-      {/* Events Timeline */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-          <span role="img" aria-label="Calendar">
-            📋
-          </span>
-          Your Schedule
-        </h2>
-
-        <EventsTimeline
-          events={filteredEvents}
-          showDayHeadings={(currentView === 'week' || currentView === 'nextWeek' || currentView === 'thisMonth' || currentView === 'nextMonth') && !selectedDay}
-          timeRange={currentTimeRange}
-          onAddBufferBefore={handleAddBufferBefore}
-          onAddBufferAfter={handleAddBufferAfter}
-          onMoveEvent={handleMoveEvent}
-        />
-      </div>
 
       {/* Team Scheduling Modal */}
       {showTeamScheduler && (
