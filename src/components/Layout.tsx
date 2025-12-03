@@ -47,33 +47,155 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
 
             {/* Navigation Links */}
-            <div className="hidden md:flex items-center gap-8">
-              {isSignedIn && (
-                <Link
-                  to="/dashboard"
-                  className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  Dashboard
-                </Link>
+            <div className="hidden md:flex items-center gap-6">
+              {isSignedIn ? (
+                <>
+                  {/* App Navigation - Darker/Bold */}
+                  <Link
+                    to="/dashboard"
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/dashboard')
+                        ? 'text-indigo-600 underline decoration-2 underline-offset-4'
+                        : 'text-gray-900 hover:text-indigo-600'
+                    }`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/recurring"
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/recurring')
+                        ? 'text-indigo-600 underline decoration-2 underline-offset-4'
+                        : 'text-gray-900 hover:text-indigo-600'
+                    }`}
+                  >
+                    Recurring
+                  </Link>
+
+                  {/* Visual Separator */}
+                  <span className="text-gray-400">•</span>
+
+                  {/* Marketing Links - Lighter */}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#features"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#features'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Features
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#features"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Features
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#pricing"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#pricing'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Pricing
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#pricing"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Pricing
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#resources"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#resources'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Resources
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#resources"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Resources
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Pre-login: Marketing Links Only */}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#features"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#features'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Features
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#features"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Features
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#pricing"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#pricing'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Pricing
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#pricing"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Pricing
+                    </Link>
+                  )}
+                  {location.pathname === '/' ? (
+                    <a
+                      href="#resources"
+                      className={`text-sm font-light transition-colors ${
+                        location.hash === '#resources'
+                          ? 'text-blue-600 underline decoration-2 underline-offset-4'
+                          : 'text-gray-600 hover:text-blue-600'
+                      }`}
+                    >
+                      Resources
+                    </a>
+                  ) : (
+                    <Link
+                      to="/#resources"
+                      className="text-sm font-light text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Resources
+                    </Link>
+                  )}
+                </>
               )}
-              <a
-                href="#features"
-                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Features
-              </a>
-              <a
-                href="#pricing"
-                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Pricing
-              </a>
-              <a
-                href="#resources"
-                className="text-sm font-light text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Resources
-              </a>
             </div>
 
             {/* User Menu / Auth Buttons */}
@@ -142,6 +264,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <li>
                   <Link to="/dashboard" className="text-sm text-gray-600 hover:text-indigo-600">
                     Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/recurring" className="text-sm text-gray-600 hover:text-indigo-600">
+                    Recurring
                   </Link>
                 </li>
                 <li>
