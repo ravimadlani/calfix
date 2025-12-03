@@ -6,6 +6,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
+import outlookLogo from '../assets/outlook-calendar.jpg';
 
 const LandingPage: React.FC = () => {
   const { isSignedIn } = useUser();
@@ -72,10 +73,7 @@ const LandingPage: React.FC = () => {
                     <span className="text-sm font-medium text-gray-700">Google Calendar</span>
                   </div>
                   <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-md border border-blue-200 hover:shadow-lg transition-shadow">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12 12-5.373 12-12S18.628 0 12 0z" fill="#0078D4"/>
-                      <path d="M18.5 8h-13c-.825 0-1.5.675-1.5 1.5v5c0 .825.675 1.5 1.5 1.5h13c.825 0 1.5-.675 1.5-1.5v-5c0-.825-.675-1.5-1.5-1.5zm-.5 6.5H6v-5h12v5z" fill="white"/>
-                    </svg>
+                    <img src={outlookLogo} alt="Microsoft Outlook" className="w-5 h-5 object-contain" />
                     <span className="text-sm font-medium text-gray-700">Microsoft Outlook</span>
                   </div>
                 </div>
