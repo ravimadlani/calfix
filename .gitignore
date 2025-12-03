@@ -40,3 +40,9 @@ CLAUDE.md
 # Playwright MCP screenshots
 .playwright-mcp/
 .env*.local
+
+# Planning and documentation (local only)
+planning/
+mockups/
+tests/
+test-results/

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type { CalendarProviderId } from '../types';
+import outlookCalendarLogo from '../assets/outlook-calendar.jpg';
 
 const ProviderSelection: React.FC = () => {
   const {
@@ -49,10 +50,7 @@ const ProviderSelection: React.FC = () => {
         );
       case 'outlook':
         return (
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path fill="#0078D4" d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4z"/>
-            <path fill="#ffffff" d="M12 5.5L7 7.5v4c0 3.3 2.2 6.4 5 7.2 2.8-.8 5-3.9 5-7.2v-4l-5-2z"/>
-          </svg>
+          <img src={outlookCalendarLogo} alt="Outlook Calendar" className="w-5 h-5 object-contain" />
         );
       default:
         return <span className="w-5 h-5">📅</span>;
