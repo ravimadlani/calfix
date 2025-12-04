@@ -3,6 +3,7 @@ import { UserButton } from '@clerk/clerk-react';
 import type { CalendarProviderId, CalendarProviderMetadata } from '../types';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import googleCalendarLogo from '../assets/google-calendar.svg';
+import outlookCalendarLogo from '../assets/outlook-calendar.jpg';
 
 const CalendarConnectPrompt: React.FC = () => {
   const [isModalOpen, setModalOpen] = useState(false);
@@ -129,7 +130,8 @@ interface ProviderSelectModalProps {
 }
 
 const providerBrandIcons: Partial<Record<CalendarProviderId, string>> = {
-  google: googleCalendarLogo
+  google: googleCalendarLogo,
+  outlook: outlookCalendarLogo
 };
 
 const ProviderSelectModal: React.FC<ProviderSelectModalProps> = ({
