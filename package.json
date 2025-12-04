@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "vercel dev --listen 3000",
+    "dev:api": "vercel dev --listen 3000 --yes",
     "dev:all": "concurrently \"npm run dev:api\" \"npm run dev\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
