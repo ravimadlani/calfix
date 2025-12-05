@@ -82,14 +82,36 @@ const LandingPage: React.FC = () => {
               <p className="text-xs text-blue-400 font-light mt-3">7-day free trial • No credit card required</p>
             </div>
 
-            {/* Right side - Demo Video */}
+            {/* Right side - Calendar Visualization */}
             <div className="relative">
-              <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl shadow-2xl flex items-center justify-center border-4 border-white">
-                <div className="text-center">
-                  <div className="text-6xl mb-4">🎥</div>
-                  <p className="text-gray-600 font-semibold">Demo Video</p>
-                  <p className="text-sm text-gray-500 mt-2">Coming Soon</p>
-                </div>
+              <div className="aspect-video rounded-2xl shadow-2xl overflow-hidden border-4 border-white">
+                <img
+                  src="https://images.unsplash.com/photo-1611224923853-80b023f02d71?auto=format&fit=crop&w=1200&q=80"
+                  alt="Organized calendar interface showing scheduled events and time management"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="mt-3 text-center">
+                <p className="text-xs text-blue-400 font-light">
+                  Photo by{' '}
+                  <a
+                    href="https://unsplash.com/@towfiqu999999?utm_source=calendarzero&utm_medium=referral"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-blue-500"
+                  >
+                    Towfiqu barbhuiya
+                  </a>
+                  {' '}on{' '}
+                  <a
+                    href="https://unsplash.com/?utm_source=calendarzero&utm_medium=referral"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-blue-500"
+                  >
+                    Unsplash
+                  </a>
+                </p>
               </div>
             </div>
           </div>
