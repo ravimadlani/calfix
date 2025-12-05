@@ -86,8 +86,8 @@ const LandingPage: React.FC = () => {
             <div className="relative">
               <div className="aspect-video rounded-2xl shadow-2xl overflow-hidden border-4 border-white">
                 <img
-                  src="https://images.unsplash.com/photo-1611224923853-80b023f02d71?auto=format&fit=crop&w=1200&q=80"
-                  alt="Organized calendar interface showing scheduled events and time management"
+                  src="https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=1200&q=80"
+                  alt="Professional workspace with organized planner and calendar for executive scheduling"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -95,12 +95,12 @@ const LandingPage: React.FC = () => {
                 <p className="text-xs text-blue-400 font-light">
                   Photo by{' '}
                   <a
-                    href="https://unsplash.com/@towfiqu999999?utm_source=calendarzero&utm_medium=referral"
+                    href="https://unsplash.com/@esteejanssens?utm_source=calendarzero&utm_medium=referral"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline hover:text-blue-500"
                   >
-                    Towfiqu barbhuiya
+                    Estée Janssens
                   </a>
                   {' '}on{' '}
                   <a
