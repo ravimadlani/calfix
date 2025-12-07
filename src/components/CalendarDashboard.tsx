@@ -223,7 +223,13 @@ const CalendarDashboard = () => {
     }
 
     try {
-      const response = await fetch(`/api/user/subscription?userId=${userId}`);
+      // Get Clerk JWT token for API authentication
+      const token = await getToken();
+      const response = await fetch(`/api/user/subscription?userId=${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setSubscriptionTier(data.subscriptionTier);
@@ -250,7 +256,7 @@ const CalendarDashboard = () => {
       // Always mark subscription as loaded
       setSubscriptionLoaded(true);
     }
-  }, [clerkUser?.id]);
+  }, [clerkUser?.id, getToken]);
 
   // Fetch list of calendars user has access to
   const loadCalendarList = useCallback(async () => {
