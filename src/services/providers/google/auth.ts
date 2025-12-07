@@ -178,6 +178,12 @@ const refreshAccessToken = async (): Promise<string> => {
 };
 
 const getValidAccessToken = async (): Promise<string> => {
+  // When using Clerk OAuth, always fetch from server (Clerk handles caching/refresh)
+  if (USE_CLERK_TOKENS) {
+    return await fetchTokenFromClerk();
+  }
+
+  // Legacy: check localStorage tokens
   const { accessToken } = getTokens(PROVIDER_ID);
 
   if (!accessToken) {
