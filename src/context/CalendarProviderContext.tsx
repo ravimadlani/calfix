@@ -128,7 +128,8 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
       console.warn(`[CalendarProvider] Error checking Clerk OAuth for ${providerId}:`, error);
       return false;
     }
-  }, [getToken, user]);
+  // Note: getToken intentionally excluded - it's stable from Clerk but causes infinite loops if included
+  }, [user]);
 
   /**
    * Check Clerk OAuth status for all implemented providers on mount.
