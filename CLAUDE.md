@@ -10,9 +10,14 @@
 3. Push to the remote repository
 4. Deploy to Vercel (the user will test on the deployed version)
 
+### Deployment URLs
+- **calfix-new.vercel.app**: Any branch starting with `staging/` deploys here
+- **Preview URLs**: Other branches get unique preview URLs (e.g., `calfix-abc123.vercel.app`)
+- **Production**: Merge to main branch
+
 ### Deployment Commands
 - Push changes: `git push origin <branch-name>`
-- Deploy preview: Changes pushed to branches automatically deploy to Vercel preview URLs
+- Test on staging: Push to a `staging/*` branch, then test at calfix-new.vercel.app
 - Deploy production: Merge to main branch
 
 ## Project Information
@@ -30,4 +35,4 @@
 - `/src/components/Dashboard.tsx` - User dashboard
 
 ## Current Branch
-- Working branch: `design/website`
+- Working branch: `staging/feat/security-clerk-oauth`
