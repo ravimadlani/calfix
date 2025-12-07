@@ -427,7 +427,8 @@ const RecurringPage: React.FC = () => {
     } finally {
       setSubscriptionLoaded(true);
     }
-  }, [user?.id, getToken]);
+  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
+  }, [user?.id]);
 
   useEffect(() => {
     checkSubscription();

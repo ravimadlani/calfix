@@ -256,7 +256,8 @@ const CalendarDashboard = () => {
       // Always mark subscription as loaded
       setSubscriptionLoaded(true);
     }
-  }, [clerkUser?.id, getToken]);
+  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
+  }, [clerkUser?.id]);
 
   // Fetch list of calendars user has access to
   const loadCalendarList = useCallback(async () => {
@@ -334,11 +335,11 @@ const CalendarDashboard = () => {
       console.error('Error loading calendar list:', error);
       // If we can't fetch the list, still allow manual entry
     }
+  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
   }, [
     activeProviderId,
     clerkUser?.id,
     fetchProviderCalendarList,
-    getToken,
     hasMultiCalendarAccess,
     maxCalendars,
     subscriptionTier
@@ -649,7 +650,8 @@ const CalendarDashboard = () => {
     };
 
     initializeLogging();
-  }, [clerkUser?.id, loggingInitialized, getToken]);
+  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
+  }, [clerkUser?.id, loggingInitialized]);
 
   // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {

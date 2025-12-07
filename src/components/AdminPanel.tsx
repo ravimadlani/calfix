@@ -63,7 +63,8 @@ const AdminPanel = () => {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
+  }, []);
 
   useEffect(() => {
     if (clerkUser) {
