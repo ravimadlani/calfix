@@ -5,7 +5,7 @@ import React, {
   useState
 } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import UpgradeModal from './UpgradeModal';
 import CalendarConnectPrompt from './CalendarConnectPrompt';
@@ -309,6 +309,7 @@ const applySort = (series: RecurringSeriesMetrics[], sortKey: SortKey) => {
 
 const RecurringPage: React.FC = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const {
     activeProvider,
     activeProviderId,
@@ -399,7 +400,13 @@ const RecurringPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/user/subscription?userId=${userId}`);
+      // Get Clerk JWT token for API authentication
+      const token = await getToken();
+      const response = await fetch(`/api/user/subscription?userId=${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setSubscriptionTier(data.subscriptionTier);
@@ -420,7 +427,7 @@ const RecurringPage: React.FC = () => {
     } finally {
       setSubscriptionLoaded(true);
     }
-  }, [user?.id]);
+  }, [user?.id, getToken]);
 
   useEffect(() => {
     checkSubscription();

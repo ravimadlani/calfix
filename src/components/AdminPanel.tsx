@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { generateTestCalendarData } from '../services/testDataGenerator';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import AnalyticsOverviewTab from './admin/AnalyticsOverviewTab';
@@ -20,6 +20,7 @@ interface User {
 
 const AdminPanel = () => {
   const { user: clerkUser } = useUser();
+  const { getToken } = useAuth();
   const {
     activeProvider,
     activeProviderId,
@@ -40,11 +41,12 @@ const AdminPanel = () => {
       setLoading(true);
       setError(null);
 
-      // Call admin API endpoint with admin email header
+      // Get Clerk JWT token for API authentication
+      const token = await getToken();
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         headers: {
-          'x-admin-email': clerkUser?.primaryEmailAddress?.emailAddress || '',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -61,7 +63,7 @@ const AdminPanel = () => {
     } finally {
       setLoading(false);
     }
-  }, [clerkUser?.primaryEmailAddress?.emailAddress]);
+  }, [getToken]);
 
   useEffect(() => {
     if (clerkUser) {

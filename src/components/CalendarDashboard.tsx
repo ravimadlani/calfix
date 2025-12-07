@@ -314,11 +314,13 @@ const CalendarDashboard = () => {
       if (clerkUser?.id && manageable.length > 0) {
         try {
           console.log('[CalendarDashboard] Starting calendar sync to Supabase...');
+          const token = await getToken();
           await syncCalendarsToSupabase(
             clerkUser.id,
             activeProviderId,
             manageable,
-            manageable.find(c => c.primary)?.id
+            manageable.find(c => c.primary)?.id,
+            token
           );
           console.log('[CalendarDashboard] Successfully synced calendars to Supabase');
         } catch (syncError) {
@@ -336,6 +338,7 @@ const CalendarDashboard = () => {
     activeProviderId,
     clerkUser?.id,
     fetchProviderCalendarList,
+    getToken,
     hasMultiCalendarAccess,
     maxCalendars,
     subscriptionTier
