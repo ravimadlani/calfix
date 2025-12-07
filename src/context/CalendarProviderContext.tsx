@@ -175,7 +175,9 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
     };
 
     checkAllProviders();
-  }, [isLoaded, user, providerMetadata, checkClerkOAuthStatus, clerkConnectedProviders]);
+  // Note: clerkConnectedProviders intentionally excluded - this effect sets it, and clerkOAuthCheckedRef guards against re-running
+  // Note: checkClerkOAuthStatus intentionally excluded - it uses getToken which causes infinite loops if included
+  }, [isLoaded, user, providerMetadata]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
