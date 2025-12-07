@@ -6,7 +6,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth, getSupabaseAdmin } from '../lib/auth.js';
+import { verifyAuth, getSupabaseAdmin, checkAdminRole } from '../lib/auth.js';
 
 /**
  * GET /api/admin/health-factors
@@ -18,6 +18,12 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
     const authResult = await verifyAuth(req);
     if (!authResult.authenticated || !authResult.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check admin role
+    const isAdmin = await checkAdminRole(authResult.userId);
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
     }
 
     const supabase = getSupabaseAdmin();
@@ -50,6 +56,12 @@ async function handlePut(req: VercelRequest, res: VercelResponse) {
     const authResult = await verifyAuth(req);
     if (!authResult.authenticated || !authResult.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check admin role
+    const isAdmin = await checkAdminRole(authResult.userId);
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
     }
 
     const { factor } = req.body;

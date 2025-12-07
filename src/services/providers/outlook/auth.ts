@@ -1,6 +1,13 @@
 /**
  * Microsoft Outlook/Office 365 OAuth Authentication Service
  * Implements OAuth 2.0 with PKCE flow for Microsoft Identity Platform
+ *
+ * SECURITY NOTE: This module has been updated to use Clerk's OAuth token management.
+ * Access tokens are now fetched from the server via /api/calendar/token endpoint,
+ * which retrieves them securely from Clerk's OAuth token storage.
+ *
+ * The OAuth flow still uses PKCE for initial authorization, but token refresh
+ * is now handled server-side through Clerk.
  */
 
 import type { CalendarProviderAuth } from '../CalendarProvider';
@@ -9,6 +16,9 @@ import { storeTokens, getTokens, clearTokens, setEphemeral, getEphemeral, clearE
 
 // Provider identifier
 export const OUTLOOK_PROVIDER_ID: CalendarProviderId = 'outlook';
+
+// Flag to use Clerk token endpoint instead of local token refresh
+const USE_CLERK_TOKENS = true;
 
 // OAuth configuration from environment variables
 const TENANT_ID = import.meta.env.VITE_OUTLOOK_TENANT_ID || 'common';
@@ -56,6 +66,52 @@ async function sha256(plain: string): Promise<string> {
 }
 
 /**
+ * Get Clerk session token for API authentication.
+ * This uses Clerk's client-side SDK.
+ */
+const getClerkSessionToken = async (): Promise<string | null> => {
+  try {
+    // Access Clerk from window object (set by ClerkProvider)
+    const clerk = (window as unknown as { Clerk?: { session?: { getToken: () => Promise<string | null> } } }).Clerk;
+    if (clerk?.session) {
+      return await clerk.session.getToken();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Fetch access token from Clerk via our server-side token endpoint.
+ * This is the secure way to get tokens - Clerk stores the refresh token
+ * and handles token refresh automatically.
+ */
+const fetchTokenFromClerk = async (): Promise<string> => {
+  // Get Clerk session token to authenticate with our API
+  const clerkToken = await getClerkSessionToken();
+  if (!clerkToken) {
+    throw new Error('No Clerk session - please sign in');
+  }
+
+  const response = await fetch('/api/calendar/token?provider=outlook', {
+    headers: {
+      Authorization: `Bearer ${clerkToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Outlook Calendar not connected - please connect via Settings');
+    }
+    throw new Error('Failed to get access token from server');
+  }
+
+  const data = await response.json();
+  return data.access_token;
+};
+
+/**
  * Build Microsoft authorization URL with PKCE
  */
 async function buildAuthUrl(): Promise<string> {
@@ -81,8 +137,15 @@ async function buildAuthUrl(): Promise<string> {
 
 /**
  * Exchange authorization code for access and refresh tokens
+ * DEPRECATED for Clerk OAuth users - this is kept for backwards compatibility.
  */
 async function exchangeCodeForToken(code: string): Promise<boolean> {
+  // When using Clerk OAuth, users shouldn't reach this flow
+  if (USE_CLERK_TOKENS) {
+    console.error('[Outlook Auth] Direct OAuth callback is deprecated - please use Clerk OAuth');
+    throw new Error('Please connect Outlook Calendar through your account settings');
+  }
+
   const codeVerifier = getEphemeral(OUTLOOK_PROVIDER_ID, 'code_verifier');
 
   if (!codeVerifier) {
@@ -142,14 +205,26 @@ async function exchangeCodeForToken(code: string): Promise<boolean> {
 }
 
 /**
- * Refresh the access token using the refresh token
+ * Refresh the access token - now uses Clerk's server-side token management.
+ * Falls back to legacy refresh if Clerk tokens not available.
  */
-async function refreshAccessToken(): Promise<boolean> {
+async function refreshAccessToken(): Promise<string | null> {
+  // Use Clerk token endpoint (secure, no client secret needed)
+  if (USE_CLERK_TOKENS) {
+    try {
+      return await fetchTokenFromClerk();
+    } catch (error) {
+      console.error('[Outlook Auth] Clerk token fetch failed:', error);
+      return null;
+    }
+  }
+
+  // Legacy fallback (deprecated - will be removed)
   const tokens = getTokens(OUTLOOK_PROVIDER_ID);
 
   if (!tokens?.refreshToken) {
     console.error('[Outlook Auth] No refresh token available');
-    return false;
+    return null;
   }
 
   const params = new URLSearchParams({
@@ -180,7 +255,7 @@ async function refreshAccessToken(): Promise<boolean> {
         clearTokens(OUTLOOK_PROVIDER_ID);
       }
 
-      return false;
+      return null;
     }
 
     const data = await response.json();
@@ -198,10 +273,10 @@ async function refreshAccessToken(): Promise<boolean> {
     storeTokens(OUTLOOK_PROVIDER_ID, tokenData);
 
     console.log('[Outlook Auth] Token refreshed successfully');
-    return true;
+    return data.access_token;
   } catch (error) {
     console.error('[Outlook Auth] Token refresh error:', error);
-    return false;
+    return null;
   }
 }
 
@@ -209,6 +284,17 @@ async function refreshAccessToken(): Promise<boolean> {
  * Get current access token, refreshing if necessary
  */
 export async function getAccessToken(): Promise<string | null> {
+  // When using Clerk tokens, always fetch from server (Clerk handles caching)
+  if (USE_CLERK_TOKENS) {
+    try {
+      return await fetchTokenFromClerk();
+    } catch (error) {
+      console.error('[Outlook Auth] Failed to get token from Clerk:', error);
+      return null;
+    }
+  }
+
+  // Legacy token handling
   const tokens = getTokens(OUTLOOK_PROVIDER_ID);
 
   if (!tokens) {
@@ -222,15 +308,8 @@ export async function getAccessToken(): Promise<string | null> {
 
   if (isExpired) {
     console.log('[Outlook Auth] Token expired, refreshing...');
-    const refreshed = await refreshAccessToken();
-
-    if (!refreshed) {
-      return null;
-    }
-
-    // Get updated tokens
-    const updatedTokens = getTokens(OUTLOOK_PROVIDER_ID);
-    return updatedTokens?.accessToken || null;
+    const refreshedToken = await refreshAccessToken();
+    return refreshedToken;
   }
 
   return tokens.accessToken;

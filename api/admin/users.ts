@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { authenticateRequest, checkAdminRole } from '../lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow GET requests
@@ -7,29 +8,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple admin authentication check (you can enhance this)
-  const adminEmail = req.headers['x-admin-email'];
+  // Authenticate request using Clerk JWT
+  let user;
+  try {
+    user = await authenticateRequest(req);
+  } catch (error) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
-  // List of allowed admin emails
-  const allowedAdmins = [
-    'ravi@madlanilabs.com',
-    'ravi.madlani@madlanilabs.com'
-  ];
-
-  if (!adminEmail || !allowedAdmins.includes(adminEmail as string)) {
-    return res.status(403).json({ error: 'Forbidden: Admin access only' });
+  // Check admin role via Clerk metadata
+  const isAdmin = await checkAdminRole(user.userId);
+  if (!isAdmin) {
+    return res.status(403).json({ error: 'Admin access required' });
   }
 
   // Initialize Supabase with service role key for admin operations
-  // Note: Vercel serverless functions don't use VITE_ prefix
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Supabase environment variables not configured:', {
-      supabaseUrl: !!supabaseUrl,
-      supabaseServiceKey: !!supabaseServiceKey
-    });
+    console.error('[Admin Users] Database not configured');
     return res.status(500).json({ error: 'Database not configured' });
   }
 
