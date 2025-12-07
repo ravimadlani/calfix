@@ -8,6 +8,7 @@ import { SignInPage } from './components/SignInPage';
 import { SignUpPage } from './components/SignUpPage';
 import { UserProfilePage } from './components/UserProfilePage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
 import Layout from './components/Layout';
 import LandingPage from './components/LandingPage';
 import CalendarDashboard from './components/CalendarDashboard';
@@ -48,12 +49,13 @@ function App() {
           }
         />
 
+        {/* Admin Route - requires admin role */}
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <AdminRoute>
               <AdminPanel />
-            </ProtectedRoute>
+            </AdminRoute>
           }
         />
 
