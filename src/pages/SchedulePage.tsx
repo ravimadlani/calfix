@@ -940,7 +940,7 @@ Thanks!`;
           </p>
         )}
 
-        <div className="grid grid-cols-1 gap-3 max-h-52 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-3">
           {respectedTimezones.map(guard => (
             <div
               key={guard.id}
@@ -999,7 +999,7 @@ Thanks!`;
             + Add teammate
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-4 max-h-64 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-4">
           {participants.map(renderParticipantCard)}
         </div>
       </div>
