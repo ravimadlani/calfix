@@ -85,27 +85,21 @@ export function QuickScheduleButtons({ onSelectSlots, meetingDuration }: QuickSc
   ];
 
   return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700">Quick Schedule</h3>
-        <p className="text-xs text-slate-500">Select a preset to quickly propose meeting times</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {quickOptions.map(option => (
-          <button
-            key={option.id}
-            type="button"
-            onClick={() => onSelectSlots(option.generator())}
-            className="p-4 bg-white border border-slate-200 hover:border-slate-400 hover:shadow-md rounded-xl transition-all text-left group"
-          >
-            <span className="text-2xl block mb-2 group-hover:scale-110 transition-transform">
-              {option.icon}
-            </span>
-            <p className="font-medium text-slate-700 text-sm">{option.title}</p>
-            <p className="text-xs text-slate-500 mt-1">{option.description}</p>
-          </button>
-        ))}
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {quickOptions.map(option => (
+        <button
+          key={option.id}
+          type="button"
+          onClick={() => onSelectSlots(option.generator())}
+          className="p-5 bg-white border-2 border-white hover:border-indigo-300 hover:shadow-lg rounded-xl transition-all text-left group shadow-sm"
+        >
+          <span className="text-3xl block mb-3 group-hover:scale-110 transition-transform">
+            {option.icon}
+          </span>
+          <p className="font-semibold text-gray-900">{option.title}</p>
+          <p className="text-sm text-gray-500 mt-1">{option.description}</p>
+        </button>
+      ))}
     </div>
   );
 }

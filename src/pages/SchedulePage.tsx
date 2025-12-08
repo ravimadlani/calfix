@@ -1293,42 +1293,48 @@ Thanks!`;
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div
-        className="px-6 py-5"
-        style={{
-          background: 'linear-gradient(135deg, #1e293b 0%, #334155 55%, #475569 100%)',
-          color: '#f8fafc'
-        }}
-      >
-        <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Page Header - matches Dashboard/Recurring style */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <Link
-                to="/dashboard"
-                className="text-sm text-slate-300 hover:text-white mb-2 inline-block"
-              >
-                ← Back to Dashboard
-              </Link>
-              <h1 className="text-2xl font-semibold">Schedule a Meeting</h1>
-              <p className="text-xs text-slate-200 mt-1">
-                Step {step} of 3 · {
-                  step === 1 ? 'Team & working hours' :
-                  step === 2 ? 'Select availability' :
-                  'Review & send'
-                }
+              <h1 className="text-2xl font-bold text-gray-900">Schedule a Meeting</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Find mutual availability and propose meeting times
               </p>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className={`px-3 py-1 rounded-full font-medium ${
+                step === 1 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+                Step {step} of 3
+              </span>
+              <span className="text-gray-400">·</span>
+              <span className="text-gray-600">
+                {step === 1 ? 'Team & hours' : step === 2 ? 'Select slots' : 'Review & send'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-6 py-6">
-        {/* Quick Schedule Buttons - only show on step 1 */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quick Schedule Section - only show on step 1 */}
         {step === 1 && (
-          <div className="mb-8">
+          <div className="mb-8 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-white rounded-xl shadow-sm">
+                <span className="text-2xl">⚡</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Quick Schedule</h2>
+                <p className="text-sm text-gray-600">
+                  Skip the wizard — pick a preset to instantly propose times
+                </p>
+              </div>
+            </div>
             <QuickScheduleButtons
               onSelectSlots={setPrefilledSlots}
               meetingDuration={meetingDuration}
@@ -1337,38 +1343,40 @@ Thanks!`;
         )}
 
         {errorMessage && (
-          <div className="mb-4 border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">
+          <div className="mb-6 border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">
             {errorMessage}
           </div>
         )}
 
-        {renderStepper()}
-
-        <div className="min-h-0 pr-1">
+        {/* Wizard Section */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+          {/* Wizard Header */}
           {step === 1 && (
-            <div className="pb-4">
-              {renderStepOne()}
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900">
+                Or customize your meeting details
+              </h2>
+              <p className="text-sm text-gray-500">
+                Set participants, working hours, and timezone constraints
+              </p>
             </div>
           )}
-          {step === 2 && (
-            <div className="h-full">
-              {renderStepTwo()}
+
+          <div className="p-6">
+            {renderStepper()}
+
+            <div className="mt-6">
+              {step === 1 && renderStepOne()}
+              {step === 2 && renderStepTwo()}
+              {step === 3 && renderStepThree()}
             </div>
-          )}
-          {step === 3 && (
-            <div className="pb-4">
-              {renderStepThree()}
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div
-        className="fixed bottom-0 left-0 right-0 border-t border-slate-200 px-6 py-4 backdrop-blur"
-        style={{ background: 'rgba(226,232,240,0.95)' }}
-      >
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-4 shadow-lg">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <button
             type="button"
             onClick={() => {
@@ -1376,14 +1384,13 @@ Thanks!`;
                 navigate('/dashboard');
               } else {
                 setStep(step === 3 ? 2 : 1);
-                // Reset pre-filled slots if going back from step 3
                 if (step === 3 && prefilledSlots.length > 0) {
                   setPrefilledSlots([]);
                   setSelectedSlots([]);
                 }
               }
             }}
-            className="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
           >
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
@@ -1393,7 +1400,7 @@ Thanks!`;
                 type="button"
                 onClick={findCommonFreeSlots}
                 disabled={loading}
-                className="px-6 py-3 rounded-xl text-sm font-semibold shadow-md shadow-slate-900/20 focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none bg-slate-800 text-white hover:bg-slate-900"
+                className="px-6 py-2.5 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
               >
                 {loading ? 'Searching...' : 'Find availability'}
               </button>
@@ -1403,7 +1410,7 @@ Thanks!`;
                 type="button"
                 onClick={moveToSummary}
                 disabled={selectedSlots.length === 0}
-                className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed bg-slate-800 text-white hover:bg-slate-900"
+                className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
               >
                 Continue ({selectedSlots.length} selected)
               </button>
@@ -1414,7 +1421,7 @@ Thanks!`;
                   type="button"
                   onClick={copyEmailToClipboard}
                   disabled={!emailDraft.trim()}
-                  className="px-5 py-2 rounded-xl text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Copy message
                 </button>
@@ -1422,7 +1429,7 @@ Thanks!`;
                   type="button"
                   onClick={createCalendarHolds}
                   disabled={loading}
-                  className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 text-white hover:bg-emerald-700"
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
                 >
                   {loading ? 'Saving...' : 'Create holds'}
                 </button>
