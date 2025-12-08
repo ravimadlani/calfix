@@ -17,6 +17,7 @@ import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import { OAuthCallback } from './components/OAuthCallback';
 import RecurringPage from './components/RecurringPage';
+import SchedulePage from './pages/SchedulePage';
 
 function App() {
   return (
@@ -64,6 +65,15 @@ function App() {
           element={
             <ProtectedRoute>
               <RecurringPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/schedule"
+          element={
+            <ProtectedRoute>
+              <SchedulePage />
             </ProtectedRoute>
           }
         />
