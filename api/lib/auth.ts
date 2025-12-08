@@ -142,3 +142,21 @@ export async function verifyAuth(req: VercelRequest): Promise<{ authenticated: b
     };
   }
 }
+
+/**
+ * Check if a user has admin role via Clerk metadata
+ * @param userId - The Clerk user ID to check
+ * @returns True if user has admin role, false otherwise
+ */
+export async function checkAdminRole(userId: string): Promise<boolean> {
+  try {
+    const { createClerkClient } = await import('@clerk/backend');
+    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+
+    const user = await clerk.users.getUser(userId);
+    return user.publicMetadata?.role === 'admin';
+  } catch (error) {
+    console.error('Error checking admin role:', error);
+    return false;
+  }
+}

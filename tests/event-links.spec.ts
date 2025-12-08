@@ -1,14 +1,25 @@
 /**
  * Playwright E2E Tests for Event Provider Links Feature
  * Tests both Google Calendar and Outlook event links functionality
+ *
+ * SECURITY NOTE: Test credentials should be provided via environment variables,
+ * not hardcoded in the source code. Set these in your CI/CD environment or
+ * local .env file (which should be gitignored).
  */
 
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 
-// Test data
-const GOOGLE_TEST_EMAIL = 'ravi@madlanilabs.com';
-const OUTLOOK_TEST_EMAIL = 'ravi.madlani@madlanilabs.com';
+// Test data - load from environment variables for security
+const GOOGLE_TEST_EMAIL = process.env.TEST_GOOGLE_EMAIL || '';
+const OUTLOOK_TEST_EMAIL = process.env.TEST_OUTLOOK_EMAIL || '';
+
+// Skip tests if credentials are not provided
+test.beforeAll(() => {
+  if (!GOOGLE_TEST_EMAIL || !OUTLOOK_TEST_EMAIL) {
+    console.warn('⚠️ Test credentials not provided. Set TEST_GOOGLE_EMAIL and TEST_OUTLOOK_EMAIL environment variables.');
+  }
+});
 
 test.describe('Event Provider Links Feature', () => {
   test.beforeEach(async ({ page }) => {
@@ -20,6 +31,7 @@ test.describe('Event Provider Links Feature', () => {
   });
 
   test('Google Calendar - Login and Test Event Links', async ({ page }) => {
+    test.skip(!GOOGLE_TEST_EMAIL, 'TEST_GOOGLE_EMAIL environment variable not set');
     console.log('📧 Testing with Google account:', GOOGLE_TEST_EMAIL);
 
     // Take screenshot of landing page
@@ -110,6 +122,7 @@ test.describe('Event Provider Links Feature', () => {
   });
 
   test('Outlook Calendar - Login and Test Event Links', async ({ page }) => {
+    test.skip(!OUTLOOK_TEST_EMAIL, 'TEST_OUTLOOK_EMAIL environment variable not set');
     console.log('📧 Testing with Outlook account:', OUTLOOK_TEST_EMAIL);
 
     // Navigate to the application
@@ -464,7 +477,7 @@ test.afterAll(async () => {
         <h3>Test Steps:</h3>
         <ol>
           <li>Navigate to CalFix application</li>
-          <li>Authenticate with Google account (${GOOGLE_TEST_EMAIL})</li>
+          <li>Authenticate with Google account (via TEST_GOOGLE_EMAIL env var)</li>
           <li>Wait for calendar events to load</li>
           <li>Hover over event card to reveal provider link</li>
           <li>Click provider link to open in Google Calendar</li>
@@ -525,7 +538,7 @@ test.afterAll(async () => {
         <h3>Test Steps:</h3>
         <ol>
           <li>Navigate to CalFix application</li>
-          <li>Authenticate with Microsoft account (${OUTLOOK_TEST_EMAIL})</li>
+          <li>Authenticate with Microsoft account (via TEST_OUTLOOK_EMAIL env var)</li>
           <li>Wait for calendar events to load</li>
           <li>Hover over event card to reveal provider link</li>
           <li>Click provider link to open in Outlook</li>
@@ -629,7 +642,7 @@ test.afterAll(async () => {
       <div class="notes" style="margin-top: 2rem; text-align: left;">
         <h4>⚠️ Test Execution Notes:</h4>
         <p>
-          • Authentication steps require valid credentials for ${GOOGLE_TEST_EMAIL} and ${OUTLOOK_TEST_EMAIL}<br>
+          • Authentication steps require valid credentials provided via TEST_GOOGLE_EMAIL and TEST_OUTLOOK_EMAIL environment variables<br>
           • Screenshots are captured at key points for visual verification<br>
           • Tests verify both functional behavior and UI rendering<br>
           • Provider URLs are validated using regex patterns<br>

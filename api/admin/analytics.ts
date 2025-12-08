@@ -5,7 +5,8 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth, getSupabaseAdmin } from '../lib/auth.js';
+import { verifyAuth, getSupabaseAdmin, checkAdminRole } from '../lib/auth.js';
+import { setCorsHeaders, handleCorsPreflightRequest } from '../lib/cors.js';
 
 /**
  * GET /api/admin/analytics
@@ -17,6 +18,12 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
     const authResult = await verifyAuth(req);
     if (!authResult.authenticated || !authResult.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check admin role
+    const isAdmin = await checkAdminRole(authResult.userId);
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
     }
 
     const supabase = getSupabaseAdmin();
@@ -186,15 +193,11 @@ async function handleGet(req: VercelRequest, res: VercelResponse) {
  * Main handler
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  // Handle CORS with origin whitelist
+  if (handleCorsPreflightRequest(req, res)) {
+    return;
   }
+  setCorsHeaders(req, res);
 
   if (req.method === 'GET') {
     return handleGet(req, res);

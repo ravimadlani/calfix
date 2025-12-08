@@ -27,7 +27,8 @@ export const syncCalendarsToSupabase = async (
   userId: string,
   providerId: CalendarProviderId,
   calendars: CalendarListEntry[],
-  primaryCalendarId?: string
+  primaryCalendarId?: string,
+  token?: string | null
 ): Promise<void> => {
   console.log('[Client: Calendar Sync] Starting sync with:', {
     userId,
@@ -67,11 +68,16 @@ export const syncCalendarsToSupabase = async (
 
     console.log('[Client: Calendar Sync] Sending request to /api/calendar/sync:', requestBody);
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch('/api/calendar/sync', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(requestBody),
     });
 

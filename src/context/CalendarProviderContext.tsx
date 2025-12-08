@@ -8,7 +8,7 @@ import React, {
   useState
 } from 'react';
 
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import type {
   CalendarProviderId,
   CalendarProviderMetadata
@@ -20,6 +20,9 @@ import {
   isProviderImplemented
 } from '../services/providers/providerRegistry';
 import { setTokenUserContext } from '../services/providers/tokenStorage';
+
+// Flag to use Clerk OAuth tokens - must match the flag in auth modules
+const USE_CLERK_TOKENS = true;
 
 type ProviderConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -63,6 +66,12 @@ const INITIAL_PROVIDER_STATE: Record<CalendarProviderId, ProviderState> = {
 export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const providerMetadata = useMemo(() => getProviderMetadata(), []);
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
+
+  // Track which providers have been checked against Clerk OAuth
+  const clerkOAuthCheckedRef = useRef<Set<CalendarProviderId>>(new Set());
+  // Track which providers are confirmed connected via Clerk OAuth
+  const [clerkConnectedProviders, setClerkConnectedProviders] = useState<Set<CalendarProviderId>>(new Set());
 
   const [activeProviderId, setActiveProviderId] = useState<CalendarProviderId>(() => {
     if (typeof window === 'undefined') {
@@ -86,6 +95,89 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
 
   const providerCache = useRef<Partial<Record<CalendarProviderId, CalendarProvider>>>({});
   const previousUserIdRef = useRef<string | null>(null);
+
+  /**
+   * Check if a provider has OAuth tokens available via Clerk.
+   * This is used when USE_CLERK_TOKENS is true to detect calendar connections.
+   */
+  const checkClerkOAuthStatus = useCallback(async (providerId: CalendarProviderId): Promise<boolean> => {
+    if (!USE_CLERK_TOKENS || !user) {
+      return false;
+    }
+
+    try {
+      const clerkToken = await getToken();
+      if (!clerkToken) {
+        return false;
+      }
+
+      // Try to fetch an OAuth token from Clerk via our API
+      const response = await fetch(`/api/calendar/token?provider=${providerId}`, {
+        headers: {
+          Authorization: `Bearer ${clerkToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return !!data.access_token;
+      }
+
+      return false;
+    } catch (error) {
+      console.warn(`[CalendarProvider] Error checking Clerk OAuth for ${providerId}:`, error);
+      return false;
+    }
+  // Note: getToken intentionally excluded - it's stable from Clerk but causes infinite loops if included
+  }, [user]);
+
+  /**
+   * Check Clerk OAuth status for all implemented providers on mount.
+   * This enables auto-detection of calendars connected via Clerk OAuth.
+   */
+  useEffect(() => {
+    if (!USE_CLERK_TOKENS || !isLoaded || !user) {
+      return;
+    }
+
+    const checkAllProviders = async () => {
+      const implementedProviders = providerMetadata.filter(meta => isProviderImplemented(meta.id));
+      const newConnected = new Set<CalendarProviderId>();
+
+      for (const provider of implementedProviders) {
+        // Skip if already checked
+        if (clerkOAuthCheckedRef.current.has(provider.id)) {
+          if (clerkConnectedProviders.has(provider.id)) {
+            newConnected.add(provider.id);
+          }
+          continue;
+        }
+
+        clerkOAuthCheckedRef.current.add(provider.id);
+        const isConnected = await checkClerkOAuthStatus(provider.id);
+
+        if (isConnected) {
+          console.log(`[CalendarProvider] ${provider.id} connected via Clerk OAuth`);
+          newConnected.add(provider.id);
+
+          // Update provider state to connected
+          setProviderStates(prev => ({
+            ...prev,
+            [provider.id]: {
+              status: 'connected',
+              lastError: null
+            }
+          }));
+        }
+      }
+
+      setClerkConnectedProviders(newConnected);
+    };
+
+    checkAllProviders();
+  // Note: clerkConnectedProviders intentionally excluded - this effect sets it, and clerkOAuthCheckedRef guards against re-running
+  // Note: checkClerkOAuthStatus intentionally excluded - it uses getToken which causes infinite loops if included
+  }, [isLoaded, user, providerMetadata]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -154,6 +246,40 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
   const signIn = useCallback(async (providerId: CalendarProviderId) => {
     ensureImplemented(providerId);
 
+    // When using Clerk OAuth, redirect to Clerk user profile to connect calendar
+    if (USE_CLERK_TOKENS) {
+      setProviderStates(prev => ({
+        ...prev,
+        [providerId]: {
+          status: 'connecting',
+          lastError: null
+        }
+      }));
+
+      try {
+        // Access Clerk from window object and open user profile for OAuth connection
+        const clerk = (window as unknown as { Clerk?: { openUserProfile?: () => void } }).Clerk;
+        if (clerk?.openUserProfile) {
+          clerk.openUserProfile();
+        } else {
+          // Fallback: show message to user
+          throw new Error('Please click your profile icon in the top right to connect your calendar via your account settings');
+        }
+      } catch (error) {
+        console.error('Calendar provider sign-in error', error);
+        setProviderStates(prev => ({
+          ...prev,
+          [providerId]: {
+            status: 'error',
+            lastError: error instanceof Error ? error.message : String(error)
+          }
+        }));
+        throw error;
+      }
+      return;
+    }
+
+    // Legacy OAuth flow (deprecated)
     setProviderStates(prev => ({
       ...prev,
       [providerId]: {
@@ -213,13 +339,19 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
       return false;
     }
 
+    // When using Clerk OAuth, check if provider is in clerkConnectedProviders
+    if (USE_CLERK_TOKENS) {
+      return clerkConnectedProviders.has(providerId);
+    }
+
+    // Legacy: check localStorage tokens
     try {
       return getProvider(providerId).auth.isAuthenticated();
     } catch (error) {
       console.warn('Calendar provider auth status error', error);
       return false;
     }
-  }, [getProvider]);
+  }, [getProvider, clerkConnectedProviders]);
 
   const getStatus = useCallback((providerId: CalendarProviderId): ProviderConnectionStatus => {
     return providerStates[providerId]?.status || 'disconnected';
@@ -252,6 +384,9 @@ export const CalendarProviderContextProvider: React.FC<{ children: React.ReactNo
       } finally {
         providerCache.current = {};
         setProviderStates({ ...INITIAL_PROVIDER_STATE });
+        // Clear Clerk OAuth state on user switch
+        clerkOAuthCheckedRef.current.clear();
+        setClerkConnectedProviders(new Set());
         if (typeof window !== 'undefined') {
           try {
             window.localStorage.removeItem(STORAGE_KEY);

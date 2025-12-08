@@ -131,15 +131,10 @@ const CalendarDashboard = () => {
   const [currentTimeRange, setCurrentTimeRange] = useState(null);
   const [workflowModal, setWorkflowModal] = useState({ isOpen: false, actionType: null });
   const [showTeamScheduler, setShowTeamScheduler] = useState(false);
-  const [managedCalendarId, setManagedCalendarId] = useState(() => {
-    // Load from localStorage or default to 'primary'
-    const storedId = localStorage.getItem('managed_calendar_id');
-    // Ensure it's a string, not an object that might have been incorrectly stored
-    if (storedId && typeof storedId === 'string' && storedId !== '[object Object]') {
-      return storedId;
-    }
-    return 'primary';
-  });
+  // Initialize with 'primary' - will be updated when calendars are loaded
+  // The actual primary calendar comes from the database (via sync) or provider API
+  // localStorage is only used as a cache for the user's last selection
+  const [managedCalendarId, setManagedCalendarId] = useState('primary');
   const [availableCalendars, setAvailableCalendars] = useState([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
   const [loggingInitialized, setLoggingInitialized] = useState(false);
@@ -223,7 +218,13 @@ const CalendarDashboard = () => {
     }
 
     try {
-      const response = await fetch(`/api/user/subscription?userId=${userId}`);
+      // Get Clerk JWT token for API authentication
+      const token = await getToken();
+      const response = await fetch(`/api/user/subscription?userId=${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setSubscriptionTier(data.subscriptionTier);
@@ -250,6 +251,7 @@ const CalendarDashboard = () => {
       // Always mark subscription as loaded
       setSubscriptionLoaded(true);
     }
+  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
   }, [clerkUser?.id]);
 
   // Fetch list of calendars user has access to
@@ -297,22 +299,60 @@ const CalendarDashboard = () => {
 
       setAvailableCalendars(calendarsToShow);
 
+      // Determine the primary calendar ID
+      // Priority: 1) localStorage cache (user's explicit selection)
+      //           2) Provider's primary flag (Google/Outlook marks one as primary)
+      //           3) First available calendar
+      const storedCalendarId = localStorage.getItem('managed_calendar_id');
+      const providerPrimaryId = manageable.find(c => c.primary)?.id;
+      const firstCalendarId = calendarsToShow[0]?.id;
+
+      let selectedCalendarId: string;
+      if (storedCalendarId && calendarsToShow.some(c => c.id === storedCalendarId)) {
+        // User previously selected this calendar and it's still available
+        selectedCalendarId = storedCalendarId;
+        console.log('[CalendarDashboard] Using cached calendar selection:', storedCalendarId);
+      } else if (providerPrimaryId && calendarsToShow.some(c => c.id === providerPrimaryId)) {
+        // Use the provider's primary calendar
+        selectedCalendarId = providerPrimaryId;
+        console.log('[CalendarDashboard] Using provider primary calendar:', providerPrimaryId);
+      } else if (firstCalendarId) {
+        // Fall back to first available calendar
+        selectedCalendarId = firstCalendarId;
+        console.log('[CalendarDashboard] Using first available calendar:', firstCalendarId);
+      } else {
+        selectedCalendarId = 'primary';
+        console.log('[CalendarDashboard] No calendars available, using "primary" alias');
+      }
+
+      // Update state if different from current
+      if (selectedCalendarId !== managedCalendarId) {
+        setManagedCalendarId(selectedCalendarId);
+        // Update localStorage cache for future sessions
+        if (selectedCalendarId !== 'primary') {
+          localStorage.setItem('managed_calendar_id', selectedCalendarId);
+        }
+      }
+
       // Sync calendars to Supabase if user is authenticated with Clerk
       console.log('[CalendarDashboard] Checking if should sync:', {
         hasClerkUser: !!clerkUser?.id,
         clerkUserId: clerkUser?.id,
         manageableCount: manageable.length,
-        primaryCalendar: manageable.find(c => c.primary)
+        primaryCalendar: manageable.find(c => c.primary),
+        selectedCalendarId
       });
 
       if (clerkUser?.id && manageable.length > 0) {
         try {
           console.log('[CalendarDashboard] Starting calendar sync to Supabase...');
+          const token = await getToken();
           await syncCalendarsToSupabase(
             clerkUser.id,
             activeProviderId,
             manageable,
-            manageable.find(c => c.primary)?.id
+            providerPrimaryId, // Use provider's primary for database consistency
+            token
           );
           console.log('[CalendarDashboard] Successfully synced calendars to Supabase');
         } catch (syncError) {
@@ -326,6 +366,9 @@ const CalendarDashboard = () => {
       console.error('Error loading calendar list:', error);
       // If we can't fetch the list, still allow manual entry
     }
+  // Note: getToken and managedCalendarId are intentionally excluded from deps
+  // - getToken is stable from Clerk but causes infinite loops if included
+  // - managedCalendarId changes during this effect so including it would cause loops
   }, [
     activeProviderId,
     clerkUser?.id,
@@ -640,7 +683,8 @@ const CalendarDashboard = () => {
     };
 
     initializeLogging();
-  }, [clerkUser?.id, loggingInitialized, getToken]);
+  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
+  }, [clerkUser?.id, loggingInitialized]);
 
   // Load calendar list on mount (only after subscription is loaded)
   useEffect(() => {

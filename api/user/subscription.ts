@@ -1,28 +1,34 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { authenticateRequest } from '../lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const userId = req.query.userId as string;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'Missing userId' });
+  // Authenticate request using Clerk JWT
+  let user;
+  try {
+    user = await authenticateRequest(req);
+  } catch (error) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Use authenticated user's ID - don't allow accessing other users' subscriptions
+  const requestedUserId = req.query.userId as string;
+  if (requestedUserId && requestedUserId !== user.userId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const userId = user.userId;
+
   // Initialize Supabase with service role key
-  // Note: Vercel serverless functions don't use VITE_ prefix
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing environment variables:', {
-      supabaseUrl: !!supabaseUrl,
-      supabaseServiceKey: !!supabaseServiceKey,
-      envKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE'))
-    });
+    console.error('[User Subscription] Database not configured');
     return res.status(500).json({ error: 'Database not configured' });
   }
 
