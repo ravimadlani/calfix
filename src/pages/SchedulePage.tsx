@@ -1293,7 +1293,7 @@ Thanks!`;
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50">
       {/* Page Header - matches Dashboard/Recurring style */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -1371,70 +1371,68 @@ Thanks!`;
               {step === 3 && renderStepThree()}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 sm:px-6 lg:px-8 py-4 shadow-lg">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => {
-              if (step === 1) {
-                navigate('/dashboard');
-              } else {
-                setStep(step === 3 ? 2 : 1);
-                if (step === 3 && prefilledSlots.length > 0) {
-                  setPrefilledSlots([]);
-                  setSelectedSlots([]);
+          {/* Footer Actions - inside the card */}
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                if (step === 1) {
+                  navigate('/dashboard');
+                } else {
+                  setStep(step === 3 ? 2 : 1);
+                  if (step === 3 && prefilledSlots.length > 0) {
+                    setPrefilledSlots([]);
+                    setSelectedSlots([]);
+                  }
                 }
-              }
-            }}
-            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            {step === 1 ? 'Cancel' : 'Back'}
-          </button>
-          <div className="flex items-center gap-3">
-            {step === 1 && (
-              <button
-                type="button"
-                onClick={findCommonFreeSlots}
-                disabled={loading}
-                className="px-6 py-2.5 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-              >
-                {loading ? 'Searching...' : 'Find availability'}
-              </button>
-            )}
-            {step === 2 && (
-              <button
-                type="button"
-                onClick={moveToSummary}
-                disabled={selectedSlots.length === 0}
-                className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-              >
-                Continue ({selectedSlots.length} selected)
-              </button>
-            )}
-            {step === 3 && (
-              <>
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {step === 1 ? 'Cancel' : 'Back'}
+            </button>
+            <div className="flex items-center gap-3">
+              {step === 1 && (
                 <button
                   type="button"
-                  onClick={copyEmailToClipboard}
-                  disabled={!emailDraft.trim()}
-                  className="px-5 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Copy message
-                </button>
-                <button
-                  type="button"
-                  onClick={createCalendarHolds}
+                  onClick={findCommonFreeSlots}
                   disabled={loading}
-                  className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
                 >
-                  {loading ? 'Saving...' : 'Create holds'}
+                  {loading ? 'Searching...' : 'Find availability'}
                 </button>
-              </>
-            )}
+              )}
+              {step === 2 && (
+                <button
+                  type="button"
+                  onClick={moveToSummary}
+                  disabled={selectedSlots.length === 0}
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  Continue ({selectedSlots.length} selected)
+                </button>
+              )}
+              {step === 3 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={copyEmailToClipboard}
+                    disabled={!emailDraft.trim()}
+                    className="px-5 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Copy message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={createCalendarHolds}
+                    disabled={loading}
+                    className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    {loading ? 'Saving...' : 'Create holds'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
