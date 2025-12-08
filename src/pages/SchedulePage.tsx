@@ -1,8 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButtons';
+import type { CalendarListEntry } from '../types';
+
+const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
 
 type ParticipantRole = 'host' | 'required' | 'optional';
 
@@ -196,21 +199,51 @@ const roundToNextHalfHour = (date: Date) => {
 export function SchedulePage() {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { activeProvider } = useCalendarProvider();
+  const { activeProvider, isAuthenticated: isCalendarConnected } = useCalendarProvider();
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
   const createProviderEvent = activeProvider.calendar.createEvent;
+  const fetchProviderCalendarList = activeProvider.calendar.fetchCalendarList;
 
-  // Get calendar ID from localStorage or use 'primary'
-  const [managedCalendarId] = useState(() => {
+  // Calendar selector state
+  const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([]);
+  const [managedCalendarId, setManagedCalendarId] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('managed_calendar_id') || 'primary';
+      return localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY) || 'primary';
     }
     return 'primary';
   });
 
   // Get host email from user's primary email
   const hostEmail = user?.primaryEmailAddress?.emailAddress || null;
+
+  // Fetch available calendars on mount
+  const fetchCalendars = useCallback(async () => {
+    if (!isCalendarConnected || !fetchProviderCalendarList) return;
+    try {
+      const calendars = await fetchProviderCalendarList();
+      const manageable = calendars.filter(cal => cal.accessRole === 'owner' || cal.accessRole === 'writer');
+      setAvailableCalendars(manageable);
+
+      // If current selection is not in the list, default to first
+      if (!manageable.find(cal => cal.id === managedCalendarId) && manageable.length > 0) {
+        setManagedCalendarId(manageable[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch calendar list:', error);
+    }
+  }, [fetchProviderCalendarList, isCalendarConnected, managedCalendarId]);
+
+  useEffect(() => {
+    fetchCalendars();
+  }, [fetchCalendars]);
+
+  // Persist calendar selection to localStorage
+  useEffect(() => {
+    if (managedCalendarId) {
+      window.localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
+    }
+  }, [managedCalendarId]);
 
   const defaultTimezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
@@ -257,6 +290,23 @@ export function SchedulePage() {
   }, [defaultTimezone]);
 
   const hostParticipant = participants.find(person => person.role === 'host') ?? participants[0];
+
+  // Update host participant when calendar selection changes
+  useEffect(() => {
+    const selectedCalendar = availableCalendars.find(c => c.id === managedCalendarId);
+    if (selectedCalendar) {
+      setParticipants(prev => prev.map(p =>
+        p.role === 'host'
+          ? {
+              ...p,
+              calendarId: managedCalendarId,
+              displayName: selectedCalendar.summary || 'Primary Calendar',
+              email: selectedCalendar.id
+            }
+          : p
+      ));
+    }
+  }, [managedCalendarId, availableCalendars]);
 
   useEffect(() => {
     if (step !== 3) {
@@ -1321,6 +1371,33 @@ Thanks!`;
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Calendar Selector */}
+        {availableCalendars.length > 0 && (
+          <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Managing Calendar:
+              </label>
+              <select
+                value={managedCalendarId}
+                onChange={(e) => setManagedCalendarId(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+              >
+                {availableCalendars.map((cal) => (
+                  <option key={cal.id} value={cal.id}>
+                    {cal.summary || cal.id} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
+              {' • '}
+              {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
+            </p>
+          </div>
+        )}
+
         {/* Quick Schedule Section - only show on step 1 */}
         {step === 1 && (
           <div className="mb-8 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-6">
