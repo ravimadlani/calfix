@@ -1615,12 +1615,14 @@ Thanks!`;
               onClick={() => {
                 if (step === 1) {
                   navigate('/dashboard');
+                } else if (step === 3 && prefilledSlots.length > 0) {
+                  // Coming from quick options - go back to step 1
+                  setStep(1);
+                  setPrefilledSlots([]);
+                  setSelectedSlots([]);
                 } else {
+                  // Normal flow - go to previous step
                   setStep(step === 3 ? 2 : 1);
-                  if (step === 3 && prefilledSlots.length > 0) {
-                    setPrefilledSlots([]);
-                    setSelectedSlots([]);
-                  }
                 }
               }}
               className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"

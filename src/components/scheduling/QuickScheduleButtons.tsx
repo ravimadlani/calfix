@@ -121,7 +121,7 @@ export function QuickScheduleButtons({ onSelectSlots, onLoadTemplate, meetingDur
                 <button
                   type="button"
                   onClick={(e) => handleDeleteTemplate(e, template.id)}
-                  className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                   title="Delete template"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
