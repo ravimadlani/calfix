@@ -256,6 +256,7 @@ export function SchedulePage() {
   );
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [activeView, setActiveView] = useState<'new' | 'holds'>('new');
   const [meetingPurpose, setMeetingPurpose] = useState('');
   const [meetingDuration, setMeetingDuration] = useState<number>(60);
   const [searchWindowDays, setSearchWindowDays] = useState<number>(10);
@@ -1479,28 +1480,55 @@ Thanks!`;
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Schedule a Meeting</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
               <p className="text-sm text-gray-500 mt-1">
-                Find mutual availability and propose meeting times
+                {activeView === 'new' ? 'Find mutual availability and propose meeting times' : 'View and manage your calendar holds'}
               </p>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className={`px-3 py-1 rounded-full font-medium ${
-                step === 1 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
-              }`}>
-                Step {step} of 3
-              </span>
-              <span className="text-gray-400">·</span>
-              <span className="text-gray-600">
-                {step === 1 ? 'Team & hours' : step === 2 ? 'Select slots' : 'Review & send'}
-              </span>
-            </div>
+          </div>
+          {/* Navigation Tabs */}
+          <div className="mt-4 flex gap-1 border-b border-gray-200 -mb-px">
+            <button
+              type="button"
+              onClick={() => { setActiveView('new'); setStep(1); }}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeView === 'new'
+                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              New Meeting
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('holds')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeView === 'holds'
+                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Manage Holds
+            </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Manage Holds View */}
+        {activeView === 'holds' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Calendar Holds</h2>
+              <ActiveHoldsSection />
+            </div>
+          </div>
+        )}
+
+        {/* New Meeting View */}
+        {activeView === 'new' && (
+          <>
         {/* Calendar Selector */}
         {availableCalendars.length > 0 && (
           <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
@@ -1525,13 +1553,6 @@ Thanks!`;
               {' • '}
               {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
             </p>
-          </div>
-        )}
-
-        {/* Active Holds Section - only show on step 1 */}
-        {step === 1 && (
-          <div className="mb-6">
-            <ActiveHoldsSection />
           </div>
         )}
 
@@ -1659,6 +1680,8 @@ Thanks!`;
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Save Template Modal */}
