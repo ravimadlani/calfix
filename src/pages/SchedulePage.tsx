@@ -2,8 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
+import { useSupabaseClient } from '../lib/supabase';
 import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButtons';
+import { ActiveHoldsSection } from '../components/scheduling/ActiveHoldsSection';
+import { SaveTemplateModal } from '../components/scheduling/SaveTemplateModal';
 import type { CalendarListEntry } from '../types';
+import type { HoldParticipant, TemplateConfig, TemplateParticipant } from '../types/scheduling';
 
 const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
 
@@ -199,6 +203,7 @@ const roundToNextHalfHour = (date: Date) => {
 export function SchedulePage() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const supabase = useSupabaseClient();
   const { activeProvider, isAuthenticated: isCalendarConnected } = useCalendarProvider();
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
@@ -280,6 +285,69 @@ export function SchedulePage() {
 
   // Pre-filled slots from quick buttons
   const [prefilledSlots, setPrefilledSlots] = useState<PrefilledSlot[]>([]);
+
+  // Save Template Modal state
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+
+  // Build current template config from Step 1 state
+  const currentTemplateConfig = useMemo((): TemplateConfig => ({
+    meetingPurpose,
+    duration: meetingDuration,
+    searchWindowDays,
+    participants: participants.map(p => ({
+      displayName: p.displayName,
+      email: p.email,
+      timezone: p.timezone,
+      startHour: p.startHour,
+      endHour: p.endHour,
+      sendInvite: p.sendInvite,
+      role: p.role,
+      flexibleHours: p.flexibleHours
+    })),
+    respectedTimezones: respectedTimezones.map(tz => ({
+      timezone: tz.timezone,
+      label: tz.label
+    })),
+    calendarId: managedCalendarId
+  }), [meetingPurpose, meetingDuration, searchWindowDays, participants, respectedTimezones, managedCalendarId]);
+
+  // Handle loading a template
+  const handleLoadTemplate = useCallback((config: TemplateConfig) => {
+    setMeetingPurpose(config.meetingPurpose);
+    setMeetingDuration(config.duration);
+    setSearchWindowDays(config.searchWindowDays);
+
+    if (config.calendarId) {
+      setManagedCalendarId(config.calendarId);
+    }
+
+    // Convert TemplateParticipant[] to Participant[]
+    if (config.participants && config.participants.length > 0) {
+      const loadedParticipants: Participant[] = config.participants.map((tp, index) => ({
+        id: createId(),
+        displayName: tp.displayName,
+        email: tp.email,
+        timezone: tp.timezone,
+        startHour: tp.startHour,
+        endHour: tp.endHour,
+        sendInvite: tp.sendInvite,
+        role: tp.role,
+        flexibleHours: tp.flexibleHours,
+        calendarId: index === 0 && tp.role === 'host' ? config.calendarId : undefined
+      }));
+      setParticipants(loadedParticipants);
+    }
+
+    // Load timezone guardrails
+    if (config.respectedTimezones) {
+      const loadedGuardrails: TimezoneGuardrail[] = config.respectedTimezones.map(tz => ({
+        id: createId(),
+        timezone: tz.timezone,
+        label: tz.label
+      }));
+      setRespectedTimezones(loadedGuardrails);
+    }
+  }, []);
 
   const suggestedTimezones = useMemo(() => {
     const existing = new Set(COMMON_TIMEZONES.map(tz => tz.value));
@@ -726,23 +794,30 @@ Thanks!`;
       setLoading(true);
 
       const hostTimezone = hostParticipant?.timezone || defaultTimezone;
-      const attendees = participants
-        .filter(person => person.sendInvite && person.email.trim())
-        .map(person => ({ email: person.email.trim() }));
-
       const trimmedPurpose = meetingPurpose.trim() || 'Meeting';
 
-      const holds = selectedSlots.map((slot, index) => {
-        const fallbackTitle = `[Hold] ${trimmedPurpose} ${index + 1}`;
-        const summary = holdTitles[index]?.trim() || fallbackTitle;
+      // Phase 1: Create all calendar events, collect results
+      const results: Array<{
+        success: boolean;
+        event?: { id: string };
+        error?: Error;
+        index: number;
+        slot: typeof selectedSlots[0];
+      }> = [];
 
-        return ({
+      for (let i = 0; i < selectedSlots.length; i++) {
+        const slot = selectedSlots[i];
+        const fallbackTitle = `[Hold] ${trimmedPurpose} ${i + 1}`;
+        const summary = holdTitles[i]?.trim() || fallbackTitle;
+
+        const hold = {
           summary,
           description: [
             trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
             respectedTimezones.length > 0
               ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
-              : null
+              : null,
+            '\nCreated via CalFix'
           ].filter(Boolean).join('\n'),
           start: {
             dateTime: slot.start.toISOString(),
@@ -752,15 +827,70 @@ Thanks!`;
             dateTime: slot.end.toISOString(),
             timeZone: hostTimezone
           },
-          attendees,
+          // NO attendees - creates blocking event, not meeting invite
+          // This works for both Google Calendar and Outlook
           colorId: '11',
           transparency: 'opaque'
-        });
-      });
+        };
 
-      // Create calendar holds
-      for (const hold of holds) {
-        await createProviderEvent(hold, managedCalendarId);
+        try {
+          const createdEvent = await createProviderEvent(hold, managedCalendarId);
+          results.push({ success: true, event: createdEvent, index: i, slot });
+        } catch (error) {
+          results.push({
+            success: false,
+            error: error instanceof Error ? error : new Error(String(error)),
+            index: i,
+            slot
+          });
+        }
+      }
+
+      // Phase 2: Track successful holds in DB (batch insert)
+      const successfulResults = results.filter(r => r.success && r.event?.id);
+
+      if (successfulResults.length === 0) {
+        throw new Error('Failed to create any calendar holds');
+      }
+
+      // Map participants to HoldParticipant format for storage
+      const holdParticipants: HoldParticipant[] = participants.map(p => ({
+        email: p.email,
+        name: p.displayName,
+        timezone: p.timezone,
+        sendInvite: p.sendInvite
+      }));
+
+      const holdRecords = successfulResults.map(result => ({
+        user_id: user?.id,
+        calendar_id: managedCalendarId,
+        event_id: result.event!.id,
+        meeting_purpose: trimmedPurpose,
+        participants: holdParticipants,
+        start_time: result.slot.start.toISOString(),
+        end_time: result.slot.end.toISOString()
+      }));
+
+      // Batch insert to Supabase
+      const { error: dbError } = await supabase
+        .from('calendar_holds')
+        .insert(holdRecords);
+
+      if (dbError) {
+        // DB failed but calendar events exist - log for manual reconciliation
+        console.error('[CRITICAL] Calendar events created but DB tracking failed:', dbError);
+        setErrorMessage(
+          `Calendar holds created but tracking failed. Events may appear in your calendar without tracking.`
+        );
+        // Still navigate - events were created successfully
+      }
+
+      // Show partial success feedback if needed
+      const failedCount = results.length - successfulResults.length;
+      if (failedCount > 0) {
+        setErrorMessage(
+          `Created ${successfulResults.length} holds successfully. ${failedCount} failed.`
+        );
       }
 
       // Navigate back to dashboard
@@ -1398,6 +1528,13 @@ Thanks!`;
           </div>
         )}
 
+        {/* Active Holds Section - only show on step 1 */}
+        {step === 1 && (
+          <div className="mb-6">
+            <ActiveHoldsSection />
+          </div>
+        )}
+
         {/* Quick Schedule Section - only show on step 1 */}
         {step === 1 && (
           <div className="mb-8 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-6">
@@ -1414,6 +1551,7 @@ Thanks!`;
             </div>
             <QuickScheduleButtons
               onSelectSlots={setPrefilledSlots}
+              onLoadTemplate={handleLoadTemplate}
               meetingDuration={meetingDuration}
             />
           </div>
@@ -1470,14 +1608,23 @@ Thanks!`;
             </button>
             <div className="flex items-center gap-3">
               {step === 1 && (
-                <button
-                  type="button"
-                  onClick={findCommonFreeSlots}
-                  disabled={loading}
-                  className="px-6 py-2.5 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                >
-                  {loading ? 'Searching...' : 'Find availability'}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveTemplateModal(true)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Save as Template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={findCommonFreeSlots}
+                    disabled={loading}
+                    className="px-6 py-2.5 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    {loading ? 'Searching...' : 'Find availability'}
+                  </button>
+                </>
               )}
               {step === 2 && (
                 <button
@@ -1513,6 +1660,13 @@ Thanks!`;
           </div>
         </div>
       </div>
+
+      {/* Save Template Modal */}
+      <SaveTemplateModal
+        isOpen={showSaveTemplateModal}
+        onClose={() => setShowSaveTemplateModal(false)}
+        currentConfig={currentTemplateConfig}
+      />
     </div>
   );
 }
