@@ -33,45 +33,43 @@
 
 ### Supabase + Clerk Authentication (CRITICAL)
 
-**NEVER remove or bypass the Clerk JWT integration in `src/lib/supabase.ts`.**
+**NEVER remove or bypass the Clerk authentication in `src/lib/supabase.ts`.**
 
-The Clerk JWT template is already configured and working. The `useSupabaseClient()` hook MUST:
-1. Use `useAuth()` from Clerk to get the `getToken` function
-2. Pass the Clerk token to Supabase via the custom fetch function
-3. Include the `Authorization: Bearer ${clerkToken}` header
+This project uses the **native Clerk/Supabase third-party integration** (NOT deprecated JWT templates).
+- JWT templates were deprecated April 2025
+- Native integration uses `accessToken` callback with `session.getToken()`
+- Supabase validates tokens via Clerk's JWKS endpoint
 
 **Correct implementation (DO NOT CHANGE):**
 ```typescript
 export function useSupabaseClient() {
-  const { getToken } = useAuth();
+  const { session } = useSession();
 
   const supabase = useMemo(() => {
     return createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        fetch: async (url, options = {}) => {
-          const clerkToken = await getToken({ template: 'supabase' });
-          const headers = new Headers(options?.headers);
-          if (clerkToken) {
-            headers.set('Authorization', `Bearer ${clerkToken}`);
-          }
-          return fetch(url, { ...options, headers });
-        },
+      accessToken: async () => {
+        // Native Clerk/Supabase integration - no JWT template needed
+        return session?.getToken() ?? null;
       },
     });
-  }, [getToken]);
+  }, [session]);
 
   return supabase;
 }
 ```
 
 **FORBIDDEN actions:**
-- Removing the `useAuth()` import or `getToken` call
-- Using `createClient(url, anonKey)` without the custom fetch function
-- Adding "TODO: Set up Clerk JWT" comments (it's already set up)
+- Removing the `useSession()` import or `session.getToken()` call
+- Using `createClient(url, anonKey)` without the `accessToken` callback
+- Using deprecated `getToken({ template: 'supabase' })` - JWT templates are obsolete
 - Making RLS policies "permissive" as a workaround
 - Filtering by `user_id` in application code instead of relying on RLS
 
 If Supabase queries fail, debug the actual issue - do not remove authentication.
+
+**References:**
+- https://clerk.com/docs/guides/development/integrations/databases/supabase
+- https://supabase.com/docs/guides/auth/third-party/clerk
 
 ## Key Files
 - `/src/components/LandingPage.tsx` - Main landing page
