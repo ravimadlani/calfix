@@ -59,12 +59,6 @@ interface AvailabilitySlot {
   summaryStatus: 'ideal' | 'flex';
 }
 
-// Slot with just date/time info for pre-filling
-export interface PrefilledSlot {
-  start: Date;
-  end: Date;
-}
-
 const MEETING_DURATION_OPTIONS = [30, 45, 60, 75, 90];
 const SEARCH_WINDOW_OPTIONS = [7, 10, 14, 21, 30];
 
@@ -284,9 +278,6 @@ export function SchedulePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Pre-filled slots from quick buttons
-  const [prefilledSlots, setPrefilledSlots] = useState<PrefilledSlot[]>([]);
-
   // Save Template Modal state
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
 
@@ -382,51 +373,6 @@ export function SchedulePage() {
       setCopyFeedback(null);
     }
   }, [step]);
-
-  // Handle pre-filled slots from quick buttons
-  useEffect(() => {
-    if (prefilledSlots.length > 0) {
-      // Convert PrefilledSlots to AvailabilitySlots format
-      const slots: AvailabilitySlot[] = prefilledSlots.map((slot, index) => ({
-        id: `prefilled_${index}_${slot.start.toISOString()}`,
-        start: slot.start,
-        end: slot.end,
-        participants: [],
-        guardrails: [],
-        summaryStatus: 'ideal' as const
-      }));
-      setSelectedSlots(slots);
-
-      // Move to step 3 (summary) with pre-filled slots
-      const trimmedPurpose = meetingPurpose.trim() || 'Meeting';
-      const generatedHoldTitles = slots.map((_, i) => `[Hold] ${trimmedPurpose} ${i + 1}`);
-      setHoldTitles(generatedHoldTitles);
-
-      // Generate email draft
-      const slotText = slots
-        .map((slot, i) => {
-          const dateLabel = new Intl.DateTimeFormat('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric'
-          }).format(slot.start);
-          const timeLabel = formatTimeRangeBasic(slot.start, slot.end, defaultTimezone);
-          return `${i + 1}. ${dateLabel} · ${timeLabel}`;
-        }).join('\n');
-
-      setEmailDraft(`Hi,
-
-We have availability at the following times:
-
-${slotText}
-
-Let me know which works best and I'll confirm the invite.
-
-Thanks!`);
-
-      setStep(3);
-    }
-  }, [prefilledSlots, meetingPurpose, defaultTimezone]);
 
   const getTimezoneLabel = (timezone: string) =>
     suggestedTimezones.find(tz => tz.value === timezone)?.label ?? timezone;
@@ -1564,16 +1510,14 @@ Thanks!`;
                 <span className="text-2xl">⚡</span>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Quick Schedule</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Saved Templates</h2>
                 <p className="text-sm text-gray-600">
-                  Skip the wizard — pick a preset to instantly propose times
+                  Load a saved template to pre-fill the form below
                 </p>
               </div>
             </div>
             <QuickScheduleButtons
-              onSelectSlots={setPrefilledSlots}
               onLoadTemplate={handleLoadTemplate}
-              meetingDuration={meetingDuration}
             />
           </div>
         )}
@@ -1615,13 +1559,8 @@ Thanks!`;
               onClick={() => {
                 if (step === 1) {
                   navigate('/dashboard');
-                } else if (step === 3 && prefilledSlots.length > 0) {
-                  // Coming from quick options - go back to step 1
-                  setStep(1);
-                  setPrefilledSlots([]);
-                  setSelectedSlots([]);
                 } else {
-                  // Normal flow - go to previous step
+                  // Go to previous step
                   setStep(step === 3 ? 2 : 1);
                 }
               }}
