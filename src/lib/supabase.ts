@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { useAuth } from '@clerk/clerk-react';
+import { useSession } from '@clerk/clerk-react';
 import { useMemo } from 'react';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -11,31 +11,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 /**
  * Custom hook to create a Supabase client with Clerk authentication
- * This automatically sets the Clerk session token as the Supabase auth token
+ *
+ * IMPORTANT: This uses the native Clerk/Supabase third-party integration.
+ * JWT templates are DEPRECATED as of April 2025.
+ *
+ * The accessToken callback provides Clerk's session token directly to Supabase,
+ * which validates it using your JWKS endpoint configured in Supabase dashboard.
+ *
+ * @see https://clerk.com/docs/guides/development/integrations/databases/supabase
+ * @see https://supabase.com/docs/guides/auth/third-party/clerk
  */
 export function useSupabaseClient() {
-  const { getToken } = useAuth();
+  const { session } = useSession();
 
   const supabase = useMemo(() => {
     return createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        // Fetch function that automatically includes Clerk token
-        fetch: async (url, options = {}) => {
-          const clerkToken = await getToken({ template: 'supabase' });
-
-          const headers = new Headers(options?.headers);
-          if (clerkToken) {
-            headers.set('Authorization', `Bearer ${clerkToken}`);
-          }
-
-          return fetch(url, {
-            ...options,
-            headers,
-          });
-        },
+      accessToken: async () => {
+        // Native Clerk/Supabase integration - no JWT template needed
+        return session?.getToken() ?? null;
       },
     });
-  }, [getToken]);
+  }, [session]);
 
   return supabase;
 }

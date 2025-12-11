@@ -71,6 +71,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   >
                     Recurring
                   </Link>
+                  <Link
+                    to="/schedule"
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/schedule')
+                        ? 'text-indigo-600 underline decoration-2 underline-offset-4'
+                        : 'text-gray-900 hover:text-indigo-600'
+                    }`}
+                  >
+                    Schedule
+                  </Link>
 
                   {/* Visual Separator */}
                   <span className="text-gray-400">•</span>
@@ -269,6 +279,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <li>
                   <Link to="/recurring" className="text-sm text-gray-600 hover:text-indigo-600">
                     Recurring
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/schedule" className="text-sm text-gray-600 hover:text-indigo-600">
+                    Schedule
                   </Link>
                 </li>
                 <li>

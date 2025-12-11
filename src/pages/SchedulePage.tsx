@@ -1,5 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
+import { useSupabaseClient } from '../lib/supabase';
+import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButtons';
+import { ActiveHoldsSection } from '../components/scheduling/ActiveHoldsSection';
+import { SaveTemplateModal } from '../components/scheduling/SaveTemplateModal';
+import type { CalendarListEntry } from '../types';
+import type { HoldParticipant, TemplateConfig, TemplateParticipant } from '../types/scheduling';
+
+const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
 
 type ParticipantRole = 'host' | 'required' | 'optional';
 
@@ -184,22 +194,84 @@ const roundToNextHalfHour = (date: Date) => {
   return rounded;
 };
 
-interface TeamSchedulingModalProps {
-  onClose: () => void;
-  onSchedule: (holds: Array<Record<string, unknown>>, emailDraft: string) => Promise<void>;
-  managedCalendarId?: string;
-  hostEmail?: string | null;
-}
+export function SchedulePage() {
+  const navigate = useNavigate();
+  const { user } = useUser();
+  const { getToken } = useAuth();
+  const supabase = useSupabaseClient();
+  const { activeProvider, isAuthenticated: isCalendarConnected } = useCalendarProvider();
 
-const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
-  onClose,
-  onSchedule,
-  managedCalendarId = 'primary',
-  hostEmail = null
-}) => {
-  const { activeProvider } = useCalendarProvider();
+  // Subscription state
+  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
+  const createProviderEvent = activeProvider.calendar.createEvent;
+  const deleteProviderEvent = activeProvider.calendar.deleteEvent;
+  const fetchProviderCalendarList = activeProvider.calendar.fetchCalendarList;
+
+  // Calendar selector state
+  const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([]);
+  const [managedCalendarId, setManagedCalendarId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY) || 'primary';
+    }
+    return 'primary';
+  });
+
+  // Get host email from user's primary email
+  const hostEmail = user?.primaryEmailAddress?.emailAddress || null;
+
+  // Fetch available calendars on mount
+  const fetchCalendars = useCallback(async () => {
+    if (!isCalendarConnected || !fetchProviderCalendarList) return;
+    try {
+      const calendars = await fetchProviderCalendarList();
+      const manageable = calendars.filter(cal => cal.accessRole === 'owner' || cal.accessRole === 'writer');
+      setAvailableCalendars(manageable);
+
+      // If current selection is not in the list, default to first
+      if (!manageable.find(cal => cal.id === managedCalendarId) && manageable.length > 0) {
+        setManagedCalendarId(manageable[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch calendar list:', error);
+    }
+  }, [fetchProviderCalendarList, isCalendarConnected, managedCalendarId]);
+
+  useEffect(() => {
+    fetchCalendars();
+  }, [fetchCalendars]);
+
+  // Persist calendar selection to localStorage
+  useEffect(() => {
+    if (managedCalendarId) {
+      window.localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
+    }
+  }, [managedCalendarId]);
+
+  // Check subscription tier for multi-calendar access
+  const checkSubscription = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const token = await getToken();
+      const response = await fetch(`/api/user/subscription?userId=${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      setHasMultiCalendarAccess(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      checkSubscription();
+    }
+  }, [checkSubscription, user?.id]);
 
   const defaultTimezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
@@ -207,6 +279,7 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   );
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [activeView, setActiveView] = useState<'new' | 'holds'>('new');
   const [meetingPurpose, setMeetingPurpose] = useState('');
   const [meetingDuration, setMeetingDuration] = useState<number>(60);
   const [searchWindowDays, setSearchWindowDays] = useState<number>(10);
@@ -232,8 +305,70 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
   const [emailDraft, setEmailDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isIpad, setIsIpad] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Save Template Modal state
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+
+  // Build current template config from Step 1 state
+  const currentTemplateConfig = useMemo((): TemplateConfig => ({
+    meetingPurpose,
+    duration: meetingDuration,
+    searchWindowDays,
+    participants: participants.map(p => ({
+      displayName: p.displayName,
+      email: p.email,
+      timezone: p.timezone,
+      startHour: p.startHour,
+      endHour: p.endHour,
+      sendInvite: p.sendInvite,
+      role: p.role,
+      flexibleHours: p.flexibleHours
+    })),
+    respectedTimezones: respectedTimezones.map(tz => ({
+      timezone: tz.timezone,
+      label: tz.label
+    })),
+    calendarId: managedCalendarId
+  }), [meetingPurpose, meetingDuration, searchWindowDays, participants, respectedTimezones, managedCalendarId]);
+
+  // Handle loading a template
+  const handleLoadTemplate = useCallback((config: TemplateConfig) => {
+    setMeetingPurpose(config.meetingPurpose);
+    setMeetingDuration(config.duration);
+    setSearchWindowDays(config.searchWindowDays);
+
+    if (config.calendarId) {
+      setManagedCalendarId(config.calendarId);
+    }
+
+    // Convert TemplateParticipant[] to Participant[]
+    if (config.participants && config.participants.length > 0) {
+      const loadedParticipants: Participant[] = config.participants.map((tp, index) => ({
+        id: createId(),
+        displayName: tp.displayName,
+        email: tp.email,
+        timezone: tp.timezone,
+        startHour: tp.startHour,
+        endHour: tp.endHour,
+        sendInvite: tp.sendInvite,
+        role: tp.role,
+        flexibleHours: tp.flexibleHours,
+        calendarId: index === 0 && tp.role === 'host' ? config.calendarId : undefined
+      }));
+      setParticipants(loadedParticipants);
+    }
+
+    // Load timezone guardrails
+    if (config.respectedTimezones) {
+      const loadedGuardrails: TimezoneGuardrail[] = config.respectedTimezones.map(tz => ({
+        id: createId(),
+        timezone: tz.timezone,
+        label: tz.label
+      }));
+      setRespectedTimezones(loadedGuardrails);
+    }
+  }, []);
 
   const suggestedTimezones = useMemo(() => {
     const existing = new Set(COMMON_TIMEZONES.map(tz => tz.value));
@@ -245,17 +380,22 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
 
   const hostParticipant = participants.find(person => person.role === 'host') ?? participants[0];
 
+  // Update host participant when calendar selection changes
   useEffect(() => {
-    if (typeof navigator === 'undefined') {
-      return;
+    const selectedCalendar = availableCalendars.find(c => c.id === managedCalendarId);
+    if (selectedCalendar) {
+      setParticipants(prev => prev.map(p =>
+        p.role === 'host'
+          ? {
+              ...p,
+              calendarId: managedCalendarId,
+              displayName: selectedCalendar.summary || 'Primary Calendar',
+              email: selectedCalendar.id
+            }
+          : p
+      ));
     }
-
-    const ua = navigator.userAgent || '';
-    const platform = navigator.platform || '';
-    const maxTouchPoints = typeof navigator.maxTouchPoints === 'number' ? navigator.maxTouchPoints : 0;
-    const detectedIpad = /iPad/.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
-    setIsIpad(detectedIpad);
-  }, []);
+  }, [managedCalendarId, availableCalendars]);
 
   useEffect(() => {
     if (step !== 3) {
@@ -389,53 +529,53 @@ const TeamSchedulingModal: React.FC<TeamSchedulingModalProps> = ({
     return true;
   };
 
-const buildSlotParticipantStatus = (slotStart: Date, slotEnd: Date): SlotParticipantStatus[] =>
-  participants.map(participant => {
-    const localStartMinutes = getMinutesInTimezone(slotStart, participant.timezone);
-    const localEndMinutes = getMinutesInTimezone(slotEnd, participant.timezone);
-    const workStart = timeStringToMinutes(participant.startHour);
-    const workEnd = timeStringToMinutes(participant.endHour);
+  const buildSlotParticipantStatus = (slotStart: Date, slotEnd: Date): SlotParticipantStatus[] =>
+    participants.map(participant => {
+      const localStartMinutes = getMinutesInTimezone(slotStart, participant.timezone);
+      const localEndMinutes = getMinutesInTimezone(slotEnd, participant.timezone);
+      const workStart = timeStringToMinutes(participant.startHour);
+      const workEnd = timeStringToMinutes(participant.endHour);
 
-    const strictWithin = isWithinNormalizedWindow(localStartMinutes, localEndMinutes, workStart, workEnd);
+      const strictWithin = isWithinNormalizedWindow(localStartMinutes, localEndMinutes, workStart, workEnd);
 
-    let status: 'inHours' | 'flex' | 'outside' = 'outside';
+      let status: 'inHours' | 'flex' | 'outside' = 'outside';
 
-    if (strictWithin) {
-      status = 'inHours';
-    } else if (participant.flexibleHours) {
-      const flexStart = Math.max(0, workStart - FLEX_MINUTES);
-      const flexEnd = Math.min(1440, workEnd + FLEX_MINUTES);
-      if (isWithinNormalizedWindow(localStartMinutes, localEndMinutes, flexStart, flexEnd)) {
-        status = 'flex';
+      if (strictWithin) {
+        status = 'inHours';
+      } else if (participant.flexibleHours) {
+        const flexStart = Math.max(0, workStart - FLEX_MINUTES);
+        const flexEnd = Math.min(1440, workEnd + FLEX_MINUTES);
+        if (isWithinNormalizedWindow(localStartMinutes, localEndMinutes, flexStart, flexEnd)) {
+          status = 'flex';
+        }
       }
-    }
 
-    return {
-      id: participant.id,
-      name: participant.displayName || (participant.role === 'host' ? 'Host' : 'Teammate'),
-      role: participant.role,
-      timezone: participant.timezone,
-      localRange: formatTimeRangeBasic(slotStart, slotEnd, participant.timezone),
-      status,
-      flexible: participant.flexibleHours
-    };
-  });
+      return {
+        id: participant.id,
+        name: participant.displayName || (participant.role === 'host' ? 'Host' : 'Teammate'),
+        role: participant.role,
+        timezone: participant.timezone,
+        localRange: formatTimeRangeBasic(slotStart, slotEnd, participant.timezone),
+        status,
+        flexible: participant.flexibleHours
+      };
+    });
 
-const buildGuardrailStatus = (slotStart: Date, slotEnd: Date): SlotGuardrailStatus[] =>
-  respectedTimezones.map(guard => {
-    const localStartMinutes = getMinutesInTimezone(slotStart, guard.timezone);
-    const localEndMinutes = getMinutesInTimezone(slotEnd, guard.timezone);
-    const windowStart = timeStringToMinutes(DEFAULT_GUARD_START);
-    const windowEnd = timeStringToMinutes(DEFAULT_GUARD_END);
+  const buildGuardrailStatus = (slotStart: Date, slotEnd: Date): SlotGuardrailStatus[] =>
+    respectedTimezones.map(guard => {
+      const localStartMinutes = getMinutesInTimezone(slotStart, guard.timezone);
+      const localEndMinutes = getMinutesInTimezone(slotEnd, guard.timezone);
+      const windowStart = timeStringToMinutes(DEFAULT_GUARD_START);
+      const windowEnd = timeStringToMinutes(DEFAULT_GUARD_END);
 
-    return {
-      id: guard.id,
-      timezone: guard.timezone,
-      label: guard.label,
-      localRange: formatTimeRangeBasic(slotStart, slotEnd, guard.timezone),
-      withinHours: isWithinNormalizedWindow(localStartMinutes, localEndMinutes, windowStart, windowEnd)
-    };
-  });
+      return {
+        id: guard.id,
+        timezone: guard.timezone,
+        label: guard.label,
+        localRange: formatTimeRangeBasic(slotStart, slotEnd, guard.timezone),
+        withinHours: isWithinNormalizedWindow(localStartMinutes, localEndMinutes, windowStart, windowEnd)
+      };
+    });
 
   const findCommonFreeSlots = async () => {
     if (!ensureStepOneValid()) {
@@ -601,7 +741,7 @@ We have availability at the following times:
 
 ${slotText}
 
-Let me know which works best and I’ll confirm the invite.
+Let me know which works best and I'll confirm the invite.
 
 Thanks!`;
 
@@ -630,24 +770,31 @@ Thanks!`;
       setLoading(true);
 
       const hostTimezone = hostParticipant?.timezone || defaultTimezone;
-      const attendees = participants
-        .filter(person => person.sendInvite && person.email.trim())
-        .map(person => ({ email: person.email.trim() }));
+      const trimmedPurpose = meetingPurpose.trim() || 'Meeting';
 
-      const trimmedPurpose = meetingPurpose.trim();
+      // Phase 1: Create all calendar events, collect results
+      const results: Array<{
+        success: boolean;
+        event?: { id: string };
+        error?: Error;
+        index: number;
+        slot: typeof selectedSlots[0];
+      }> = [];
 
-      const holds = selectedSlots.map((slot, index) => {
-        const fallbackTitle = `[Hold] ${trimmedPurpose} ${index + 1}`;
-        const summary = holdTitles[index]?.trim() || fallbackTitle;
+      for (let i = 0; i < selectedSlots.length; i++) {
+        const slot = selectedSlots[i];
+        const fallbackTitle = `[Hold] ${trimmedPurpose} ${i + 1}`;
+        const summary = holdTitles[i]?.trim() || fallbackTitle;
 
-        return ({
+        const hold = {
           summary,
-        description: [
-          trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
-          respectedTimezones.length > 0
-            ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
-            : null
-        ].filter(Boolean).join('\n'),
+          description: [
+            trimmedPurpose ? `Purpose: ${trimmedPurpose}` : null,
+            respectedTimezones.length > 0
+              ? `Guardrails: ${respectedTimezones.map(guard => guard.label || guard.timezone).join(', ')}`
+              : null,
+            '\nCreated via CalFix'
+          ].filter(Boolean).join('\n'),
           start: {
             dateTime: slot.start.toISOString(),
             timeZone: hostTimezone
@@ -656,14 +803,93 @@ Thanks!`;
             dateTime: slot.end.toISOString(),
             timeZone: hostTimezone
           },
-          attendees,
+          // NO attendees - creates blocking event, not meeting invite
+          // This works for both Google Calendar and Outlook
           colorId: '11',
           transparency: 'opaque'
-        });
-      });
+        };
 
-      await onSchedule(holds, emailDraft);
-      onClose();
+        try {
+          const createdEvent = await createProviderEvent(hold, managedCalendarId);
+          results.push({ success: true, event: createdEvent, index: i, slot });
+        } catch (error) {
+          results.push({
+            success: false,
+            error: error instanceof Error ? error : new Error(String(error)),
+            index: i,
+            slot
+          });
+        }
+      }
+
+      // Phase 2: Track successful holds in DB (batch insert)
+      const successfulResults = results.filter(r => r.success && r.event?.id);
+
+      if (successfulResults.length === 0) {
+        throw new Error('Failed to create any calendar holds');
+      }
+
+      // Map participants to HoldParticipant format for storage
+      const holdParticipants: HoldParticipant[] = participants.map(p => ({
+        email: p.email,
+        name: p.displayName,
+        timezone: p.timezone,
+        sendInvite: p.sendInvite
+      }));
+
+      const holdRecords = successfulResults.map(result => ({
+        user_id: user?.id,
+        calendar_id: managedCalendarId,
+        event_id: result.event!.id,
+        meeting_purpose: trimmedPurpose,
+        participants: holdParticipants,
+        start_time: result.slot.start.toISOString(),
+        end_time: result.slot.end.toISOString()
+      }));
+
+      // Batch insert to Supabase
+      const { error: dbError } = await supabase
+        .from('calendar_holds')
+        .insert(holdRecords);
+
+      if (dbError) {
+        // COMPENSATING TRANSACTION: DB failed, so delete calendar events to maintain consistency
+        console.error('[TRANSACTION] DB insert failed, rolling back calendar events:', dbError);
+
+        const rollbackResults = await Promise.allSettled(
+          successfulResults.map(result =>
+            deleteProviderEvent(result.event!.id, managedCalendarId)
+          )
+        );
+
+        const rollbackFailures = rollbackResults.filter(r => r.status === 'rejected');
+        if (rollbackFailures.length > 0) {
+          // Some events couldn't be deleted - log for manual cleanup
+          const orphanedEventIds = successfulResults
+            .filter((_, i) => rollbackResults[i].status === 'rejected')
+            .map(r => r.event!.id);
+          console.error('[CRITICAL] Orphaned calendar events (manual cleanup required):', orphanedEventIds);
+          setErrorMessage(
+            `Failed to create holds. ${rollbackFailures.length} calendar event(s) may need manual deletion.`
+          );
+        } else {
+          setErrorMessage('Failed to save holds. Calendar events have been removed. Please try again.');
+        }
+
+        setLoading(false);
+        return; // Don't navigate - operation failed
+      }
+
+      // Show partial success feedback if needed
+      const failedCount = results.length - successfulResults.length;
+      if (failedCount > 0) {
+        setErrorMessage(
+          `Created ${successfulResults.length} holds successfully. ${failedCount} failed.`
+        );
+      }
+
+      // Navigate back to dashboard
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error creating calendar holds', error);
       setErrorMessage(error instanceof Error ? error.message : 'Unable to create holds.');
@@ -879,7 +1105,7 @@ Thanks!`;
             onClick={addTimezoneGuardrail}
             className="text-xs font-semibold text-slate-700 hover:text-slate-900"
           >
-            ＋ Add timezone
+            + Add timezone
           </button>
         </div>
 
@@ -889,7 +1115,7 @@ Thanks!`;
           </p>
         )}
 
-        <div className="grid grid-cols-1 gap-3 max-h-52 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-3">
           {respectedTimezones.map(guard => (
             <div
               key={guard.id}
@@ -945,14 +1171,13 @@ Thanks!`;
             onClick={addParticipant}
             className="text-xs font-semibold text-slate-700 hover:text-slate-900"
           >
-            ＋ Add teammate
+            + Add teammate
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-4 max-h-64 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-4">
           {participants.map(renderParticipantCard)}
         </div>
       </div>
-
     </div>
   );
 
@@ -1033,7 +1258,7 @@ Thanks!`;
 
         {isSelected && (
           <div className="text-xs font-semibold text-emerald-600">
-            ✓ Selected
+            Selected
           </div>
         )}
       </button>
@@ -1080,7 +1305,7 @@ Thanks!`;
         <div className="flex-1 min-h-0 overflow-hidden">
           <div
             className="h-full overflow-y-auto pr-1"
-            style={{ maxHeight: '44vh' }}
+            style={{ maxHeight: '60vh' }}
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
               {availability.map(renderSlotCard)}
@@ -1096,7 +1321,7 @@ Thanks!`;
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4 min-h-[320px] lg:min-h-[360px]">
         <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-4 min-h-0">
           <div>
-            <h3 className="text-sm font-semibold text-slate-700">Participants &amp; guardrails</h3>
+            <h3 className="text-sm font-semibold text-slate-700">Participants & guardrails</h3>
             <ul className="mt-2 space-y-2 text-sm text-slate-600">
               {participants.map(person => (
                 <li key={person.id}>
@@ -1125,7 +1350,7 @@ Thanks!`;
             <ul className="mt-2 space-y-3 text-sm text-slate-600 max-h-60 overflow-y-auto pr-1">
               {selectedSlots.map((slot, index) => {
                 const timezoneSummaries = summarizeSlotTimezones(slot);
-                const defaultTitle = `[Hold] ${meetingPurpose.trim()} ${index + 1}`;
+                const defaultTitle = `[Hold] ${meetingPurpose.trim() || 'Meeting'} ${index + 1}`;
                 const titleValue = holdTitles[index] ?? defaultTitle;
 
                 return (
@@ -1144,13 +1369,15 @@ Thanks!`;
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-slate-600 focus:border-slate-600"
                       placeholder={defaultTitle}
                     />
-                    <ul className="text-xs text-slate-500 space-y-1">
-                      {timezoneSummaries.map(summary => (
-                        <li key={summary.timezone}>
-                          {summary.label}: {summary.range}{summary.hasFlex ? ' (flex window)' : ''}
-                        </li>
-                      ))}
-                    </ul>
+                    {timezoneSummaries.length > 0 && (
+                      <ul className="text-xs text-slate-500 space-y-1">
+                        {timezoneSummaries.map(summary => (
+                          <li key={summary.timezone}>
+                            {summary.label}: {summary.range}{summary.hasFlex ? ' (flex window)' : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 );
               })}
@@ -1241,169 +1468,229 @@ Thanks!`;
   );
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div
-        className={`bg-white rounded-3xl w-full max-w-4xl ${isIpad ? 'max-h-[100vh] overflow-y-auto' : 'max-h-[92vh] overflow-hidden'} flex flex-col shadow-2xl border border-slate-900/10`}
-        style={isIpad ? { WebkitOverflowScrolling: 'touch' } : undefined}
-      >
-        <div
-          className="px-6 py-5"
-          style={{
-            background: 'linear-gradient(135deg, #1e293b 0%, #334155 55%, #475569 100%)',
-            color: '#f8fafc'
-          }}
-        >
+    <div className="min-h-screen bg-gray-50">
+      {/* Page Header - matches Dashboard/Recurring style */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold">Meeting Scheduler</h2>
-              <p className="text-xs text-slate-200 mt-1">
-                Step {step} of 3 · {
-                  step === 1 ? 'Team & working hours' :
-                  step === 2 ? 'Select availability' :
-                  'Review & send'
-                }
+              <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                {activeView === 'new' ? 'Find mutual availability and propose meeting times' : 'View and manage your calendar holds'}
               </p>
             </div>
+          </div>
+          {/* Navigation Tabs */}
+          <div className="mt-4 flex gap-1 border-b border-gray-200 -mb-px">
             <button
               type="button"
-              onClick={onClose}
-              className="text-2xl leading-none"
-              style={{
-                color: '#cbd5f5'
-              }}
-              onMouseEnter={(event) => { event.currentTarget.style.color = '#ffffff'; }}
-              onMouseLeave={(event) => { event.currentTarget.style.color = '#cbd5f5'; }}
+              onClick={() => { setActiveView('new'); setStep(1); }}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeView === 'new'
+                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
             >
-              ×
+              New Meeting
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('holds')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeView === 'holds'
+                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Manage Holds
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex-1 px-6 py-6 bg-slate-50 flex flex-col">
-          {errorMessage && (
-            <div className="mb-4 border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">
-              {errorMessage}
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Manage Holds View */}
+        {activeView === 'holds' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Calendar Holds</h2>
+              <ActiveHoldsSection />
+            </div>
+          </div>
+        )}
+
+        {/* New Meeting View */}
+        {activeView === 'new' && (
+          <>
+        {/* Calendar Selector - only show dropdown for multi-calendar access */}
+        {availableCalendars.length > 0 && (
+          <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
+            {hasMultiCalendarAccess ? (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    Managing Calendar:
+                  </label>
+                  <select
+                    value={managedCalendarId}
+                    onChange={(e) => setManagedCalendarId(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+                  >
+                    {availableCalendars.map((cal) => (
+                      <option key={cal.id} value={cal.id}>
+                        {cal.summary || cal.id} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
+                  {' • '}
+                  {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
+                </p>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-900">
+                  📅 {availableCalendars[0]?.summary || 'Your Calendar'}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quick Schedule Section - only show on step 1 */}
+        {step === 1 && (
+          <div className="mb-8 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-white rounded-xl shadow-sm">
+                <span className="text-2xl">⚡</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Saved Templates</h2>
+                <p className="text-sm text-gray-600">
+                  Load a saved template to pre-fill the form below
+                </p>
+              </div>
+            </div>
+            <QuickScheduleButtons
+              onLoadTemplate={handleLoadTemplate}
+            />
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mb-6 border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">
+            {errorMessage}
+          </div>
+        )}
+
+        {/* Wizard Section */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+          {/* Wizard Header */}
+          {step === 1 && (
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900">
+                Or customize your meeting details
+              </h2>
+              <p className="text-sm text-gray-500">
+                Set participants, working hours, and timezone constraints
+              </p>
             </div>
           )}
 
-          {renderStepper()}
+          <div className="p-6">
+            {renderStepper()}
 
-          <div className="flex-1 overflow-y-auto min-h-0 pr-1">
-            {step === 1 && (
-              <div className="pb-4">
-                {renderStepOne()}
-              </div>
-            )}
-            {step === 2 && (
-              <div className="h-full">
-                {renderStepTwo()}
-              </div>
-            )}
-            {step === 3 && (
-              <div className="pb-4">
-                {renderStepThree()}
-              </div>
-            )}
+            <div className="mt-6">
+              {step === 1 && renderStepOne()}
+              {step === 2 && renderStepTwo()}
+              {step === 3 && renderStepThree()}
+            </div>
           </div>
-        </div>
 
-        <div
-          className="border-t border-slate-200 px-6 py-4 flex items-center justify-between backdrop-blur"
-          style={{ background: 'rgba(226,232,240,0.9)' }}
-        >
-          <button
-            type="button"
-            onClick={step === 1 ? onClose : () => setStep(step === 3 ? 2 : 1)}
-            className="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-300"
-            style={{
-              backgroundColor: '#ffffff',
-              color: '#1f2937'
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.backgroundColor = '#e2e8f0';
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.backgroundColor = '#ffffff';
-            }}
-          >
-            {step === 1 ? 'Cancel' : 'Back'}
-          </button>
-          <div className="flex items-center gap-3">
-            {step === 1 && (
-              <button
-                type="button"
-                onClick={findCommonFreeSlots}
-                disabled={loading}
-                className="px-6 py-3 rounded-xl text-sm font-semibold shadow-md shadow-slate-900/20 focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                style={{
-                  backgroundColor: '#1e293b',
-                  color: '#ffffff'
-                }}
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.backgroundColor = '#111827';
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.backgroundColor = '#1e293b';
-                }}
-              >
-                {loading ? 'Searching…' : 'Find availability'}
-              </button>
-            )}
-            {step === 2 && (
-              <button
-                type="button"
-                onClick={moveToSummary}
-                disabled={selectedSlots.length === 0}
-                className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: '#1e293b',
-                  color: '#ffffff'
-                }}
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.backgroundColor = '#111827';
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.backgroundColor = '#1e293b';
-                }}
-              >
-                Continue ({selectedSlots.length} selected)
-              </button>
-            )}
-            {step === 3 && (
-              <>
+          {/* Footer Actions - inside the card */}
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                if (step === 1) {
+                  navigate('/dashboard');
+                } else {
+                  // Go to previous step
+                  setStep(step === 3 ? 2 : 1);
+                }
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {step === 1 ? 'Cancel' : 'Back'}
+            </button>
+            <div className="flex items-center gap-3">
+              {step === 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveTemplateModal(true)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Save as Template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={findCommonFreeSlots}
+                    disabled={loading}
+                    className="px-6 py-2.5 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    {loading ? 'Searching...' : 'Find availability'}
+                  </button>
+                </>
+              )}
+              {step === 2 && (
                 <button
                   type="button"
-                  onClick={copyEmailToClipboard}
-                  disabled={!emailDraft.trim()}
-                  className="px-5 py-2 rounded-xl text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={moveToSummary}
+                  disabled={selectedSlots.length === 0}
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
                 >
-                  Copy message
+                  Continue ({selectedSlots.length} selected)
                 </button>
-                <button
-                  type="button"
-                  onClick={createCalendarHolds}
-                  disabled={loading}
-                  className="px-6 py-3 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: '#047857',
-                    color: '#ffffff'
-                  }}
-                  onMouseEnter={(event) => {
-                    event.currentTarget.style.backgroundColor = '#065f46';
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.style.backgroundColor = '#047857';
-                  }}
-                >
-                  {loading ? 'Saving…' : 'Create holds'}
-                </button>
-              </>
-            )}
+              )}
+              {step === 3 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={copyEmailToClipboard}
+                    disabled={!emailDraft.trim()}
+                    className="px-5 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Copy message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={createCalendarHolds}
+                    disabled={loading}
+                    className="px-6 py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    {loading ? 'Saving...' : 'Create holds'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
+          </>
+        )}
       </div>
+
+      {/* Save Template Modal */}
+      <SaveTemplateModal
+        isOpen={showSaveTemplateModal}
+        onClose={() => setShowSaveTemplateModal(false)}
+        currentConfig={currentTemplateConfig}
+      />
     </div>
   );
-};
+}
 
-export default TeamSchedulingModal;
+export default SchedulePage;

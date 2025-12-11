@@ -4,10 +4,10 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import ViewSelector from './ViewSelector';
 import DayFilterPills from './DayFilterPills';
 import ActionWorkflowModal from './ActionWorkflowModal';
-import TeamSchedulingModal from './TeamSchedulingModal';
 import ProviderSelection from './ProviderSelection';
 import ProviderSwitcher from './ProviderSwitcher';
 import UpgradeModal from './UpgradeModal';
@@ -130,7 +130,6 @@ const CalendarDashboard = () => {
   const [extendedEventsForFlights, setExtendedEventsForFlights] = useState([]); // Extended events for flight analysis
   const [currentTimeRange, setCurrentTimeRange] = useState(null);
   const [workflowModal, setWorkflowModal] = useState({ isOpen: false, actionType: null });
-  const [showTeamScheduler, setShowTeamScheduler] = useState(false);
   // Initialize with 'primary' - will be updated when calendars are loaded
   // The actual primary calendar comes from the database (via sync) or provider API
   // localStorage is only used as a cache for the user's last selection
@@ -1537,11 +1536,11 @@ const CalendarDashboard = () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
-          <button
+          <Link
+            to="/schedule"
             onClick={() => {
-              setShowTeamScheduler(true);
-              // Log opening the team scheduling modal
-              logUserAction('team_scheduling_modal_opened', {
+              // Log navigating to schedule page
+              logUserAction('schedule_page_opened', {
                 calendarId: managedCalendarId,
                 timeHorizon: getTimeHorizon(currentView)
               });
@@ -1550,7 +1549,7 @@ const CalendarDashboard = () => {
           >
             <span>👥</span>
             Schedule Meeting
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -1603,24 +1602,6 @@ const CalendarDashboard = () => {
         onAddBuffer={handleAddBufferAfter}
       />
 
-      {/* Team Scheduling Modal */}
-      {showTeamScheduler && (
-        <TeamSchedulingModal
-          onClose={() => setShowTeamScheduler(false)}
-          managedCalendarId={managedCalendarId}
-          hostEmail={calendarOwnerEmail}
-          onSchedule={async (holds, emailDraft) => {
-            void emailDraft;
-            // Create calendar holds for team members on the managed calendar
-            for (const hold of holds) {
-              await createProviderEvent(hold, managedCalendarId);
-            }
-
-            // Refresh events
-            await loadEvents();
-          }}
-        />
-      )}
 
       {isChatbotEnabled && (
         <AgentChatWidget
