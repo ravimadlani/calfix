@@ -206,6 +206,7 @@ export function SchedulePage() {
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
   const createProviderEvent = activeProvider.calendar.createEvent;
+  const deleteProviderEvent = activeProvider.calendar.deleteEvent;
   const fetchProviderCalendarList = activeProvider.calendar.fetchCalendarList;
 
   // Calendar selector state
@@ -852,12 +853,31 @@ Thanks!`;
         .insert(holdRecords);
 
       if (dbError) {
-        // DB failed but calendar events exist - log for manual reconciliation
-        console.error('[CRITICAL] Calendar events created but DB tracking failed:', dbError);
-        setErrorMessage(
-          `Calendar holds created but tracking failed. Events may appear in your calendar without tracking.`
+        // COMPENSATING TRANSACTION: DB failed, so delete calendar events to maintain consistency
+        console.error('[TRANSACTION] DB insert failed, rolling back calendar events:', dbError);
+
+        const rollbackResults = await Promise.allSettled(
+          successfulResults.map(result =>
+            deleteProviderEvent(result.event!.id, managedCalendarId)
+          )
         );
-        // Still navigate - events were created successfully
+
+        const rollbackFailures = rollbackResults.filter(r => r.status === 'rejected');
+        if (rollbackFailures.length > 0) {
+          // Some events couldn't be deleted - log for manual cleanup
+          const orphanedEventIds = successfulResults
+            .filter((_, i) => rollbackResults[i].status === 'rejected')
+            .map(r => r.event!.id);
+          console.error('[CRITICAL] Orphaned calendar events (manual cleanup required):', orphanedEventIds);
+          setErrorMessage(
+            `Failed to create holds. ${rollbackFailures.length} calendar event(s) may need manual deletion.`
+          );
+        } else {
+          setErrorMessage('Failed to save holds. Calendar events have been removed. Please try again.');
+        }
+
+        setLoading(false);
+        return; // Don't navigate - operation failed
       }
 
       // Show partial success feedback if needed
