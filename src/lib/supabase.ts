@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '@clerk/clerk-react';
 import { useMemo } from 'react';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -9,15 +10,32 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Custom hook to create a Supabase client
- * Note: Using anon key with permissive RLS policies.
- * User filtering is done in application code via user_id column.
- * TODO: Set up Clerk JWT template for proper Supabase auth integration
+ * Custom hook to create a Supabase client with Clerk authentication
+ * This automatically sets the Clerk session token as the Supabase auth token
  */
 export function useSupabaseClient() {
+  const { getToken } = useAuth();
+
   const supabase = useMemo(() => {
-    return createClient(supabaseUrl, supabaseAnonKey);
-  }, []);
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        // Fetch function that automatically includes Clerk token
+        fetch: async (url, options = {}) => {
+          const clerkToken = await getToken({ template: 'supabase' });
+
+          const headers = new Headers(options?.headers);
+          if (clerkToken) {
+            headers.set('Authorization', `Bearer ${clerkToken}`);
+          }
+
+          return fetch(url, {
+            ...options,
+            headers,
+          });
+        },
+      },
+    });
+  }, [getToken]);
 
   return supabase;
 }
