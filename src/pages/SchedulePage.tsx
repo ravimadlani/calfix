@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import { useSupabaseClient } from '../lib/supabase';
 import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButtons';
@@ -197,8 +197,12 @@ const roundToNextHalfHour = (date: Date) => {
 export function SchedulePage() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const supabase = useSupabaseClient();
   const { activeProvider, isAuthenticated: isCalendarConnected } = useCalendarProvider();
+
+  // Subscription state
+  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
   const createProviderEvent = activeProvider.calendar.createEvent;
@@ -243,6 +247,30 @@ export function SchedulePage() {
       window.localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
     }
   }, [managedCalendarId]);
+
+  // Check subscription tier for multi-calendar access
+  const checkSubscription = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const token = await getToken();
+      const response = await fetch(`/api/user/subscription?userId=${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      setHasMultiCalendarAccess(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      checkSubscription();
+    }
+  }, [checkSubscription, user?.id]);
 
   const defaultTimezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
@@ -1475,30 +1503,40 @@ Thanks!`;
         {/* New Meeting View */}
         {activeView === 'new' && (
           <>
-        {/* Calendar Selector */}
+        {/* Calendar Selector - only show dropdown for multi-calendar access */}
         {availableCalendars.length > 0 && (
           <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Managing Calendar:
-              </label>
-              <select
-                value={managedCalendarId}
-                onChange={(e) => setManagedCalendarId(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
-              >
-                {availableCalendars.map((cal) => (
-                  <option key={cal.id} value={cal.id}>
-                    {cal.summary || cal.id} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
-              {' • '}
-              {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
-            </p>
+            {hasMultiCalendarAccess ? (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    Managing Calendar:
+                  </label>
+                  <select
+                    value={managedCalendarId}
+                    onChange={(e) => setManagedCalendarId(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+                  >
+                    {availableCalendars.map((cal) => (
+                      <option key={cal.id} value={cal.id}>
+                        {cal.summary || cal.id} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
+                  {' • '}
+                  {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
+                </p>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-900">
+                  📅 {availableCalendars[0]?.summary || 'Your Calendar'}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
