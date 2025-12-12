@@ -208,6 +208,7 @@ export function SchedulePage() {
   const [isInTrial, setIsInTrial] = useState(false);
   const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
   const [maxCalendars, setMaxCalendars] = useState(1);
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const [allManageableCalendars, setAllManageableCalendars] = useState<CalendarListEntry[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
@@ -261,8 +262,9 @@ export function SchedulePage() {
   }, [fetchProviderCalendarList, isCalendarConnected, managedCalendarId, hasMultiCalendarAccess, maxCalendars]);
 
   useEffect(() => {
+    if (!subscriptionLoaded) return;
     fetchCalendars();
-  }, [fetchCalendars]);
+  }, [fetchCalendars, subscriptionLoaded]);
 
   // Persist calendar selection to localStorage
   useEffect(() => {
@@ -291,6 +293,8 @@ export function SchedulePage() {
       console.error('Error checking subscription:', error);
       setHasMultiCalendarAccess(false);
       setSubscriptionTier('basic');
+    } finally {
+      setSubscriptionLoaded(true);
     }
   }, [user?.id]);
 
