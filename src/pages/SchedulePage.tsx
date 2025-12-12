@@ -6,6 +6,7 @@ import { useSupabaseClient } from '../lib/supabase';
 import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButtons';
 import { ActiveHoldsSection } from '../components/scheduling/ActiveHoldsSection';
 import { SaveTemplateModal } from '../components/scheduling/SaveTemplateModal';
+import { PageHeader, CalendarSelectorCard } from '../components/shared';
 import type { CalendarListEntry } from '../types';
 import type { HoldParticipant, TemplateConfig, TemplateParticipant } from '../types/scheduling';
 
@@ -1469,44 +1470,26 @@ Thanks!`;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Page Header - matches Dashboard/Recurring style */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {activeView === 'new' ? 'Find mutual availability and propose meeting times' : 'View and manage your calendar holds'}
-              </p>
-            </div>
-          </div>
-          {/* Navigation Tabs */}
-          <div className="mt-4 flex gap-1 border-b border-gray-200 -mb-px">
-            <button
-              type="button"
-              onClick={() => { setActiveView('new'); setStep(1); }}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeView === 'new'
-                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              New Meeting
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('holds')}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeView === 'holds'
-                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Manage Holds
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Page Header - Using shared component with sticky variant */}
+      <PageHeader
+        title="Schedule"
+        description={activeView === 'new' ? 'Find mutual availability and propose meeting times' : 'View and manage your calendar holds'}
+        variant="sticky"
+        tabs={[
+          {
+            key: 'new',
+            label: 'New Meeting',
+            active: activeView === 'new',
+            onClick: () => { setActiveView('new'); setStep(1); }
+          },
+          {
+            key: 'holds',
+            label: 'Manage Holds',
+            active: activeView === 'holds',
+            onClick: () => setActiveView('holds')
+          }
+        ]}
+      />
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1523,40 +1506,19 @@ Thanks!`;
         {/* New Meeting View */}
         {activeView === 'new' && (
           <>
-        {/* Calendar Selector - only show dropdown for multi-calendar access */}
+        {/* Calendar Selector - Using shared component with compact variant */}
         {availableCalendars.length > 0 && (
-          <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-            {hasMultiCalendarAccess ? (
-              <>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                    Managing Calendar:
-                  </label>
-                  <select
-                    value={managedCalendarId}
-                    onChange={(e) => setManagedCalendarId(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
-                  >
-                    {availableCalendars.map((cal) => (
-                      <option key={cal.id} value={cal.id}>
-                        {cal.summary || cal.id} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <p className="mt-2 text-xs text-gray-500">
-                  {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
-                  {' • '}
-                  {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
-                </p>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-900">
-                  📅 {availableCalendars[0]?.summary || 'Your Calendar'}
-                </span>
-              </div>
-            )}
+          <div className="mb-6">
+            <CalendarSelectorCard
+              availableCalendars={availableCalendars}
+              managedCalendarId={managedCalendarId}
+              onCalendarChange={setManagedCalendarId}
+              hasMultiCalendarAccess={hasMultiCalendarAccess}
+              showProviderSwitcher={false}
+              showActionButtons={false}
+              showResetButton={false}
+              variant="compact"
+            />
           </div>
         )}
 

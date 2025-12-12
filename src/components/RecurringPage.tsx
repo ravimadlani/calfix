@@ -9,6 +9,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import UpgradeModal from './UpgradeModal';
 import CalendarConnectPrompt from './CalendarConnectPrompt';
+import { PageHeader, CalendarSelectorCard } from './shared';
 import type {
   CalendarEvent,
   CalendarListEntry
@@ -639,112 +640,32 @@ const RecurringPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-3xl font-bold text-slate-900">Recurring Meetings</h1>
-        <p className="text-slate-600 text-sm">
-          Audit recurring series, protect focus time, and keep relationships healthy. Filters cover the selected calendar and time window.
-        </p>
-      </div>
+      {/* Page Header - Using shared component */}
+      <PageHeader
+        title="Recurring Meetings"
+        description="Audit recurring series, protect focus time, and keep relationships healthy. Filters cover the selected calendar and time window."
+        variant="inline"
+      />
 
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-        {hasMultiCalendarAccess ? (
-          <>
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Managing Calendar:
-              </label>
-              <select
-                value={managedCalendarId}
-                onChange={(e) => setManagedCalendarId(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
-              >
-                {availableCalendars.map((cal) => (
-                  <option key={cal.id} value={cal.id}>
-                    {cal.summary || cal.id} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="text-xs text-gray-500">
-              {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
-              {' • '}
-              {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
-            </p>
-            <div className="flex gap-2 pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={loadRecurringData}
-                disabled={loading}
-                className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </button>
-              <button
-                type="button"
-                onClick={() => {/* TODO: Add preferences modal */}}
-                className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Preferences
-              </button>
-            </div>
-          </>
-        ) : (
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-gray-900">
-                📅 {availableCalendars[0]?.summary || 'Your Calendar'}
-              </span>
-              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded uppercase">
-                {isInTrial ? `${subscriptionTier || 'Loading'} Trial (${daysLeftInTrial} days left)` : (subscriptionTier || 'Loading')}
-              </span>
-            </div>
-            <p className="text-xs text-gray-600">
-              {hasMultiCalendarAccess
-                ? `${availableCalendars.length} calendar${availableCalendars.length !== 1 ? 's' : ''} available`
-                : 'Basic access • 1 calendar included'}
-            </p>
-            {allManageableCalendars.length > 1 && (
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
-              >
-                🔓 Unlock additional calendars
-              </button>
-            )}
-            <div className="flex gap-2 pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={loadRecurringData}
-                disabled={loading}
-                className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </button>
-              <button
-                type="button"
-                onClick={() => {/* TODO: Add preferences modal */}}
-                className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Preferences
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Calendar Management Section - Using shared component */}
+      <CalendarSelectorCard
+        availableCalendars={availableCalendars}
+        managedCalendarId={managedCalendarId}
+        onCalendarChange={setManagedCalendarId}
+        hasMultiCalendarAccess={hasMultiCalendarAccess}
+        subscriptionTier={subscriptionTier || undefined}
+        isInTrial={isInTrial}
+        daysLeftInTrial={daysLeftInTrial}
+        allManageableCalendars={allManageableCalendars}
+        maxCalendars={maxCalendars}
+        showProviderSwitcher={true}
+        showActionButtons={true}
+        showResetButton={false}
+        onRefresh={loadRecurringData}
+        onPreferences={() => {/* TODO: Add preferences modal */}}
+        onUpgrade={() => setShowUpgradeModal(true)}
+        loading={loading}
+      />
 
       <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium w-fit">
         <button

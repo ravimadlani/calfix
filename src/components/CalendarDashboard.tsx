@@ -9,11 +9,11 @@ import ViewSelector from './ViewSelector';
 import DayFilterPills from './DayFilterPills';
 import ActionWorkflowModal from './ActionWorkflowModal';
 import ProviderSelection from './ProviderSelection';
-import ProviderSwitcher from './ProviderSwitcher';
 import UpgradeModal from './UpgradeModal';
 import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
 import DashboardTabs from './DashboardTabs';
+import { PageHeader, CalendarSelectorCard } from './shared';
 
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps } from '../services/calendarAnalytics';
@@ -1411,104 +1411,32 @@ const CalendarDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Calendar Management Section */}
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-700">Provider:</span>
-            <ProviderSwitcher />
-          </div>
-        </div>
-        {hasMultiCalendarAccess ? (
-          <>
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Managing Calendar:
-              </label>
-              <select
-                value={managedCalendarId}
-                onChange={(e) => updateManagedCalendar(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 text-sm bg-white"
-              >
-                {availableCalendars.map((cal) => (
-                  <option key={cal.id} value={cal.id}>
-                    {cal.summary} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
-                  </option>
-                ))}
-              </select>
-              {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId) && (
-                <button
-                  onClick={() => {
-                    const primaryCal = availableCalendars.find(c => c.primary);
-                    updateManagedCalendar(primaryCal ? primaryCal.id : 'primary');
-                  }}
-                  className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
-                >
-                  Reset to My Calendar
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-gray-500">
-              {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
-              {' • '}
-              {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
-              {managedCalendarId !== 'primary' && !availableCalendars.find(c => c.primary && c.id === managedCalendarId)
-                ? ' • Managing as delegate'
-                : ''}
-            </p>
-          </>
-        ) : (
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-gray-900">
-                📅 {availableCalendars[0]?.summary || 'Your Calendar'}
-              </span>
-              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded uppercase">
-                {isInTrial ? `${subscriptionTier || 'Loading'} Trial (${daysLeftInTrial} days left)` : (subscriptionTier || 'Loading')}
-              </span>
-            </div>
-            <p className="text-xs text-gray-600">
-              {(() => {
-                console.log('[Upgrade Teaser] Checking:', {
-                  subscriptionTier,
-                  allManageableCount: allManageableCalendars.length,
-                  shownCount: availableCalendars.length,
-                  allManageableCalendars: allManageableCalendars.map(c => ({ summary: c.summary, accessRole: c.accessRole }))
-                });
+      {/* Page Header */}
+      <PageHeader
+        title="Dashboard"
+        description="Manage your calendar and view your upcoming events"
+        variant="inline"
+      />
 
-                if (subscriptionTier === 'basic' && allManageableCalendars.length > 1) {
-                  return `🎯 You have access to ${allManageableCalendars.length} calendars! Upgrade to EA to manage them all`;
-                }
-                return `Manage up to ${maxCalendars === 5 ? '5' : maxCalendars === 15 ? '15' : '1'} calendar${maxCalendars > 1 ? 's' : ''} with ${maxCalendars === 5 ? 'EA' : maxCalendars === 15 ? 'EA Pro' : 'your plan'}`;
-              })()}
-            </p>
-          </div>
-        )}
-
-        {/* Action Buttons - Below the calendar selection */}
-        <div className="flex gap-2 pt-2 border-t border-slate-200">
-          <button
-            onClick={() => loadEvents()}
-            disabled={loading}
-            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </button>
-          <button
-            onClick={() => {/* TODO: Add preferences modal */}}
-            className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg border border-gray-300 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Preferences
-          </button>
-        </div>
-      </div>
+      {/* Calendar Management Section - Using shared component */}
+      <CalendarSelectorCard
+        availableCalendars={availableCalendars}
+        managedCalendarId={managedCalendarId}
+        onCalendarChange={updateManagedCalendar}
+        hasMultiCalendarAccess={hasMultiCalendarAccess}
+        subscriptionTier={subscriptionTier || undefined}
+        isInTrial={isInTrial}
+        daysLeftInTrial={daysLeftInTrial}
+        allManageableCalendars={allManageableCalendars}
+        maxCalendars={maxCalendars}
+        showProviderSwitcher={true}
+        showActionButtons={true}
+        showResetButton={true}
+        onRefresh={() => loadEvents()}
+        onPreferences={() => {/* TODO: Add preferences modal */}}
+        onUpgrade={() => setShowUpgradeModal(true)}
+        loading={loading}
+      />
 
       {/* Upgrade Banner for Basic Users */}
       {subscriptionTier === 'basic' && allManageableCalendars.length > 1 && (
@@ -1516,7 +1444,7 @@ const CalendarDashboard = () => {
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 mb-1">
-                🎯 Unlock All Your Calendars
+                Unlock All Your Calendars
               </p>
               <p className="text-xs text-gray-600">
                 You have access to {allManageableCalendars.length} calendars but can only manage 1 with Basic plan
