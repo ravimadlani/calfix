@@ -235,7 +235,17 @@ export function SchedulePage() {
     setCalendarLoading(true);
     try {
       const calendars = await fetchProviderCalendarList();
-      const manageable = calendars.filter(cal => cal.accessRole === 'owner' || cal.accessRole === 'writer');
+
+      // Filter to manageable user calendars (same logic as RecurringPage)
+      const manageable = calendars.filter(cal => {
+        const hasWriteAccess = cal.accessRole === 'owner' || cal.accessRole === 'writer';
+        const isNotResource = !cal.id.includes('resource.calendar.google.com');
+        const isUserCalendar = cal.id.includes('@') && (
+          cal.primary ||
+          (!cal.id.includes('@group.') && !cal.id.includes('@resource.'))
+        );
+        return hasWriteAccess && isNotResource && (isUserCalendar || cal.primary);
+      });
 
       // Store ALL manageable calendars for upgrade teaser
       setAllManageableCalendars(manageable);
