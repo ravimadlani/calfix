@@ -640,11 +640,11 @@ const RecurringPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Page Header - Using shared component */}
+      {/* Page Header - sticky variant for consistency */}
       <PageHeader
         title="Recurring Meetings"
         description="Audit recurring series, protect focus time, and keep relationships healthy. Filters cover the selected calendar and time window."
-        variant="inline"
+        variant="sticky"
       />
 
       {/* Calendar Management Section - Using shared component */}

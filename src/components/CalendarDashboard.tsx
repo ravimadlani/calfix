@@ -1411,11 +1411,11 @@ const CalendarDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Page Header */}
+      {/* Page Header - sticky variant for consistency */}
       <PageHeader
         title="Dashboard"
         description="Manage your calendar and view your upcoming events"
-        variant="inline"
+        variant="sticky"
       />
 
       {/* Calendar Management Section - Using shared component */}

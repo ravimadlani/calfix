@@ -204,6 +204,12 @@ export function SchedulePage() {
 
   // Subscription state
   const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const [isInTrial, setIsInTrial] = useState(false);
+  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
+  const [maxCalendars, setMaxCalendars] = useState(1);
+  const [allManageableCalendars, setAllManageableCalendars] = useState<CalendarListEntry[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
   const createProviderEvent = activeProvider.calendar.createEvent;
@@ -225,19 +231,34 @@ export function SchedulePage() {
   // Fetch available calendars on mount
   const fetchCalendars = useCallback(async () => {
     if (!isCalendarConnected || !fetchProviderCalendarList) return;
+    setCalendarLoading(true);
     try {
       const calendars = await fetchProviderCalendarList();
       const manageable = calendars.filter(cal => cal.accessRole === 'owner' || cal.accessRole === 'writer');
-      setAvailableCalendars(manageable);
+
+      // Store ALL manageable calendars for upgrade teaser
+      setAllManageableCalendars(manageable);
+
+      // Filter based on subscription tier
+      let calendarsToShow = manageable;
+      if (!hasMultiCalendarAccess) {
+        calendarsToShow = manageable.filter(cal => cal.primary);
+      } else {
+        calendarsToShow = manageable.slice(0, maxCalendars);
+      }
+
+      setAvailableCalendars(calendarsToShow);
 
       // If current selection is not in the list, default to first
-      if (!manageable.find(cal => cal.id === managedCalendarId) && manageable.length > 0) {
-        setManagedCalendarId(manageable[0].id);
+      if (!calendarsToShow.find(cal => cal.id === managedCalendarId) && calendarsToShow.length > 0) {
+        setManagedCalendarId(calendarsToShow[0].id);
       }
     } catch (error) {
       console.error('Failed to fetch calendar list:', error);
+    } finally {
+      setCalendarLoading(false);
     }
-  }, [fetchProviderCalendarList, isCalendarConnected, managedCalendarId]);
+  }, [fetchProviderCalendarList, isCalendarConnected, managedCalendarId, hasMultiCalendarAccess, maxCalendars]);
 
   useEffect(() => {
     fetchCalendars();
@@ -261,10 +282,15 @@ export function SchedulePage() {
       if (response.ok) {
         const data = await response.json();
         setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
+        setSubscriptionTier(data.subscriptionTier);
+        setIsInTrial(data.isInTrial);
+        setDaysLeftInTrial(data.daysLeftInTrial);
+        setMaxCalendars(data.maxCalendars);
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
       setHasMultiCalendarAccess(false);
+      setSubscriptionTier('basic');
     }
   }, [user?.id]);
 
@@ -1506,7 +1532,7 @@ Thanks!`;
         {/* New Meeting View */}
         {activeView === 'new' && (
           <>
-        {/* Calendar Selector - Using shared component with compact variant */}
+        {/* Calendar Selector - Using shared component with full features */}
         {availableCalendars.length > 0 && (
           <div className="mb-6">
             <CalendarSelectorCard
@@ -1514,10 +1540,17 @@ Thanks!`;
               managedCalendarId={managedCalendarId}
               onCalendarChange={setManagedCalendarId}
               hasMultiCalendarAccess={hasMultiCalendarAccess}
-              showProviderSwitcher={false}
-              showActionButtons={false}
-              showResetButton={false}
-              variant="compact"
+              subscriptionTier={subscriptionTier || undefined}
+              isInTrial={isInTrial}
+              daysLeftInTrial={daysLeftInTrial}
+              allManageableCalendars={allManageableCalendars}
+              maxCalendars={maxCalendars}
+              showProviderSwitcher={true}
+              showActionButtons={true}
+              showResetButton={true}
+              onRefresh={fetchCalendars}
+              onPreferences={() => {/* TODO: Add preferences modal */}}
+              loading={calendarLoading}
             />
           </div>
         )}
