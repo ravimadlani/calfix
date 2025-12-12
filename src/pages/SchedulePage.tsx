@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import { useSupabaseClient } from '../lib/supabase';
 import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButtons';
 import { ActiveHoldsSection } from '../components/scheduling/ActiveHoldsSection';
 import { SaveTemplateModal } from '../components/scheduling/SaveTemplateModal';
 import { PageHeader, CalendarSelectorCard } from '../components/shared';
-import type { CalendarListEntry } from '../types';
-import type { HoldParticipant, TemplateConfig, TemplateParticipant } from '../types/scheduling';
+import { useSelectedCalendarId } from '../components/shared/CalendarSelectorCard';
+import type { HoldParticipant, TemplateConfig } from '../types/scheduling';
 
 const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
 
@@ -198,121 +198,19 @@ const roundToNextHalfHour = (date: Date) => {
 export function SchedulePage() {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { getToken } = useAuth();
   const supabase = useSupabaseClient();
-  const { activeProvider, isAuthenticated: isCalendarConnected } = useCalendarProvider();
+  const { activeProvider } = useCalendarProvider();
 
-  // Subscription state
-  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
-  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
-  const [isInTrial, setIsInTrial] = useState(false);
-  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
-  const [maxCalendars, setMaxCalendars] = useState(1);
-  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
-  const [allManageableCalendars, setAllManageableCalendars] = useState<CalendarListEntry[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState(false);
+  // Use the hook to get the currently selected calendar ID
+  const managedCalendarId = useSelectedCalendarId();
+
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
   const createProviderEvent = activeProvider.calendar.createEvent;
   const deleteProviderEvent = activeProvider.calendar.deleteEvent;
-  const fetchProviderCalendarList = activeProvider.calendar.fetchCalendarList;
-
-  // Calendar selector state
-  const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([]);
-  const [managedCalendarId, setManagedCalendarId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY) || 'primary';
-    }
-    return 'primary';
-  });
 
   // Get host email from user's primary email
   const hostEmail = user?.primaryEmailAddress?.emailAddress || null;
-
-  // Fetch available calendars on mount
-  const fetchCalendars = useCallback(async () => {
-    if (!isCalendarConnected || !fetchProviderCalendarList) return;
-    setCalendarLoading(true);
-    try {
-      const calendars = await fetchProviderCalendarList();
-
-      // Filter to manageable user calendars (same logic as RecurringPage)
-      const manageable = calendars.filter(cal => {
-        const hasWriteAccess = cal.accessRole === 'owner' || cal.accessRole === 'writer';
-        const isNotResource = !cal.id.includes('resource.calendar.google.com');
-        const isUserCalendar = cal.id.includes('@') && (
-          cal.primary ||
-          (!cal.id.includes('@group.') && !cal.id.includes('@resource.'))
-        );
-        return hasWriteAccess && isNotResource && (isUserCalendar || cal.primary);
-      });
-
-      // Store ALL manageable calendars for upgrade teaser
-      setAllManageableCalendars(manageable);
-
-      // Filter based on subscription tier
-      let calendarsToShow = manageable;
-      if (!hasMultiCalendarAccess) {
-        calendarsToShow = manageable.filter(cal => cal.primary);
-      } else {
-        calendarsToShow = manageable.slice(0, maxCalendars);
-      }
-
-      setAvailableCalendars(calendarsToShow);
-
-      // If current selection is not in the list, default to first
-      if (!calendarsToShow.find(cal => cal.id === managedCalendarId) && calendarsToShow.length > 0) {
-        setManagedCalendarId(calendarsToShow[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch calendar list:', error);
-    } finally {
-      setCalendarLoading(false);
-    }
-  }, [fetchProviderCalendarList, isCalendarConnected, managedCalendarId, hasMultiCalendarAccess, maxCalendars]);
-
-  useEffect(() => {
-    if (!subscriptionLoaded) return;
-    fetchCalendars();
-  }, [fetchCalendars, subscriptionLoaded]);
-
-  // Persist calendar selection to localStorage
-  useEffect(() => {
-    if (managedCalendarId) {
-      window.localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
-    }
-  }, [managedCalendarId]);
-
-  // Check subscription tier for multi-calendar access
-  const checkSubscription = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/user/subscription?userId=${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
-        setSubscriptionTier(data.subscriptionTier);
-        setIsInTrial(data.isInTrial);
-        setDaysLeftInTrial(data.daysLeftInTrial);
-        setMaxCalendars(data.maxCalendars);
-      }
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      setHasMultiCalendarAccess(false);
-      setSubscriptionTier('basic');
-    } finally {
-      setSubscriptionLoaded(true);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      checkSubscription();
-    }
-  }, [checkSubscription, user?.id]);
 
   const defaultTimezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
@@ -380,7 +278,10 @@ export function SchedulePage() {
     setSearchWindowDays(config.searchWindowDays);
 
     if (config.calendarId) {
-      setManagedCalendarId(config.calendarId);
+      // Update localStorage - the useSelectedCalendarId hook will pick up the change
+      localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, config.calendarId);
+      // Trigger storage event for same-tab updates
+      window.dispatchEvent(new Event('storage'));
     }
 
     // Convert TemplateParticipant[] to Participant[]
@@ -423,20 +324,18 @@ export function SchedulePage() {
 
   // Update host participant when calendar selection changes
   useEffect(() => {
-    const selectedCalendar = availableCalendars.find(c => c.id === managedCalendarId);
-    if (selectedCalendar) {
+    if (managedCalendarId && managedCalendarId !== 'primary') {
       setParticipants(prev => prev.map(p =>
         p.role === 'host'
           ? {
               ...p,
               calendarId: managedCalendarId,
-              displayName: selectedCalendar.summary || 'Primary Calendar',
-              email: selectedCalendar.id
+              email: managedCalendarId
             }
           : p
       ));
     }
-  }, [managedCalendarId, availableCalendars]);
+  }, [managedCalendarId]);
 
   useEffect(() => {
     if (step !== 3) {
@@ -1546,28 +1445,15 @@ Thanks!`;
         {/* New Meeting View */}
         {activeView === 'new' && (
           <>
-        {/* Calendar Selector - Using shared component with full features */}
-        {availableCalendars.length > 0 && (
-          <div className="mb-6">
-            <CalendarSelectorCard
-              availableCalendars={availableCalendars}
-              managedCalendarId={managedCalendarId}
-              onCalendarChange={setManagedCalendarId}
-              hasMultiCalendarAccess={hasMultiCalendarAccess}
-              subscriptionTier={subscriptionTier || undefined}
-              isInTrial={isInTrial}
-              daysLeftInTrial={daysLeftInTrial}
-              allManageableCalendars={allManageableCalendars}
-              maxCalendars={maxCalendars}
-              showProviderSwitcher={true}
-              showActionButtons={true}
-              showResetButton={true}
-              onRefresh={fetchCalendars}
-              onPreferences={() => {/* TODO: Add preferences modal */}}
-              loading={calendarLoading}
-            />
-          </div>
-        )}
+        {/* Calendar Selector - Self-contained component that handles its own data fetching */}
+        <div className="mb-6">
+          <CalendarSelectorCard
+            showProviderSwitcher={true}
+            showActionButtons={true}
+            showResetButton={true}
+            onPreferences={() => {/* TODO: Add preferences modal */}}
+          />
+        </div>
 
         {/* Quick Schedule Section - only show on step 1 */}
         {step === 1 && (

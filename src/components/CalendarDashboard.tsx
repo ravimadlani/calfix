@@ -14,10 +14,10 @@ import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
 import DashboardTabs from './DashboardTabs';
 import { PageHeader, CalendarSelectorCard } from './shared';
+import { useSelectedCalendarId } from './shared/CalendarSelectorCard';
 
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps } from '../services/calendarAnalytics';
-import { syncCalendarsToSupabase } from '../services/calendarSync';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import type { CalendarEvent, CalendarProviderId, IntentActionHandlers } from '../types';
@@ -97,7 +97,6 @@ const CalendarDashboard = () => {
     fetchEvents: fetchProviderEvents,
     createEvent: createProviderEvent,
     deleteEvent: deleteProviderEvent,
-    fetchCalendarList: fetchProviderCalendarList,
     addConferenceLink: providerAddConferenceLink
   } = calendarApi;
 
@@ -112,13 +111,7 @@ const CalendarDashboard = () => {
   } = helperApi;
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null); // Start with null until we know the tier
-  const [maxCalendars, setMaxCalendars] = useState(1);
-  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [isInTrial, setIsInTrial] = useState(false);
-  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
-  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false); // Track if subscription check is done
   const [currentView, setCurrentView] = useState('today');
   const [events, setEvents] = useState([]);
   const [eventsWithGaps, setEventsWithGaps] = useState([]);
@@ -130,12 +123,8 @@ const CalendarDashboard = () => {
   const [extendedEventsForFlights, setExtendedEventsForFlights] = useState([]); // Extended events for flight analysis
   const [currentTimeRange, setCurrentTimeRange] = useState(null);
   const [workflowModal, setWorkflowModal] = useState({ isOpen: false, actionType: null });
-  // Initialize with 'primary' - will be updated when calendars are loaded
-  // The actual primary calendar comes from the database (via sync) or provider API
-  // localStorage is only used as a cache for the user's last selection
-  const [managedCalendarId, setManagedCalendarId] = useState('primary');
-  const [availableCalendars, setAvailableCalendars] = useState([]);
-  const [allManageableCalendars, setAllManageableCalendars] = useState([]); // Track ALL calendars user has access to
+  // Use the hook to get the currently selected calendar ID from CalendarSelectorCard
+  const managedCalendarId = useSelectedCalendarId();
   const [loggingInitialized, setLoggingInitialized] = useState(false);
   const [healthScoreResult, setHealthScoreResult] = useState(null);
   const [isCalculatingHealthScore, setIsCalculatingHealthScore] = useState(true);
@@ -146,14 +135,9 @@ const CalendarDashboard = () => {
     null;
 
   const calendarOwnerEmail = useMemo(() => {
-    const selectedCalendar =
-      availableCalendars.find((cal) => cal.id === managedCalendarId) ||
-      (managedCalendarId === 'primary'
-        ? availableCalendars.find(cal => cal.primary)
-        : undefined);
-
-    const candidateId = typeof selectedCalendar?.id === 'string'
-      ? selectedCalendar.id.toLowerCase()
+    // If managedCalendarId looks like an email, use it
+    const candidateId = typeof managedCalendarId === 'string'
+      ? managedCalendarId.toLowerCase()
       : null;
 
     const candidateLooksService = candidateId ? candidateId.includes('calendar.google.com') : false;
@@ -162,16 +146,13 @@ const CalendarDashboard = () => {
       return candidateId;
     }
 
+    // Fall back to user's primary email
     if (primaryClerkEmail) {
       return primaryClerkEmail.toLowerCase();
     }
 
-    if (candidateId && candidateId.includes('@')) {
-      return candidateId;
-    }
-
     return null;
-  }, [availableCalendars, managedCalendarId, primaryClerkEmail]);
+  }, [managedCalendarId, primaryClerkEmail]);
 
   const requireHelper = <T extends (...args: unknown[]) => unknown>(helper: T | undefined, message: string): T | null => {
     if (!helper) {
@@ -206,176 +187,6 @@ const CalendarDashboard = () => {
     };
     isReturningHome?: boolean;
   };
-
-  // Check user's subscription tier
-  const checkSubscription = useCallback(async () => {
-    const userId = clerkUser?.id;
-
-    if (!userId) {
-      setSubscriptionLoaded(true); // Mark as loaded even if no user
-      return;
-    }
-
-    try {
-      // Get Clerk JWT token for API authentication
-      const token = await getToken();
-      const response = await fetch(`/api/user/subscription?userId=${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptionTier(data.subscriptionTier);
-        setMaxCalendars(data.maxCalendars);
-        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
-        setIsInTrial(data.isInTrial);
-        setDaysLeftInTrial(data.daysLeftInTrial);
-
-        console.log('Subscription check:', {
-          tier: data.subscriptionTier,
-          maxCalendars: data.maxCalendars,
-          hasMultiCalendarAccess: data.hasMultiCalendarAccess,
-          isInTrial: data.isInTrial,
-          daysLeftInTrial: data.daysLeftInTrial
-        });
-      }
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      // Default to basic tier on error
-      setSubscriptionTier('basic');
-      setMaxCalendars(1);
-      setHasMultiCalendarAccess(false);
-    } finally {
-      // Always mark subscription as loaded
-      setSubscriptionLoaded(true);
-    }
-  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
-  }, [clerkUser?.id]);
-
-  // Fetch list of calendars user has access to
-  const loadCalendarList = useCallback(async () => {
-    try {
-      const calendars = await fetchProviderCalendarList();
-      console.log('All calendars:', calendars);
-
-      // Filter to only show calendars where user has write access (owner or writer)
-      // Exclude resources, groups, and read-only calendars
-      const manageable = calendars.filter(cal => {
-        // Must have owner or writer access
-        const hasWriteAccess = cal.accessRole === 'owner' || cal.accessRole === 'writer';
-
-        // Exclude resource calendars (conference rooms, equipment)
-        const isNotResource = !cal.id.includes('resource.calendar.google.com');
-
-        // Must be a user calendar (typically ends with @gmail.com or custom domain)
-        const isUserCalendar = cal.id.includes('@') && (
-          cal.primary ||
-          !cal.id.includes('@group.') &&
-          !cal.id.includes('@resource.')
-        );
-
-        return hasWriteAccess && isNotResource && (isUserCalendar || cal.primary);
-      });
-
-      console.log('Manageable calendars (filtered):', manageable);
-
-      // Store ALL manageable calendars for upgrade teaser detection
-      setAllManageableCalendars(manageable);
-
-      // Filter calendars based on subscription tier and maxCalendars limit
-      let calendarsToShow = manageable;
-      if (!hasMultiCalendarAccess) {
-        // Trial/Basic tier: Only show primary calendar
-        calendarsToShow = manageable.filter(cal => cal.primary);
-        console.log(`${subscriptionTier} tier: Limiting to primary calendar only`);
-        console.log(`[Upgrade Opportunity] User has access to ${manageable.length} calendars but can only use 1`);
-      } else {
-        // EA/EA Pro tier: Show up to maxCalendars
-        calendarsToShow = manageable.slice(0, maxCalendars);
-        console.log(`${subscriptionTier} tier: Showing ${calendarsToShow.length} calendar(s) (max: ${maxCalendars})`);
-      }
-
-      setAvailableCalendars(calendarsToShow);
-
-      // Determine the primary calendar ID
-      // Priority: 1) localStorage cache (user's explicit selection)
-      //           2) Provider's primary flag (Google/Outlook marks one as primary)
-      //           3) First available calendar
-      const storedCalendarId = localStorage.getItem('managed_calendar_id');
-      const providerPrimaryId = manageable.find(c => c.primary)?.id;
-      const firstCalendarId = calendarsToShow[0]?.id;
-
-      let selectedCalendarId: string;
-      if (storedCalendarId && calendarsToShow.some(c => c.id === storedCalendarId)) {
-        // User previously selected this calendar and it's still available
-        selectedCalendarId = storedCalendarId;
-        console.log('[CalendarDashboard] Using cached calendar selection:', storedCalendarId);
-      } else if (providerPrimaryId && calendarsToShow.some(c => c.id === providerPrimaryId)) {
-        // Use the provider's primary calendar
-        selectedCalendarId = providerPrimaryId;
-        console.log('[CalendarDashboard] Using provider primary calendar:', providerPrimaryId);
-      } else if (firstCalendarId) {
-        // Fall back to first available calendar
-        selectedCalendarId = firstCalendarId;
-        console.log('[CalendarDashboard] Using first available calendar:', firstCalendarId);
-      } else {
-        selectedCalendarId = 'primary';
-        console.log('[CalendarDashboard] No calendars available, using "primary" alias');
-      }
-
-      // Update state if different from current
-      if (selectedCalendarId !== managedCalendarId) {
-        setManagedCalendarId(selectedCalendarId);
-        // Update localStorage cache for future sessions
-        if (selectedCalendarId !== 'primary') {
-          localStorage.setItem('managed_calendar_id', selectedCalendarId);
-        }
-      }
-
-      // Sync calendars to Supabase if user is authenticated with Clerk
-      console.log('[CalendarDashboard] Checking if should sync:', {
-        hasClerkUser: !!clerkUser?.id,
-        clerkUserId: clerkUser?.id,
-        manageableCount: manageable.length,
-        primaryCalendar: manageable.find(c => c.primary),
-        selectedCalendarId
-      });
-
-      if (clerkUser?.id && manageable.length > 0) {
-        try {
-          console.log('[CalendarDashboard] Starting calendar sync to Supabase...');
-          const token = await getToken();
-          await syncCalendarsToSupabase(
-            clerkUser.id,
-            activeProviderId,
-            manageable,
-            providerPrimaryId, // Use provider's primary for database consistency
-            token
-          );
-          console.log('[CalendarDashboard] Successfully synced calendars to Supabase');
-        } catch (syncError) {
-          console.error('[CalendarDashboard] Failed to sync calendars to Supabase:', syncError);
-          // Don't fail the whole operation if sync fails
-        }
-      } else {
-        console.log('[CalendarDashboard] Skipping sync - no Clerk user or no manageable calendars');
-      }
-    } catch (error) {
-      console.error('Error loading calendar list:', error);
-      // If we can't fetch the list, still allow manual entry
-    }
-  // Note: getToken and managedCalendarId are intentionally excluded from deps
-  // - getToken is stable from Clerk but causes infinite loops if included
-  // - managedCalendarId changes during this effect so including it would cause loops
-  }, [
-    activeProviderId,
-    clerkUser?.id,
-    fetchProviderCalendarList,
-    hasMultiCalendarAccess,
-    maxCalendars,
-    subscriptionTier
-  ]);
 
   // Fetch events based on current view
   const loadEvents = useCallback(async (calendarIdOverride: string | null = null) => {
@@ -559,39 +370,6 @@ const CalendarDashboard = () => {
     }
   }, [calendarOwnerEmail, currentView, fetchProviderEvents, managedCalendarId]);
 
-  // Update managed calendar and persist to localStorage
-  const updateManagedCalendar = useCallback(async (calendarId: string) => {
-    const trimmedId = calendarId.trim() || 'primary';
-    console.log(`[Calendar Switch] Starting switch from ${managedCalendarId} to ${trimmedId}`);
-
-    setEvents([]);
-    setEventsWithGaps([]);
-    setExtendedEventsForFlights([]);
-    setAnalytics(null);
-    setSelectedDay(null);
-
-    setManagedCalendarId(trimmedId);
-    localStorage.setItem('managed_calendar_id', trimmedId);
-
-    console.log(`[Calendar Switch] State updated, calling loadEvents for calendar: ${trimmedId}`);
-
-    // Log the calendar switch
-    logUserAction('calendar_switch', {
-      calendarId: trimmedId,
-      metadata: {
-        previousCalendar: managedCalendarId,
-        newCalendar: trimmedId
-      }
-    });
-
-    try {
-      await loadEvents(trimmedId);
-      console.log(`[Calendar Switch] Successfully loaded events for ${trimmedId}`);
-    } catch (error) {
-      console.error(`[Calendar Switch] Error loading events for ${trimmedId}:`, error);
-    }
-  }, [loadEvents, managedCalendarId]);
-
   // Check active provider authentication on mount and after OAuth redirect
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -637,13 +415,6 @@ const CalendarDashboard = () => {
     setCheckingAuth(false);
   }, [activeProviderId, isProviderAuthenticated, setActiveProvider]);
 
-  // Check subscription on mount
-  useEffect(() => {
-    if (clerkUser?.id) {
-      checkSubscription();
-    }
-  }, [checkSubscription, clerkUser?.id]);
-
   // Initialize logging services when user is authenticated
   useEffect(() => {
     const initializeLogging = async () => {
@@ -685,29 +456,16 @@ const CalendarDashboard = () => {
   // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
   }, [clerkUser?.id, loggingInitialized]);
 
-  // Load calendar list on mount (only after subscription is loaded)
+  // Load events when view or calendar changes
   useEffect(() => {
-    if (isCalendarConnected && subscriptionLoaded && maxCalendars > 0) {
-      console.info('[CalendarDashboard] Loading calendar list', {
-        isCalendarConnected,
-        subscriptionLoaded,
-        maxCalendars,
-        hasMultiCalendarAccess
-      });
-      loadCalendarList();
-    }
-  }, [isCalendarConnected, subscriptionLoaded, maxCalendars, hasMultiCalendarAccess, loadCalendarList]);
-
-  // Load events when view changes (only after subscription is loaded)
-  useEffect(() => {
-    if (isCalendarConnected && subscriptionLoaded) {
-      console.info('[CalendarDashboard] Loading events after view change', { currentView });
+    if (isCalendarConnected) {
+      console.info('[CalendarDashboard] Loading events', { currentView, managedCalendarId });
       setEvents([]);
       setEventsWithGaps([]);
       loadEvents();
       setSelectedDay(null);
     }
-  }, [currentView, isCalendarConnected, loadEvents, subscriptionLoaded]);
+  }, [currentView, isCalendarConnected, loadEvents, managedCalendarId]);
 
   // Calculate and save health score when both services are initialized and analytics are available
   useEffect(() => {
@@ -1349,8 +1107,8 @@ const CalendarDashboard = () => {
     }
   };
 
-  // Show loading while checking authentication or subscription
-  if (checkingAuth || (clerkUser && !subscriptionLoaded)) {
+  // Show loading while checking authentication
+  if (checkingAuth) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -1418,47 +1176,14 @@ const CalendarDashboard = () => {
         variant="sticky"
       />
 
-      {/* Calendar Management Section - Using shared component */}
+      {/* Calendar Management Section - Self-contained component that handles its own data fetching */}
       <CalendarSelectorCard
-        availableCalendars={availableCalendars}
-        managedCalendarId={managedCalendarId}
-        onCalendarChange={updateManagedCalendar}
-        hasMultiCalendarAccess={hasMultiCalendarAccess}
-        subscriptionTier={subscriptionTier || undefined}
-        isInTrial={isInTrial}
-        daysLeftInTrial={daysLeftInTrial}
-        allManageableCalendars={allManageableCalendars}
-        maxCalendars={maxCalendars}
         showProviderSwitcher={true}
         showActionButtons={true}
         showResetButton={true}
-        onRefresh={() => loadEvents()}
         onPreferences={() => {/* TODO: Add preferences modal */}}
         onUpgrade={() => setShowUpgradeModal(true)}
-        loading={loading}
       />
-
-      {/* Upgrade Banner for Basic Users */}
-      {subscriptionTier === 'basic' && allManageableCalendars.length > 1 && (
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 mb-1">
-                Unlock All Your Calendars
-              </p>
-              <p className="text-xs text-gray-600">
-                You have access to {allManageableCalendars.length} calendars but can only manage 1 with Basic plan
-              </p>
-            </div>
-            <button
-              onClick={() => setShowUpgradeModal(true)}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-lg transition-all transform hover:scale-105 whitespace-nowrap"
-            >
-              Unlock All Calendars
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Header with View Selector and Controls */}
       <div className="flex flex-col gap-4">
@@ -1496,7 +1221,7 @@ const CalendarDashboard = () => {
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        currentTier={(subscriptionTier || 'basic') as 'basic' | 'ea' | 'ea_pro'}
+        currentTier="basic"
       />
 
       {/* Health Score Hero (replaces stats grid) */}

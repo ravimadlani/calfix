@@ -5,15 +5,13 @@ import React, {
   useState
 } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import UpgradeModal from './UpgradeModal';
 import CalendarConnectPrompt from './CalendarConnectPrompt';
 import { PageHeader, CalendarSelectorCard } from './shared';
-import type {
-  CalendarEvent,
-  CalendarListEntry
-} from '../types';
+import { useSelectedCalendarId } from './shared/CalendarSelectorCard';
+import type { CalendarEvent } from '../types';
 import type {
   RecurringAnalyticsResult,
   RecurringSeriesMetrics,
@@ -27,7 +25,6 @@ type FrequencyFilter = 'all' | 'Daily' | 'Weekly' | 'Bi-Weekly' | 'Monthly' | 'I
 type SortKey = 'time-cost' | 'alphabetical' | 'acceptance' | 'attendance';
 
 const ANALYSIS_WINDOW_DAYS = 60;
-const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
 const TABS: { key: TabKey; label: string; description: string }[] = [
   { key: 'health', label: 'Health Check', description: 'See recurring series with load, flags, and opportunities.' },
   { key: 'relationships', label: '1:1s', description: 'Track relationship cadence and catch overdue connections.' },
@@ -258,21 +255,6 @@ const AuditFlagRow: React.FC<{ label: string; count: number; helper: string }> =
   </div>
 );
 
-const determineOwnerEmail = (
-  selectedCalendar: CalendarListEntry | undefined,
-  fallbackEmail: string | null | undefined
-) => {
-  if (selectedCalendar?.id && selectedCalendar.id.includes('@') && !selectedCalendar.id.includes('calendar.google.com')) {
-    return selectedCalendar.id;
-  }
-
-  if (fallbackEmail) {
-    return fallbackEmail;
-  }
-
-  return selectedCalendar?.id || null;
-};
-
 const audienceFilterMatches = (item: RecurringSeriesMetrics, filter: AudienceFilter) => {
   if (item.isPlaceholder) {
     return filter === 'all';
@@ -310,17 +292,16 @@ const applySort = (series: RecurringSeriesMetrics[], sortKey: SortKey) => {
 
 const RecurringPage: React.FC = () => {
   const { user } = useUser();
-  const { getToken } = useAuth();
   const {
     activeProvider,
     activeProviderId,
     isAuthenticated: providerIsAuthenticated
   } = useCalendarProvider();
 
-  const {
-    fetchEvents: fetchProviderEvents,
-    fetchCalendarList: fetchProviderCalendarList
-  } = activeProvider.calendar;
+  // Use the hook to get the currently selected calendar ID
+  const managedCalendarId = useSelectedCalendarId();
+
+  const { fetchEvents: fetchProviderEvents } = activeProvider.calendar;
 
   const [activeTab, setActiveTab] = useState<TabKey>('health');
   const [rangeMode, setRangeMode] = useState<'retro' | 'forward'>('retro');
@@ -333,24 +314,6 @@ const RecurringPage: React.FC = () => {
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
   const [relationshipFilter, setRelationshipFilter] = useState<'all' | 'recurring' | 'one-off'>('all');
   const [relationshipDaysFilter, setRelationshipDaysFilter] = useState<'any' | 'overdue' | 'due-soon'>('any');
-  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
-  const [maxCalendars, setMaxCalendars] = useState(1);
-  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
-  const [isInTrial, setIsInTrial] = useState(false);
-  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
-  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
-  const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([]);
-  const [allManageableCalendars, setAllManageableCalendars] = useState<CalendarListEntry[]>([]);
-  const [managedCalendarId, setManagedCalendarId] = useState<string>(() => {
-    if (typeof window === 'undefined') {
-      return 'primary';
-    }
-    const storedId = window.localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY);
-    if (storedId && storedId !== '[object Object]') {
-      return storedId;
-    }
-    return 'primary';
-  });
   const [analytics, setAnalytics] = useState<RecurringAnalyticsResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -359,20 +322,6 @@ const RecurringPage: React.FC = () => {
     user?.primaryEmailAddress?.emailAddress ||
     user?.emailAddresses?.[0]?.emailAddress ||
     null;
-
-  const selectedCalendar = useMemo(
-    () => availableCalendars.find(cal => cal.id === managedCalendarId) || availableCalendars[0],
-    [availableCalendars, managedCalendarId]
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
-    } catch (error) {
-      console.warn('Unable to persist calendar selection', error);
-    }
-  }, [managedCalendarId]);
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -388,100 +337,13 @@ const RecurringPage: React.FC = () => {
     [providerIsAuthenticated, activeProviderId]
   );
 
-  const ownerEmail = useMemo(
-    () => determineOwnerEmail(selectedCalendar, fallbackEmail),
-    [selectedCalendar, fallbackEmail]
-  );
-
-  const checkSubscription = useCallback(async () => {
-    const userId = user?.id;
-    if (!userId) {
-      setSubscriptionLoaded(true);
-      return;
+  // For owner email, use the managedCalendarId if it looks like an email
+  const ownerEmail = useMemo(() => {
+    if (managedCalendarId && managedCalendarId.includes('@') && !managedCalendarId.includes('calendar.google.com')) {
+      return managedCalendarId;
     }
-
-    try {
-      // Get Clerk JWT token for API authentication
-      const token = await getToken();
-      const response = await fetch(`/api/user/subscription?userId=${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptionTier(data.subscriptionTier);
-        setMaxCalendars(data.maxCalendars);
-        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
-        setIsInTrial(data.isInTrial);
-        setDaysLeftInTrial(data.daysLeftInTrial);
-      } else {
-        setSubscriptionTier('basic');
-        setMaxCalendars(1);
-        setHasMultiCalendarAccess(false);
-      }
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      setSubscriptionTier('basic');
-      setMaxCalendars(1);
-      setHasMultiCalendarAccess(false);
-    } finally {
-      setSubscriptionLoaded(true);
-    }
-  // Note: getToken is intentionally excluded from deps - it's stable from Clerk but causes infinite loops if included
-  }, [user?.id]);
-
-  useEffect(() => {
-    checkSubscription();
-  }, [checkSubscription]);
-
-  const loadCalendarList = useCallback(async () => {
-    if (!isCalendarConnected) {
-      console.info('[Recurring] Skipping calendar list load because provider is not connected');
-      setAvailableCalendars([]);
-      setAllManageableCalendars([]);
-      return;
-    }
-    try {
-      const calendars = await fetchProviderCalendarList();
-
-      const manageable = calendars.filter(cal => {
-        const hasWriteAccess = cal.accessRole === 'owner' || cal.accessRole === 'writer';
-        const isNotResource = !cal.id.includes('resource.calendar.google.com');
-        const isUserCalendar = cal.id.includes('@') && (
-          cal.primary ||
-          (!cal.id.includes('@group.') && !cal.id.includes('@resource.'))
-        );
-        return hasWriteAccess && isNotResource && (isUserCalendar || cal.primary);
-      });
-
-      setAllManageableCalendars(manageable);
-
-      let calendarsToShow = manageable;
-      if (!hasMultiCalendarAccess) {
-        calendarsToShow = manageable.filter(cal => cal.primary);
-      } else {
-        calendarsToShow = manageable.slice(0, maxCalendars);
-      }
-
-      if (calendarsToShow.length === 0) {
-        calendarsToShow = calendars;
-      }
-
-      setAvailableCalendars(calendarsToShow);
-
-      if (!calendarsToShow.find(cal => cal.id === managedCalendarId) && calendarsToShow.length > 0) {
-        setManagedCalendarId(calendarsToShow[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch calendar list:', error);
-    }
-  }, [fetchProviderCalendarList, hasMultiCalendarAccess, isCalendarConnected, managedCalendarId, maxCalendars]);
-
-  useEffect(() => {
-    if (!subscriptionLoaded) return;
-    loadCalendarList();
-  }, [loadCalendarList, subscriptionLoaded, activeProviderId]);
+    return fallbackEmail;
+  }, [managedCalendarId, fallbackEmail]);
 
   useEffect(() => {
     if (!includePlaceholders) {
@@ -490,7 +352,7 @@ const RecurringPage: React.FC = () => {
   }, [includePlaceholders]);
 
   const loadRecurringData = useCallback(async () => {
-    if (!subscriptionLoaded || !isCalendarConnected) return;
+    if (!isCalendarConnected) return;
     const calendarIdToUse = managedCalendarId || 'primary';
 
     setLoading(true);
@@ -548,12 +410,11 @@ const RecurringPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchProviderEvents, isCalendarConnected, managedCalendarId, ownerEmail, rangeMode, subscriptionLoaded]);
+  }, [fetchProviderEvents, isCalendarConnected, managedCalendarId, ownerEmail, rangeMode]);
 
   useEffect(() => {
-    if (!subscriptionLoaded) return;
     loadRecurringData();
-  }, [loadRecurringData, subscriptionLoaded]);
+  }, [loadRecurringData]);
 
   const toggleInternalQuickFilter = () => {
     setShowFlaggedOnly(false);
@@ -622,17 +483,6 @@ const RecurringPage: React.FC = () => {
     return summarizeRecurringSeries(baseline, 40);
   }, [analytics, includePlaceholders]);
 
-  if (!subscriptionLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!isCalendarConnected) {
     console.info('[Recurring] Rendering CalendarConnectPrompt - provider not connected');
     return <CalendarConnectPrompt />;
@@ -647,24 +497,13 @@ const RecurringPage: React.FC = () => {
         variant="sticky"
       />
 
-      {/* Calendar Management Section - Using shared component */}
+      {/* Calendar Management Section - Self-contained component that handles its own data fetching */}
       <CalendarSelectorCard
-        availableCalendars={availableCalendars}
-        managedCalendarId={managedCalendarId}
-        onCalendarChange={setManagedCalendarId}
-        hasMultiCalendarAccess={hasMultiCalendarAccess}
-        subscriptionTier={subscriptionTier || undefined}
-        isInTrial={isInTrial}
-        daysLeftInTrial={daysLeftInTrial}
-        allManageableCalendars={allManageableCalendars}
-        maxCalendars={maxCalendars}
         showProviderSwitcher={true}
         showActionButtons={true}
         showResetButton={false}
-        onRefresh={loadRecurringData}
         onPreferences={() => {/* TODO: Add preferences modal */}}
         onUpgrade={() => setShowUpgradeModal(true)}
-        loading={loading}
       />
 
       <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1 text-sm font-medium w-fit">
@@ -717,27 +556,6 @@ const RecurringPage: React.FC = () => {
           </label>
         )}
       </div>
-
-      {subscriptionTier === 'basic' && allManageableCalendars.length > 1 && (
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 mb-1">
-                🎯 Unlock All Your Calendars
-              </p>
-              <p className="text-xs text-gray-600">
-                You have access to {allManageableCalendars.length} calendars but can only manage 1 with Basic plan
-              </p>
-            </div>
-            <button
-              onClick={() => setShowUpgradeModal(true)}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-lg transition-all transform hover:scale-105 whitespace-nowrap"
-            >
-              Unlock All Calendars
-            </button>
-          </div>
-        </div>
-      )}
 
       {loading && (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
@@ -1025,7 +843,7 @@ const RecurringPage: React.FC = () => {
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        currentTier={(subscriptionTier || 'basic') as 'basic' | 'ea' | 'ea_pro'}
+        currentTier="basic"
       />
     </div>
   );
