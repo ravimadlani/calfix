@@ -9,8 +9,7 @@ import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import UpgradeModal from './UpgradeModal';
 import CalendarConnectPrompt from './CalendarConnectPrompt';
-import { PageHeader, CalendarSelectorCard } from './shared';
-import { useSelectedCalendarId } from './shared/CalendarSelectorCard';
+import { PageHeader, CalendarSelectorCard, useSelectedCalendarId } from './shared';
 import type { CalendarEvent } from '../types';
 import type {
   RecurringAnalyticsResult,

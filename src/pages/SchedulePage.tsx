@@ -7,10 +7,8 @@ import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButt
 import { ActiveHoldsSection } from '../components/scheduling/ActiveHoldsSection';
 import { SaveTemplateModal } from '../components/scheduling/SaveTemplateModal';
 import { PageHeader, CalendarSelectorCard } from '../components/shared';
-import { useSelectedCalendarId } from '../components/shared/CalendarSelectorCard';
+import { useSelectedCalendarId, setSelectedCalendarId } from '../hooks/useCalendarSelection';
 import type { HoldParticipant, TemplateConfig } from '../types/scheduling';
-
-const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
 
 type ParticipantRole = 'host' | 'required' | 'optional';
 
@@ -278,10 +276,8 @@ export function SchedulePage() {
     setSearchWindowDays(config.searchWindowDays);
 
     if (config.calendarId) {
-      // Update localStorage - the useSelectedCalendarId hook will pick up the change
-      localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, config.calendarId);
-      // Trigger storage event for same-tab updates
-      window.dispatchEvent(new Event('storage'));
+      // P1-035 FIX: Use centralized setter that properly notifies same-tab listeners
+      setSelectedCalendarId(config.calendarId);
     }
 
     // Convert TemplateParticipant[] to Participant[]

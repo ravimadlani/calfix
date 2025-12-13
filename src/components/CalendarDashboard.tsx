@@ -13,8 +13,7 @@ import UpgradeModal from './UpgradeModal';
 import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
 import DashboardTabs from './DashboardTabs';
-import { PageHeader, CalendarSelectorCard } from './shared';
-import { useSelectedCalendarId } from './shared/CalendarSelectorCard';
+import { PageHeader, CalendarSelectorCard, useSelectedCalendarId } from './shared';
 
 import { getTodayRange, getTomorrowRange, getThisWeekRange, getNextWeekRange, getThisMonthRange, getNextMonthRange } from '../utils/dateHelpers';
 import { calculateAnalytics, getEventsWithGaps } from '../services/calendarAnalytics';

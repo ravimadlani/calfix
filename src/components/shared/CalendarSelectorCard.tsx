@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useCalendarProvider } from '../../context/CalendarProviderContext';
+import { useSubscriptionData } from '../../context/SubscriptionContext';
 import ProviderSwitcher from '../ProviderSwitcher';
 import type { CalendarListEntry } from '../../types';
-
-const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
+import {
+  setSelectedCalendarId,
+  getSelectedCalendarId,
+} from '../../hooks/useCalendarSelection';
 
 /**
  * Props for the CalendarSelectorCard component.
@@ -68,63 +70,35 @@ const CalendarSelectorCard: React.FC<CalendarSelectorCardProps> = ({
   onUpgrade,
   variant = 'default',
 }) => {
-  const { user } = useUser();
-  const { getToken } = useAuth();
   const { activeProvider, isAuthenticated: isCalendarConnected } = useCalendarProvider();
   const fetchProviderCalendarList = activeProvider?.calendar?.fetchCalendarList;
 
-  // Subscription state
-  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
-  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
-  const [isInTrial, setIsInTrial] = useState(false);
-  const [daysLeftInTrial, setDaysLeftInTrial] = useState(0);
-  const [maxCalendars, setMaxCalendars] = useState(1);
-  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
+  // P1-037 FIX: Use cached subscription data from context instead of making API calls
+  const { subscription, isLoaded: subscriptionLoaded } = useSubscriptionData();
+  const hasMultiCalendarAccess = subscription?.hasMultiCalendarAccess ?? false;
+  const subscriptionTier = subscription?.subscriptionTier ?? null;
+  const isInTrial = subscription?.isInTrial ?? false;
+  const daysLeftInTrial = subscription?.daysLeftInTrial ?? 0;
+  const maxCalendars = subscription?.maxCalendars ?? 1;
 
   // Calendar state
   const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([]);
   const [allManageableCalendars, setAllManageableCalendars] = useState<CalendarListEntry[]>([]);
-  const [managedCalendarId, setManagedCalendarId] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY);
-      if (stored && stored !== '[object Object]') {
-        return stored;
-      }
-    }
-    return 'primary';
-  });
+  const [managedCalendarId, setManagedCalendarId] = useState<string>(() => getSelectedCalendarId());
   const [loading, setLoading] = useState(false);
+
+  // P1-036 FIX: Use ref to stabilize onCalendarChange callback
+  // This prevents infinite loops when parent recreates the callback on each render
+  const onCalendarChangeRef = useRef(onCalendarChange);
+  useEffect(() => {
+    onCalendarChangeRef.current = onCalendarChange;
+  }, [onCalendarChange]);
 
   // Derived state
   const selectedCalendar = availableCalendars.find(c => c.id === managedCalendarId);
   const primaryCalendar = availableCalendars.find(c => c.primary);
   const isManagingNonPrimary = managedCalendarId !== 'primary' &&
     primaryCalendar && primaryCalendar.id !== managedCalendarId;
-
-  // Check subscription status
-  const checkSubscription = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/user/subscription?userId=${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
-        setSubscriptionTier(data.subscriptionTier);
-        setIsInTrial(data.isInTrial);
-        setDaysLeftInTrial(data.daysLeftInTrial);
-        setMaxCalendars(data.maxCalendars);
-      }
-    } catch (error) {
-      console.error('[CalendarSelectorCard] Error checking subscription:', error);
-      setHasMultiCalendarAccess(false);
-      setSubscriptionTier('basic');
-    } finally {
-      setSubscriptionLoaded(true);
-    }
-  }, [user?.id, getToken]);
 
   // Fetch calendar list
   const fetchCalendars = useCallback(async () => {
@@ -161,37 +135,37 @@ const CalendarSelectorCard: React.FC<CalendarSelectorCardProps> = ({
       if (!calendarsToShow.find(cal => cal.id === managedCalendarId) && calendarsToShow.length > 0) {
         const newId = calendarsToShow[0].id;
         setManagedCalendarId(newId);
-        onCalendarChange?.(newId);
+        // P1-036 FIX: Use ref instead of direct callback to avoid infinite loops
+        onCalendarChangeRef.current?.(newId);
       }
     } catch (error) {
       console.error('[CalendarSelectorCard] Failed to fetch calendar list:', error);
     } finally {
       setLoading(false);
     }
-  }, [fetchProviderCalendarList, isCalendarConnected, hasMultiCalendarAccess, maxCalendars, managedCalendarId, onCalendarChange]);
+    // P1-036 FIX: Removed onCalendarChange from deps - using ref instead
+  }, [fetchProviderCalendarList, isCalendarConnected, hasMultiCalendarAccess, maxCalendars, managedCalendarId]);
 
-  // Initialize subscription check on mount
-  useEffect(() => {
-    checkSubscription();
-  }, [checkSubscription]);
-
+  // P1-037 FIX: No longer need checkSubscription - using SubscriptionContext
   // Fetch calendars after subscription is loaded
   useEffect(() => {
     if (!subscriptionLoaded) return;
     fetchCalendars();
   }, [subscriptionLoaded, fetchCalendars]);
 
-  // Persist calendar selection to localStorage
+  // P1-035 FIX: Use centralized setter that fires custom events
+  // This ensures same-tab listeners are notified of changes
   useEffect(() => {
     if (managedCalendarId && typeof window !== 'undefined') {
-      localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
+      setSelectedCalendarId(managedCalendarId);
     }
   }, [managedCalendarId]);
 
   // Handle calendar change
   const handleCalendarChange = (calendarId: string) => {
     setManagedCalendarId(calendarId);
-    onCalendarChange?.(calendarId);
+    // P1-036 FIX: Use ref to avoid stale closure issues
+    onCalendarChangeRef.current?.(calendarId);
   };
 
   // Handle reset to primary
@@ -343,33 +317,3 @@ const CalendarSelectorCard: React.FC<CalendarSelectorCardProps> = ({
 };
 
 export default CalendarSelectorCard;
-
-/**
- * Hook to get the currently selected calendar ID.
- * Useful for pages that need to know the selection without rendering the component.
- */
-export const useSelectedCalendarId = (): string => {
-  const [calendarId, setCalendarId] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY);
-      if (stored && stored !== '[object Object]') {
-        return stored;
-      }
-    }
-    return 'primary';
-  });
-
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const stored = localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY);
-      if (stored && stored !== '[object Object]') {
-        setCalendarId(stored);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  return calendarId;
-};

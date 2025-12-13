@@ -10,6 +10,7 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import { CalendarProviderContextProvider } from './context/CalendarProviderContext';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -23,7 +24,9 @@ root.render(
     <ClerkProvider publishableKey={clerkPubKey}>
       <BrowserRouter>
         <CalendarProviderContextProvider>
-          <App />
+          <SubscriptionProvider>
+            <App />
+          </SubscriptionProvider>
         </CalendarProviderContextProvider>
       </BrowserRouter>
     </ClerkProvider>
