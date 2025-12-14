@@ -1,15 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import { useSupabaseClient } from '../lib/supabase';
 import { QuickScheduleButtons } from '../components/scheduling/QuickScheduleButtons';
 import { ActiveHoldsSection } from '../components/scheduling/ActiveHoldsSection';
 import { SaveTemplateModal } from '../components/scheduling/SaveTemplateModal';
-import type { CalendarListEntry } from '../types';
-import type { HoldParticipant, TemplateConfig, TemplateParticipant } from '../types/scheduling';
-
-const MANAGED_CALENDAR_STORAGE_KEY = 'managed_calendar_id';
+import { PageHeader, CalendarSelectorCard } from '../components/shared';
+import { useSelectedCalendarId, setSelectedCalendarId } from '../hooks/useCalendarSelection';
+import type { HoldParticipant, TemplateConfig } from '../types/scheduling';
 
 type ParticipantRole = 'host' | 'required' | 'optional';
 
@@ -197,81 +196,19 @@ const roundToNextHalfHour = (date: Date) => {
 export function SchedulePage() {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { getToken } = useAuth();
   const supabase = useSupabaseClient();
-  const { activeProvider, isAuthenticated: isCalendarConnected } = useCalendarProvider();
+  const { activeProvider } = useCalendarProvider();
 
-  // Subscription state
-  const [hasMultiCalendarAccess, setHasMultiCalendarAccess] = useState(false);
+  // Use the hook to get the currently selected calendar ID
+  const managedCalendarId = useSelectedCalendarId();
+
   const providerFindFreeBusy = activeProvider.calendar.findFreeBusy;
   const providerCapabilities = activeProvider.capabilities;
   const createProviderEvent = activeProvider.calendar.createEvent;
   const deleteProviderEvent = activeProvider.calendar.deleteEvent;
-  const fetchProviderCalendarList = activeProvider.calendar.fetchCalendarList;
-
-  // Calendar selector state
-  const [availableCalendars, setAvailableCalendars] = useState<CalendarListEntry[]>([]);
-  const [managedCalendarId, setManagedCalendarId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(MANAGED_CALENDAR_STORAGE_KEY) || 'primary';
-    }
-    return 'primary';
-  });
 
   // Get host email from user's primary email
   const hostEmail = user?.primaryEmailAddress?.emailAddress || null;
-
-  // Fetch available calendars on mount
-  const fetchCalendars = useCallback(async () => {
-    if (!isCalendarConnected || !fetchProviderCalendarList) return;
-    try {
-      const calendars = await fetchProviderCalendarList();
-      const manageable = calendars.filter(cal => cal.accessRole === 'owner' || cal.accessRole === 'writer');
-      setAvailableCalendars(manageable);
-
-      // If current selection is not in the list, default to first
-      if (!manageable.find(cal => cal.id === managedCalendarId) && manageable.length > 0) {
-        setManagedCalendarId(manageable[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch calendar list:', error);
-    }
-  }, [fetchProviderCalendarList, isCalendarConnected, managedCalendarId]);
-
-  useEffect(() => {
-    fetchCalendars();
-  }, [fetchCalendars]);
-
-  // Persist calendar selection to localStorage
-  useEffect(() => {
-    if (managedCalendarId) {
-      window.localStorage.setItem(MANAGED_CALENDAR_STORAGE_KEY, managedCalendarId);
-    }
-  }, [managedCalendarId]);
-
-  // Check subscription tier for multi-calendar access
-  const checkSubscription = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/user/subscription?userId=${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setHasMultiCalendarAccess(data.hasMultiCalendarAccess);
-      }
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      setHasMultiCalendarAccess(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      checkSubscription();
-    }
-  }, [checkSubscription, user?.id]);
 
   const defaultTimezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
@@ -339,7 +276,8 @@ export function SchedulePage() {
     setSearchWindowDays(config.searchWindowDays);
 
     if (config.calendarId) {
-      setManagedCalendarId(config.calendarId);
+      // P1-035 FIX: Use centralized setter that properly notifies same-tab listeners
+      setSelectedCalendarId(config.calendarId);
     }
 
     // Convert TemplateParticipant[] to Participant[]
@@ -382,20 +320,18 @@ export function SchedulePage() {
 
   // Update host participant when calendar selection changes
   useEffect(() => {
-    const selectedCalendar = availableCalendars.find(c => c.id === managedCalendarId);
-    if (selectedCalendar) {
+    if (managedCalendarId && managedCalendarId !== 'primary') {
       setParticipants(prev => prev.map(p =>
         p.role === 'host'
           ? {
               ...p,
               calendarId: managedCalendarId,
-              displayName: selectedCalendar.summary || 'Primary Calendar',
-              email: selectedCalendar.id
+              email: managedCalendarId
             }
           : p
       ));
     }
-  }, [managedCalendarId, availableCalendars]);
+  }, [managedCalendarId]);
 
   useEffect(() => {
     if (step !== 3) {
@@ -1469,44 +1405,26 @@ Thanks!`;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Page Header - matches Dashboard/Recurring style */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {activeView === 'new' ? 'Find mutual availability and propose meeting times' : 'View and manage your calendar holds'}
-              </p>
-            </div>
-          </div>
-          {/* Navigation Tabs */}
-          <div className="mt-4 flex gap-1 border-b border-gray-200 -mb-px">
-            <button
-              type="button"
-              onClick={() => { setActiveView('new'); setStep(1); }}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeView === 'new'
-                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              New Meeting
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('holds')}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeView === 'holds'
-                  ? 'bg-white border border-gray-200 border-b-white text-indigo-600 -mb-px'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Manage Holds
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Page Header - Using shared component with sticky variant */}
+      <PageHeader
+        title="Schedule"
+        description={activeView === 'new' ? 'Find mutual availability and propose meeting times' : 'View and manage your calendar holds'}
+        variant="sticky"
+        tabs={[
+          {
+            key: 'new',
+            label: 'New Meeting',
+            active: activeView === 'new',
+            onClick: () => { setActiveView('new'); setStep(1); }
+          },
+          {
+            key: 'holds',
+            label: 'Manage Holds',
+            active: activeView === 'holds',
+            onClick: () => setActiveView('holds')
+          }
+        ]}
+      />
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1523,42 +1441,15 @@ Thanks!`;
         {/* New Meeting View */}
         {activeView === 'new' && (
           <>
-        {/* Calendar Selector - only show dropdown for multi-calendar access */}
-        {availableCalendars.length > 0 && (
-          <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-            {hasMultiCalendarAccess ? (
-              <>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                    Managing Calendar:
-                  </label>
-                  <select
-                    value={managedCalendarId}
-                    onChange={(e) => setManagedCalendarId(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
-                  >
-                    {availableCalendars.map((cal) => (
-                      <option key={cal.id} value={cal.id}>
-                        {cal.summary || cal.id} {cal.primary ? '(Your Calendar)' : ''} - {cal.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <p className="mt-2 text-xs text-gray-500">
-                  {availableCalendars.find(c => c.id === managedCalendarId)?.summary || managedCalendarId}
-                  {' • '}
-                  {availableCalendars.length} calendar{availableCalendars.length !== 1 ? 's' : ''} available
-                </p>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-900">
-                  📅 {availableCalendars[0]?.summary || 'Your Calendar'}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Calendar Selector - Self-contained component that handles its own data fetching */}
+        <div className="mb-6">
+          <CalendarSelectorCard
+            showProviderSwitcher={true}
+            showActionButtons={true}
+            showResetButton={true}
+            onPreferences={() => {/* TODO: Add preferences modal */}}
+          />
+        </div>
 
         {/* Quick Schedule Section - only show on step 1 */}
         {step === 1 && (
