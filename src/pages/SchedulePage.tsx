@@ -1447,7 +1447,6 @@ Thanks!`;
             showProviderSwitcher={true}
             showActionButtons={true}
             showResetButton={true}
-            onPreferences={() => navigate('/settings')}
           />
         </div>
 

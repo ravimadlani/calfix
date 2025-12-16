@@ -1163,7 +1163,6 @@ const CalendarDashboard = () => {
         showProviderSwitcher={true}
         showActionButtons={true}
         showResetButton={true}
-        onPreferences={() => navigate('/settings')}
         onUpgrade={() => setShowUpgradeModal(true)}
       />
 

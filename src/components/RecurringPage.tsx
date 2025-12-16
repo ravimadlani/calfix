@@ -503,7 +503,6 @@ const RecurringPage: React.FC = () => {
         showProviderSwitcher={true}
         showActionButtons={true}
         showResetButton={false}
-        onPreferences={() => navigate('/settings')}
         onUpgrade={() => setShowUpgradeModal(true)}
       />
 
