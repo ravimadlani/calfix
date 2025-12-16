@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import ViewSelector from './ViewSelector';
 import DayFilterPills from './DayFilterPills';
 import ActionWorkflowModal from './ActionWorkflowModal';
-import ProviderSelection from './ProviderSelection';
 import UpgradeModal from './UpgradeModal';
+import DashboardSkeleton from './DashboardSkeleton';
 import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
 import DashboardTabs from './DashboardTabs';
@@ -1107,33 +1107,15 @@ const CalendarDashboard = () => {
     }
   };
 
-  // Show loading while checking authentication
+  // Show skeleton while checking authentication
   if (checkingAuth) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
-  // Show provider selection if not connected
+  // Redirect to onboarding if no calendar connected
+  // OnboardingGuard should handle this, but this is a safety net
   if (!isCalendarConnected) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-4xl w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Welcome to CalFix</h1>
-            <p className="mt-2 text-lg text-gray-600">
-              Connect your calendar to get started
-            </p>
-          </div>
-          <ProviderSelection />
-        </div>
-      </div>
-    );
+    return <Navigate to="/onboarding" replace />;
   }
 
   if (loading && events.length === 0) {
