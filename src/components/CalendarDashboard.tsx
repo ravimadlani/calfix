@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ViewSelector from './ViewSelector';
 import DayFilterPills from './DayFilterPills';
 import ActionWorkflowModal from './ActionWorkflowModal';
@@ -1107,15 +1107,11 @@ const CalendarDashboard = () => {
     }
   };
 
-  // Show skeleton while checking authentication
-  if (checkingAuth) {
+  // Show skeleton while checking authentication or calendar not yet connected
+  // OnboardingGuard handles the redirect to onboarding if needed
+  // We just show skeleton until the calendar provider state is ready
+  if (checkingAuth || !isCalendarConnected) {
     return <DashboardSkeleton />;
-  }
-
-  // Redirect to onboarding if no calendar connected
-  // OnboardingGuard should handle this, but this is a safety net
-  if (!isCalendarConnected) {
-    return <Navigate to="/onboarding" replace />;
   }
 
   if (loading && events.length === 0) {
