@@ -1447,7 +1447,7 @@ Thanks!`;
             showProviderSwitcher={true}
             showActionButtons={true}
             showResetButton={true}
-            onPreferences={() => {/* TODO: Add preferences modal */}}
+            onPreferences={() => navigate('/settings')}
           />
         </div>
 

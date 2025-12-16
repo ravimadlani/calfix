@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ViewSelector from './ViewSelector';
 import DayFilterPills from './DayFilterPills';
 import ActionWorkflowModal from './ActionWorkflowModal';
@@ -71,6 +71,7 @@ const getDateRange = (view: string): { startDate: Date, endDate: Date } => {
 };
 
 const CalendarDashboard = () => {
+  const navigate = useNavigate();
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const {
@@ -1180,7 +1181,7 @@ const CalendarDashboard = () => {
         showProviderSwitcher={true}
         showActionButtons={true}
         showResetButton={true}
-        onPreferences={() => {/* TODO: Add preferences modal */}}
+        onPreferences={() => navigate('/settings')}
         onUpgrade={() => setShowUpgradeModal(true)}
       />
 
