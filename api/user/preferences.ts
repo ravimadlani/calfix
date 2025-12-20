@@ -1,5 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest, getSupabaseAdmin } from '../lib/auth.js';
+import { setCorsHeaders, handleCorsPreflightRequest } from '../lib/cors.js';
+import { z } from 'zod';
+
+// Zod schema for PUT request validation
+const UpdatePreferencesSchema = z.object({
+  selected_calendar_ids: z.array(z.string().max(255)).max(15).optional(),
+  active_provider: z.enum(['google', 'outlook']).optional(),
+  onboarding_completed: z.boolean().optional(),
+  home_location: z.record(z.unknown()).nullable().optional(),
+  business_hours: z.record(z.unknown()).nullable().optional(),
+  notification_preferences: z.record(z.unknown()).nullable().optional(),
+  auto_dismiss_alerts: z.boolean().optional(),
+  theme: z.enum(['light', 'dark', 'system']).optional(),
+});
 
 interface UserPreferences {
   user_id: string;
@@ -15,13 +29,11 @@ interface UserPreferences {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // Handle CORS using shared utility
+  setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (handleCorsPreflightRequest(req, res)) {
+    return;
   }
 
   // Authenticate request using Clerk JWT
@@ -71,7 +83,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'PUT') {
     try {
-      const body = req.body;
+      // Validate request body with Zod
+      const parseResult = UpdatePreferencesSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          error: 'Invalid request body',
+          details: parseResult.error.issues.map(i => i.message),
+        });
+      }
+
       const {
         selected_calendar_ids,
         active_provider,
@@ -81,7 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         notification_preferences,
         auto_dismiss_alerts,
         theme,
-      } = body;
+      } = parseResult.data;
 
       // Validate selected_calendar_ids against subscription limits
       if (selected_calendar_ids && Array.isArray(selected_calendar_ids)) {
