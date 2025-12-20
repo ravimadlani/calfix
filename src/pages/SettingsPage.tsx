@@ -24,7 +24,8 @@ export default function SettingsPage() {
   const { activeProvider, activeProviderId } = useCalendarProvider();
 
   const [calendars, setCalendars] = useState<Calendar[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Calendar slots: array of length maxCalendars, each slot is calendar ID or empty string
+  const [calendarSlots, setCalendarSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,14 +62,18 @@ export default function SettingsPage() {
       );
 
       setCalendars(manageable);
-      setSelectedIds(prefs.selected_calendar_ids || []);
+
+      // Initialize slots array with existing selections, padded to maxCalendars
+      const existingIds = prefs.selected_calendar_ids || [];
+      const slots = Array(maxCalendars).fill('').map((_, i) => existingIds[i] || '');
+      setCalendarSlots(slots);
     } catch (err) {
       console.error('[SettingsPage] Error loading data:', err);
       setError('Failed to load settings. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [getToken, activeProvider]);
+  }, [getToken, activeProvider, maxCalendars]);
 
   useEffect(() => {
     if (subscriptionLoaded) {
@@ -76,18 +81,21 @@ export default function SettingsPage() {
     }
   }, [subscriptionLoaded, loadData]);
 
-  const handleToggleCalendar = (calendarId: string) => {
-    setSelectedIds((prev) => {
-      if (prev.includes(calendarId)) {
-        return prev.filter((id) => id !== calendarId);
-      }
-      if (prev.length >= maxCalendars) {
-        return prev; // Already at limit
-      }
-      return [...prev, calendarId];
+  // Handle dropdown change for a specific slot
+  const handleSlotChange = (slotIndex: number, calendarId: string) => {
+    setCalendarSlots((prev) => {
+      const newSlots = [...prev];
+      newSlots[slotIndex] = calendarId;
+      return newSlots;
     });
     // Clear success state when user makes changes
     setSuccess(false);
+  };
+
+  // Get calendars available for a specific slot (excluding ones selected in other slots)
+  const getAvailableCalendarsForSlot = (slotIndex: number) => {
+    const selectedInOtherSlots = calendarSlots.filter((id, i) => i !== slotIndex && id !== '');
+    return calendars.filter((cal) => !selectedInOtherSlots.includes(cal.id));
   };
 
   const handleSave = async () => {
@@ -97,6 +105,9 @@ export default function SettingsPage() {
 
     try {
       const token = await getToken();
+      // Filter out empty slots and send only selected calendar IDs
+      const selectedCalendarIds = calendarSlots.filter((id) => id !== '');
+
       const response = await fetch('/api/user/preferences', {
         method: 'PUT',
         headers: {
@@ -104,7 +115,7 @@ export default function SettingsPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          selected_calendar_ids: selectedIds,
+          selected_calendar_ids: selectedCalendarIds,
           active_provider: activeProviderId,
         }),
       });
@@ -124,7 +135,8 @@ export default function SettingsPage() {
     }
   };
 
-  const isOverLimit = selectedIds.length > maxCalendars;
+  // Count how many slots are filled
+  const filledSlots = calendarSlots.filter((id) => id !== '').length;
 
   if (loading || !subscriptionLoaded) {
     return <SettingsPageSkeleton />;
@@ -142,35 +154,21 @@ export default function SettingsPage() {
         <section className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              Calendar Selection
+              Calendar Slots
             </h2>
-            <span
-              className={`text-sm ${
-                isOverLimit ? 'text-red-600 font-medium' : 'text-gray-500'
-              }`}
-            >
-              {selectedIds.length} of {maxCalendars} selected
+            <span className="text-sm text-gray-500">
+              {filledSlots} of {maxCalendars} configured
             </span>
           </div>
 
-          {!hasMultiCalendarAccess && (
+          <p className="text-sm text-gray-600 mb-4">
+            Select which calendars CalFix should manage. Each slot represents one calendar you can configure.
+          </p>
+
+          {!hasMultiCalendarAccess && calendars.length > 1 && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                Your current plan supports 1 calendar. Upgrade to EA Basic or Pro
-                to manage multiple calendars.
-              </p>
-            </div>
-          )}
-
-          {isOverLimit && (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="font-medium text-amber-800">
-                Action Required: Your plan allows {maxCalendars} calendar
-                {maxCalendars === 1 ? '' : 's'}
-              </p>
-              <p className="text-sm text-amber-700 mt-1">
-                Please deselect {selectedIds.length - maxCalendars} calendar(s)
-                to continue.
+                You have access to {calendars.length} calendars. Upgrade to EA to unlock up to 5 slots, or EA Pro for 15 slots.
               </p>
             </div>
           )}
@@ -184,72 +182,56 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {calendars.map((calendar) => {
-                const isSelected = selectedIds.includes(calendar.id);
-                const isDisabled =
-                  !isSelected && selectedIds.length >= maxCalendars;
+              {calendarSlots.map((selectedId, slotIndex) => {
+                const availableCalendars = getAvailableCalendarsForSlot(slotIndex);
+                const selectedCalendar = calendars.find((c) => c.id === selectedId);
 
                 return (
-                  <label
-                    key={calendar.id}
-                    className={`
-                      flex items-center p-4 rounded-lg border-2 cursor-pointer
-                      transition-all duration-200
-                      ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }
-                      ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
+                  <div
+                    key={slotIndex}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                   >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      disabled={isDisabled}
-                      onChange={() => handleToggleCalendar(calendar.id)}
-                      className="sr-only"
-                    />
-                    <div
-                      className={`
-                        w-5 h-5 rounded border-2 mr-4 flex items-center justify-center
-                        ${
-                          isSelected
-                            ? 'bg-blue-600 border-blue-600'
-                            : 'border-gray-300'
-                        }
-                      `}
-                    >
-                      {isSelected && (
-                        <svg
-                          className="w-3 h-3 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-medium text-sm">
+                      {slotIndex + 1}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {calendar.summary}
-                        {calendar.primary && (
-                          <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                            Primary
-                          </span>
+                      <select
+                        value={selectedId}
+                        onChange={(e) => handleSlotChange(slotIndex, e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      >
+                        <option value="">— Select a calendar —</option>
+                        {/* Show currently selected calendar first if it exists */}
+                        {selectedCalendar && (
+                          <option value={selectedCalendar.id}>
+                            {selectedCalendar.summary}
+                            {selectedCalendar.primary ? ' (Primary)' : ''}
+                          </option>
                         )}
-                      </p>
-                      {calendar.description && (
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          {calendar.description}
-                        </p>
-                      )}
+                        {/* Show available calendars */}
+                        {availableCalendars
+                          .filter((cal) => cal.id !== selectedId)
+                          .map((calendar) => (
+                            <option key={calendar.id} value={calendar.id}>
+                              {calendar.summary}
+                              {calendar.primary ? ' (Primary)' : ''}
+                            </option>
+                          ))}
+                      </select>
                     </div>
-                  </label>
+                    {selectedId && (
+                      <button
+                        type="button"
+                        onClick={() => handleSlotChange(slotIndex, '')}
+                        className="flex-shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Clear this slot"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -272,22 +254,18 @@ export default function SettingsPage() {
           <div className="mt-6 flex justify-end">
             <button
               onClick={handleSave}
-              disabled={saving || isOverLimit}
+              disabled={saving || filledSlots === 0}
               className={`
                 px-6 py-2 rounded-lg font-medium
                 transition-all duration-200
                 ${
-                  saving || isOverLimit
+                  saving || filledSlots === 0
                     ? 'bg-gray-300 cursor-not-allowed text-gray-500'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }
               `}
             >
-              {saving
-                ? 'Saving...'
-                : isOverLimit
-                  ? `Deselect ${selectedIds.length - maxCalendars} More`
-                  : 'Save Changes'}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </section>
@@ -334,10 +312,14 @@ function SettingsPageSkeleton() {
       </div>
       <div className="max-w-3xl mx-auto px-4 py-8 animate-pulse">
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="h-6 bg-gray-200 rounded w-48 mb-4" />
+          <div className="h-6 bg-gray-200 rounded w-40 mb-4" />
+          <div className="h-4 bg-gray-200 rounded w-80 mb-4" />
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 bg-gray-100 rounded-lg" />
+              <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="w-8 h-8 rounded-full bg-gray-200" />
+                <div className="flex-1 h-10 bg-gray-100 rounded-lg" />
+              </div>
             ))}
           </div>
         </div>
