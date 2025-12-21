@@ -16,7 +16,7 @@ import AdminPanel from './components/AdminPanel';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import { OAuthCallback } from './components/OAuthCallback';
-import RecurringPage from './components/RecurringPage';
+import AuditPage from './components/AuditPage';
 import SchedulePage from './pages/SchedulePage';
 import SettingsPage from './pages/SettingsPage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -75,16 +75,19 @@ function App() {
           }
         />
 
+        {/* Audit page - formerly /recurring */}
         <Route
-          path="/recurring"
+          path="/audit"
           element={
             <ProtectedRoute>
               <OnboardingGuard>
-                <RecurringPage />
+                <AuditPage />
               </OnboardingGuard>
             </ProtectedRoute>
           }
         />
+        {/* Redirect old /recurring URL to /audit */}
+        <Route path="/recurring" element={<Navigate to="/audit" replace />} />
 
         <Route
           path="/schedule"

@@ -62,14 +62,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     Dashboard
                   </Link>
                   <Link
-                    to="/recurring"
+                    to="/audit"
                     className={`text-sm font-medium transition-colors ${
-                      isActive('/recurring')
+                      isActive('/audit')
                         ? 'text-indigo-600 underline decoration-2 underline-offset-4'
                         : 'text-gray-900 hover:text-indigo-600'
                     }`}
                   >
-                    Recurring
+                    Audit
                   </Link>
                   <Link
                     to="/schedule"
@@ -287,8 +287,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/recurring" className="text-sm text-gray-600 hover:text-indigo-600">
-                    Recurring
+                  <Link to="/audit" className="text-sm text-gray-600 hover:text-indigo-600">
+                    Audit
                   </Link>
                 </li>
                 <li>
