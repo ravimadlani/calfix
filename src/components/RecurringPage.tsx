@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useState
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
@@ -290,6 +291,7 @@ const applySort = (series: RecurringSeriesMetrics[], sortKey: SortKey) => {
 };
 
 const RecurringPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useUser();
   const {
     activeProvider,
@@ -501,7 +503,6 @@ const RecurringPage: React.FC = () => {
         showProviderSwitcher={true}
         showActionButtons={true}
         showResetButton={false}
-        onPreferences={() => {/* TODO: Add preferences modal */}}
         onUpgrade={() => setShowUpgradeModal(true)}
       />
 

@@ -81,6 +81,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   >
                     Schedule
                   </Link>
+                  <Link
+                    to="/settings"
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/settings')
+                        ? 'text-indigo-600 underline decoration-2 underline-offset-4'
+                        : 'text-gray-900 hover:text-indigo-600'
+                    }`}
+                  >
+                    Settings
+                  </Link>
 
                   {/* Visual Separator */}
                   <span className="text-gray-400">•</span>

@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ViewSelector from './ViewSelector';
 import DayFilterPills from './DayFilterPills';
 import ActionWorkflowModal from './ActionWorkflowModal';
-import ProviderSelection from './ProviderSelection';
 import UpgradeModal from './UpgradeModal';
+import DashboardSkeleton from './DashboardSkeleton';
 import HealthScoreHero from './HealthScoreHero';
 import AgentChatWidget from './AgentChatWidget';
 import DashboardTabs from './DashboardTabs';
@@ -71,6 +71,7 @@ const getDateRange = (view: string): { startDate: Date, endDate: Date } => {
 };
 
 const CalendarDashboard = () => {
+  const navigate = useNavigate();
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
   const {
@@ -1106,33 +1107,11 @@ const CalendarDashboard = () => {
     }
   };
 
-  // Show loading while checking authentication
-  if (checkingAuth) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show provider selection if not connected
-  if (!isCalendarConnected) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-4xl w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Welcome to CalFix</h1>
-            <p className="mt-2 text-lg text-gray-600">
-              Connect your calendar to get started
-            </p>
-          </div>
-          <ProviderSelection />
-        </div>
-      </div>
-    );
+  // Show skeleton while checking authentication or calendar not yet connected
+  // OnboardingGuard handles the redirect to onboarding if needed
+  // We just show skeleton until the calendar provider state is ready
+  if (checkingAuth || !isCalendarConnected) {
+    return <DashboardSkeleton />;
   }
 
   if (loading && events.length === 0) {
@@ -1180,7 +1159,6 @@ const CalendarDashboard = () => {
         showProviderSwitcher={true}
         showActionButtons={true}
         showResetButton={true}
-        onPreferences={() => {/* TODO: Add preferences modal */}}
         onUpgrade={() => setShowUpgradeModal(true)}
       />
 

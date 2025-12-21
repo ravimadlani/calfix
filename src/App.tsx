@@ -18,6 +18,9 @@ import TermsOfService from './components/TermsOfService';
 import { OAuthCallback } from './components/OAuthCallback';
 import RecurringPage from './components/RecurringPage';
 import SchedulePage from './pages/SchedulePage';
+import SettingsPage from './pages/SettingsPage';
+import OnboardingPage from './pages/OnboardingPage';
+import { OnboardingGuard } from './components/OnboardingGuard';
 
 function App() {
   return (
@@ -31,12 +34,24 @@ function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
 
-        {/* Protected Routes */}
+        {/* Onboarding Route - protected but no onboarding guard */}
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Routes - with onboarding guard */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <CalendarDashboard />
+              <OnboardingGuard>
+                <CalendarDashboard />
+              </OnboardingGuard>
             </ProtectedRoute>
           }
         />
@@ -64,7 +79,9 @@ function App() {
           path="/recurring"
           element={
             <ProtectedRoute>
-              <RecurringPage />
+              <OnboardingGuard>
+                <RecurringPage />
+              </OnboardingGuard>
             </ProtectedRoute>
           }
         />
@@ -73,7 +90,18 @@ function App() {
           path="/schedule"
           element={
             <ProtectedRoute>
-              <SchedulePage />
+              <OnboardingGuard>
+                <SchedulePage />
+              </OnboardingGuard>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />
