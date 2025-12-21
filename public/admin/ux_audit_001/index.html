@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CalendarZero UX Audit Report #001</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .sidebar-link {
+      display: block;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      color: #374151;
+      transition: all 0.15s;
+    }
+    .sidebar-link:hover {
+      background-color: #f3f4f6;
+      color: #1f2937;
+    }
+    .finding-card {
+      border-left: 4px solid;
+    }
+    .finding-p0 { border-left-color: #dc2626; background-color: #fef2f2; }
+    .finding-p1 { border-left-color: #f97316; background-color: #fff7ed; }
+    .finding-p2 { border-left-color: #eab308; background-color: #fefce8; }
+    .finding-p3 { border-left-color: #22c55e; background-color: #f0fdf4; }
+    .screenshot-container {
+      position: relative;
+      overflow: hidden;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      background: white;
+    }
+    .screenshot-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    @media (max-width: 1024px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <!-- Sticky Navigation Sidebar -->
+  <nav class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-lg overflow-y-auto z-50">
+    <div class="p-6 border-b">
+      <h1 class="text-xl font-bold text-gray-900">UX Audit #001</h1>
+      <p class="text-sm text-gray-500 mt-1">December 2025</p>
+      <p class="text-xs text-gray-400 mt-2">CalendarZero Application</p>
+    </div>
+    <div class="p-4">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Contents</p>
+      <ul class="space-y-1">
+        <li><a href="#executive-summary" class="sidebar-link">Executive Summary</a></li>
+        <li><a href="#methodology" class="sidebar-link">Methodology</a></li>
+        <li><a href="#severity-legend" class="sidebar-link">Severity Legend</a></li>
+      </ul>
+
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-6">Pages Audited</p>
+      <ul class="space-y-1">
+        <li><a href="#landing-page" class="sidebar-link">Landing Page</a></li>
+        <li><a href="#dashboard" class="sidebar-link">Dashboard</a></li>
+        <li><a href="#recurring" class="sidebar-link">Recurring</a></li>
+        <li><a href="#schedule" class="sidebar-link">Schedule</a></li>
+        <li><a href="#settings" class="sidebar-link">Settings</a></li>
+        <li><a href="#admin" class="sidebar-link">Admin Panel</a></li>
+      </ul>
+
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-6">Analysis</p>
+      <ul class="space-y-1">
+        <li><a href="#mobile-responsive" class="sidebar-link">Mobile/Responsive</a></li>
+        <li><a href="#heuristics" class="sidebar-link">Heuristic Evaluation</a></li>
+        <li><a href="#recommendations" class="sidebar-link">Recommendations</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content lg:ml-64 p-8">
+    <div class="max-w-5xl mx-auto">
+
+      <!-- Header -->
+      <header class="mb-12">
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">CalendarZero UX Audit Report</h1>
+            <p class="text-gray-500">Comprehensive usability and accessibility analysis</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-4 text-sm">
+          <div class="bg-white px-4 py-2 rounded-lg shadow-sm">
+            <span class="text-gray-500">Audit Date:</span>
+            <span class="font-medium ml-1">December 21, 2025</span>
+          </div>
+          <div class="bg-white px-4 py-2 rounded-lg shadow-sm">
+            <span class="text-gray-500">Auditor:</span>
+            <span class="font-medium ml-1">Claude Code</span>
+          </div>
+          <div class="bg-white px-4 py-2 rounded-lg shadow-sm">
+            <span class="text-gray-500">Environment:</span>
+            <span class="font-medium ml-1">calfix-new.vercel.app</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Executive Summary -->
+      <section id="executive-summary" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Executive Summary</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div class="bg-white p-6 rounded-xl shadow-sm text-center">
+            <div class="text-4xl font-bold text-blue-600">8</div>
+            <div class="text-sm text-gray-500 mt-1">Pages Audited</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-sm text-center">
+            <div class="text-4xl font-bold text-red-600">1</div>
+            <div class="text-sm text-gray-500 mt-1">Critical Issues</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-sm text-center">
+            <div class="text-4xl font-bold text-orange-500">3</div>
+            <div class="text-sm text-gray-500 mt-1">High Priority</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-sm text-center">
+            <div class="text-4xl font-bold text-green-600">10</div>
+            <div class="text-sm text-gray-500 mt-1">Screenshots</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm">
+          <h3 class="font-semibold text-gray-900 mb-3">Key Findings Overview</h3>
+          <p class="text-gray-600 mb-4">
+            This audit evaluates the CalendarZero application across usability heuristics, accessibility standards (WCAG 2.1 AA),
+            and responsive design patterns. The application is a calendar management SaaS designed for executive assistants.
+          </p>
+
+          <div class="space-y-4">
+            <div class="finding-card finding-p0 p-4 rounded-lg">
+              <div class="font-bold text-red-700">P0 CRITICAL: Mobile Navigation Completely Missing</div>
+              <p class="text-sm text-red-600 mt-1">On mobile viewports (below 768px), the navigation menu is hidden with no hamburger menu or alternative. Users cannot navigate between pages without scrolling to the footer.</p>
+            </div>
+
+            <div class="finding-card finding-p1 p-4 rounded-lg">
+              <div class="font-bold text-orange-700">P1 HIGH: Inconsistent Loading States</div>
+              <p class="text-sm text-orange-600 mt-1">Pages show brief "Loading..." text before content appears. Some pages use skeleton loaders while others use simple text, creating inconsistent UX.</p>
+            </div>
+
+            <div class="finding-card finding-p1 p-4 rounded-lg">
+              <div class="font-bold text-orange-700">P1 HIGH: Demo Video Placeholder</div>
+              <p class="text-sm text-orange-600 mt-1">Landing page hero section has a prominent "Demo Video Coming Soon" placeholder that takes up significant visual real estate.</p>
+            </div>
+
+            <div class="finding-card finding-p3 p-4 rounded-lg">
+              <div class="font-bold text-green-700">POSITIVE: Clean Visual Hierarchy</div>
+              <p class="text-sm text-green-600 mt-1">The application maintains excellent visual hierarchy across all desktop views. Health Score Hero, Dashboard tabs, and feature cards are well organized.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Methodology -->
+      <section id="methodology" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Methodology</h2>
+        <div class="bg-white p-6 rounded-xl shadow-sm">
+          <div class="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-3">Evaluation Framework</h3>
+              <ul class="space-y-2 text-gray-600">
+                <li class="flex items-start gap-2">
+                  <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span>Nielsen's 10 Usability Heuristics</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span>WCAG 2.1 AA Accessibility Guidelines</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span>Responsive Design Breakpoint Testing</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span>User Flow Analysis</span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900 mb-3">Testing Environment</h3>
+              <ul class="space-y-2 text-gray-600">
+                <li><strong>Desktop:</strong> 1440px viewport (Chromium)</li>
+                <li><strong>Mobile:</strong> 390px viewport (iPhone 14 Pro)</li>
+                <li><strong>User Account:</strong> ravi@madlanilabs.com (Admin)</li>
+                <li><strong>Test URL:</strong> calfix-new.vercel.app</li>
+                <li><strong>Tools:</strong> Playwright MCP for automated capture</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Severity Legend -->
+      <section id="severity-legend" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Severity Legend</h2>
+        <div class="grid md:grid-cols-4 gap-4">
+          <div class="finding-card finding-p0 p-4 rounded-lg">
+            <div class="font-bold text-red-700">P0 - Critical</div>
+            <p class="text-sm text-red-600 mt-1">Blocks core functionality or causes data loss. Must fix immediately.</p>
+          </div>
+          <div class="finding-card finding-p1 p-4 rounded-lg">
+            <div class="font-bold text-orange-700">P1 - High</div>
+            <p class="text-sm text-orange-600 mt-1">Major usability issue affecting many users. Fix in next sprint.</p>
+          </div>
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2 - Medium</div>
+            <p class="text-sm text-yellow-600 mt-1">Minor usability issue. Fix when convenient.</p>
+          </div>
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">P3 - Low</div>
+            <p class="text-sm text-green-600 mt-1">Cosmetic or enhancement. Nice to have.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Landing Page Section -->
+      <section id="landing-page" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Landing Page</h2>
+        <p class="text-gray-600 mb-6">Analysis of the public-facing landing page at <code class="bg-gray-100 px-2 py-1 rounded">/</code></p>
+
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+          <div class="screenshot-container">
+            <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Desktop View (1440px)</p>
+            <img src="images/01-landing-desktop-hero.png" alt="Landing page desktop hero section">
+          </div>
+          <div class="screenshot-container">
+            <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Mobile View (390px)</p>
+            <img src="images/01-landing-mobile-fullpage.png" alt="Landing page mobile full view" class="max-h-96 object-contain mx-auto">
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="finding-card finding-p1 p-4 rounded-lg">
+            <div class="font-bold text-orange-700">P1: Demo Video Placeholder</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> The hero section displays a "Demo Video Coming Soon" placeholder that occupies prime visual real estate.</p>
+            <p class="text-sm text-gray-600 mt-1"><strong>Impact:</strong> Users expect to see the product in action; placeholder content reduces trust and engagement.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Either add an actual demo video, product screenshots, or replace with an animated illustration showing the product workflow.</p>
+          </div>
+
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Clear Value Proposition</div>
+            <p class="text-sm text-gray-600 mt-1">The headline "Zero Calendar Conflicts. Zero Scheduling Stress." clearly communicates the product's value. Features list is scannable with checkmarks.</p>
+          </div>
+
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Pricing Transparency</div>
+            <p class="text-sm text-gray-600 mt-1">Three-tier pricing (Basic $9, EA $19, EA Pro $39) is clearly presented with feature differentiation. "Most Popular" badge guides users.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Section -->
+      <section id="dashboard" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Dashboard</h2>
+        <p class="text-gray-600 mb-6">Analysis of the main calendar dashboard at <code class="bg-gray-100 px-2 py-1 rounded">/dashboard</code></p>
+
+        <div class="screenshot-container mb-8">
+          <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Desktop Dashboard View</p>
+          <img src="images/04-dashboard-desktop-fullpage.png" alt="Dashboard desktop full page">
+        </div>
+
+        <div class="space-y-4">
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Health Score Hero</div>
+            <p class="text-sm text-gray-600 mt-1">The circular health score visualization (100 SCORE with "Excellent" label) provides immediate feedback on calendar health. This is the key value proposition prominently displayed.</p>
+          </div>
+
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: View Selector</div>
+            <p class="text-sm text-gray-600 mt-1">Time horizon buttons (Today, Tomorrow, This Week, etc.) are clearly labeled and use pressed state to indicate selection.</p>
+          </div>
+
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2: Calendar Selector Dropdown Width</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> The "Managing Calendar" dropdown shows email addresses that may get truncated on smaller desktop screens.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Consider showing a shorter label with full email on hover tooltip.</p>
+          </div>
+
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2: Empty State Messaging</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> "No received invitations matching this filter" is informative but doesn't guide the user on what to do next.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Add a CTA like "Check back later or adjust your filters."</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recurring Section -->
+      <section id="recurring" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Recurring Meetings</h2>
+        <p class="text-gray-600 mb-6">Analysis of the recurring meetings analysis page at <code class="bg-gray-100 px-2 py-1 rounded">/recurring</code></p>
+
+        <div class="screenshot-container mb-8">
+          <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Recurring Meetings Analysis Page</p>
+          <img src="images/05-recurring-desktop-fullpage.png" alt="Recurring meetings page">
+        </div>
+
+        <div class="space-y-4">
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Comprehensive Analytics</div>
+            <p class="text-sm text-gray-600 mt-1">The page provides valuable metrics: Recurring Series count, Monthly Load hours, and People Hours. These are key insights for executive assistants.</p>
+          </div>
+
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Quick Filters</div>
+            <p class="text-sm text-gray-600 mt-1">Internal/External/Flagged series quick filters help users segment their analysis efficiently.</p>
+          </div>
+
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2: Empty Table State</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> When no recurring series match filters, the table shows only text. The full table header row remains visible which could be confusing.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Consider hiding the header or showing a more prominent empty state illustration.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Schedule Section -->
+      <section id="schedule" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Smart Scheduling</h2>
+        <p class="text-gray-600 mb-6">Analysis of the scheduling tool at <code class="bg-gray-100 px-2 py-1 rounded">/schedule</code></p>
+
+        <div class="screenshot-container mb-8">
+          <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Schedule Page - Meeting Setup</p>
+          <img src="images/06-schedule-desktop-fullpage.png" alt="Schedule page meeting setup">
+        </div>
+
+        <div class="space-y-4">
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Step-by-Step Wizard</div>
+            <p class="text-sm text-gray-600 mt-1">The 3-step process (Team & working hours > Select availability > Review & send) provides clear progression.</p>
+          </div>
+
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Duration Quick Select</div>
+            <p class="text-sm text-gray-600 mt-1">Meeting duration buttons (30, 45, 60, 75, 90 minutes) allow fast selection without dropdowns.</p>
+          </div>
+
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2: Template Empty State</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> "No saved templates yet" message could be more actionable.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Add example template names like "Quick 30min sync" to illustrate the feature's value.</p>
+          </div>
+
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2: Timezone Dropdown Length</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> The timezone dropdown contains many options that require scrolling.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Add a search/filter input to the dropdown or group by region.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Section -->
+      <section id="settings" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Settings</h2>
+        <p class="text-gray-600 mb-6">Analysis of the settings page at <code class="bg-gray-100 px-2 py-1 rounded">/settings</code></p>
+
+        <div class="screenshot-container mb-8">
+          <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Settings Page - Calendar Slots</p>
+          <img src="images/07-settings-desktop-fullpage.png" alt="Settings page calendar configuration">
+        </div>
+
+        <div class="space-y-4">
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Clear Slot System</div>
+            <p class="text-sm text-gray-600 mt-1">The "2 of 5 configured" indicator immediately shows capacity. Each slot is numbered for easy reference.</p>
+          </div>
+
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Account Information Display</div>
+            <p class="text-sm text-gray-600 mt-1">Subscription tier, calendar limit, and connected provider are clearly displayed for user reference.</p>
+          </div>
+
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2: Save Feedback Location</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> After saving, feedback appears above the fold which users may miss if they're looking at the form.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Add inline success indicator near the Save button or use a toast notification.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Admin Panel Section -->
+      <section id="admin" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Admin Panel</h2>
+        <p class="text-gray-600 mb-6">Analysis of the admin panel at <code class="bg-gray-100 px-2 py-1 rounded">/admin</code></p>
+
+        <div class="screenshot-container mb-8">
+          <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Admin Panel - Users & Test Data</p>
+          <img src="images/08-admin-desktop-fullpage.png" alt="Admin panel users tab">
+        </div>
+
+        <div class="space-y-4">
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: Test Data Generator</div>
+            <p class="text-sm text-gray-600 mt-1">The test data generator with its detailed list of event types (back-to-back, double bookings, flights, etc.) is excellent for QA and demos.</p>
+          </div>
+
+          <div class="finding-card finding-p3 p-4 rounded-lg">
+            <div class="font-bold text-green-700">Positive: User Table</div>
+            <p class="text-sm text-gray-600 mt-1">The users table shows email, subscription tier, creation date, and user ID - all essential admin information.</p>
+          </div>
+
+          <div class="finding-card finding-p2 p-4 rounded-lg">
+            <div class="font-bold text-yellow-700">P2: Tier Badge Colors</div>
+            <p class="text-sm text-gray-600 mt-1"><strong>Issue:</strong> All subscription tiers (basic, ea, ea_pro) use the same blue badge color, making it harder to quickly scan for premium users.</p>
+            <p class="text-sm text-blue-600 mt-1"><strong>Recommendation:</strong> Use different colors for different tiers (e.g., gray for basic, blue for EA, purple for EA Pro).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mobile/Responsive Section -->
+      <section id="mobile-responsive" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Mobile & Responsive Design</h2>
+        <p class="text-gray-600 mb-6">Analysis of responsive behavior across breakpoints</p>
+
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+          <div class="screenshot-container">
+            <p class="text-sm font-medium text-gray-700 p-3 border-b bg-gray-50">Mobile Dashboard - NO NAVIGATION</p>
+            <img src="images/09-mobile-dashboard-no-nav.png" alt="Mobile dashboard showing missing navigation" class="max-h-[600px] object-contain mx-auto">
+          </div>
+          <div>
+            <div class="finding-card finding-p0 p-4 rounded-lg">
+              <div class="font-bold text-red-700">P0 CRITICAL: Mobile Navigation Missing</div>
+              <p class="text-sm text-gray-600 mt-2"><strong>Issue:</strong> On mobile viewports (below 768px/md breakpoint), the entire navigation menu is hidden using <code>hidden md:flex</code>. There is NO hamburger menu, drawer, or any alternative navigation.</p>
+              <p class="text-sm text-gray-600 mt-2"><strong>Impact:</strong> Mobile users cannot navigate between pages (Dashboard, Recurring, Schedule, Settings). They can only access the user profile button or scroll to the footer for links.</p>
+              <p class="text-sm text-gray-600 mt-2"><strong>User Journey Blocked:</strong>
+                <ul class="list-disc list-inside mt-1 text-sm">
+                  <li>Cannot switch from Dashboard to Settings</li>
+                  <li>Cannot access Recurring analysis</li>
+                  <li>Cannot reach Schedule page</li>
+                  <li>Must scroll to footer for any navigation</li>
+                </ul>
+              </p>
+              <p class="text-sm text-blue-600 mt-2"><strong>Recommendation:</strong> Implement a hamburger menu with slide-out drawer containing all navigation links. This is a standard mobile pattern and critical for usability.</p>
+              <p class="text-sm text-gray-500 mt-2"><strong>File Reference:</strong> <code>src/components/Layout.tsx</code> - navigation section uses <code>hidden md:flex</code></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Heuristic Evaluation Section -->
+      <section id="heuristics" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Heuristic Evaluation</h2>
+        <p class="text-gray-600 mb-6">Assessment against Nielsen's 10 Usability Heuristics</p>
+
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">1. Visibility of System Status</h3>
+              <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">Pass</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Health Score provides clear feedback on calendar state. Loading states exist. View selector shows current selection.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">2. Match Between System and Real World</h3>
+              <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">Pass</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Uses familiar calendar terminology (buffer time, holds, recurring series). EA-specific language is appropriate for target audience.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">3. User Control and Freedom</h3>
+              <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">Warning</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Users can navigate back via browser, but there's no clear "Back" button on the Admin panel. Calendar slot changes can be cleared.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">4. Consistency and Standards</h3>
+              <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">Pass</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Button styles, card layouts, and navigation patterns are consistent across pages. Tailwind design system is well applied.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">5. Error Prevention</h3>
+              <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">Pass</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Form inputs use appropriate types. Calendar dropdown prevents selecting same calendar twice. Save button disabled when no changes.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">6. Recognition Rather Than Recall</h3>
+              <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">Pass</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Current calendar shown in header. View selector shows active state. Dashboard tabs are visible without memorization.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">7. Flexibility and Efficiency of Use</h3>
+              <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">Warning</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">No keyboard shortcuts detected. Quick Schedule buttons are efficient. Template saving feature supports power users.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">8. Aesthetic and Minimalist Design</h3>
+              <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">Pass</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Clean visual design with appropriate whitespace. Information density is well balanced. No visual clutter.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">9. Help Users Recognize and Recover from Errors</h3>
+              <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">Warning</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Empty states exist but could be more actionable. Error messages not extensively tested in this audit.</p>
+          </div>
+
+          <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">10. Help and Documentation</h3>
+              <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">Warning</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">Resources section on landing page is placeholder. No contextual help or tooltips on complex features like timezone guardrails.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recommendations Section -->
+      <section id="recommendations" class="mb-16">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b">Prioritized Recommendations</h2>
+
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="text-left py-3 px-4 font-semibold text-gray-700">Priority</th>
+                <th class="text-left py-3 px-4 font-semibold text-gray-700">Issue</th>
+                <th class="text-left py-3 px-4 font-semibold text-gray-700">Recommendation</th>
+                <th class="text-left py-3 px-4 font-semibold text-gray-700">Effort</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              <tr class="bg-red-50">
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-red-600 text-white rounded text-sm font-bold">P0</span></td>
+                <td class="py-3 px-4 text-gray-900">Mobile navigation completely missing</td>
+                <td class="py-3 px-4 text-gray-600">Add hamburger menu with slide-out drawer in Layout.tsx</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">Medium</span></td>
+              </tr>
+              <tr class="bg-orange-50">
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-orange-500 text-white rounded text-sm font-bold">P1</span></td>
+                <td class="py-3 px-4 text-gray-900">Demo video placeholder on landing</td>
+                <td class="py-3 px-4 text-gray-600">Add actual demo video or product screenshots</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">Medium</span></td>
+              </tr>
+              <tr class="bg-orange-50">
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-orange-500 text-white rounded text-sm font-bold">P1</span></td>
+                <td class="py-3 px-4 text-gray-900">Resources section is placeholder</td>
+                <td class="py-3 px-4 text-gray-600">Add documentation, guides, or FAQ content</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">Low</span></td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-yellow-500 text-white rounded text-sm font-bold">P2</span></td>
+                <td class="py-3 px-4 text-gray-900">Empty states lack CTAs</td>
+                <td class="py-3 px-4 text-gray-600">Add actionable next steps to empty state messages</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">Low</span></td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-yellow-500 text-white rounded text-sm font-bold">P2</span></td>
+                <td class="py-3 px-4 text-gray-900">Timezone dropdown too long</td>
+                <td class="py-3 px-4 text-gray-600">Add search/filter or group by region</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-yellow-500 text-white rounded text-sm font-bold">P2</span></td>
+                <td class="py-3 px-4 text-gray-900">Admin tier badges same color</td>
+                <td class="py-3 px-4 text-gray-600">Use distinct colors for different subscription tiers</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">Low</span></td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-green-500 text-white rounded text-sm font-bold">P3</span></td>
+                <td class="py-3 px-4 text-gray-900">No contextual help/tooltips</td>
+                <td class="py-3 px-4 text-gray-600">Add info icons with tooltips for complex features</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">Medium</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="mt-16 pt-8 border-t text-center text-gray-500 text-sm">
+        <p>Generated by Claude Code on December 21, 2025</p>
+        <p class="mt-1">CalendarZero UX Audit Report #001</p>
+      </footer>
+
+    </div>
+  </main>
+
+</body>
+</html>
