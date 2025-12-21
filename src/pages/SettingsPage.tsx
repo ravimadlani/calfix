@@ -143,15 +143,16 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      {/* Page Header - sticky variant for consistency with Dashboard/Recurring */}
       <PageHeader
         title="Settings"
         description="Manage your calendar preferences and account settings"
+        variant="sticky"
       />
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        {/* Calendar Selection Section */}
-        <section className="bg-white rounded-lg shadow p-6 mb-6">
+      {/* Calendar Selection Section */}
+      <section className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
               Calendar Slots
@@ -268,68 +269,68 @@ export default function SettingsPage() {
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
-        </section>
+      </section>
 
-        {/* Account Info Section */}
-        <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Account Information
-          </h2>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600">Subscription Tier</span>
-              <span className="font-medium text-gray-900 capitalize">
-                {subscription?.subscriptionTier || 'Basic'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600">Calendar Limit</span>
-              <span className="font-medium text-gray-900">
-                {maxCalendars} calendar{maxCalendars === 1 ? '' : 's'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-gray-600">Connected Provider</span>
-              <span className="font-medium text-gray-900 capitalize">
-                {activeProviderId === 'google' ? 'Google Calendar' : 'Outlook'}
-              </span>
-            </div>
+      {/* Account Info Section */}
+      <section className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Account Information
+        </h2>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <span className="text-gray-600">Subscription Tier</span>
+            <span className="font-medium text-gray-900 capitalize">
+              {subscription?.subscriptionTier || 'Basic'}
+            </span>
           </div>
-        </section>
-      </div>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <span className="text-gray-600">Calendar Limit</span>
+            <span className="font-medium text-gray-900">
+              {maxCalendars} calendar{maxCalendars === 1 ? '' : 's'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="text-gray-600">Connected Provider</span>
+            <span className="font-medium text-gray-900 capitalize">
+              {activeProviderId === 'google' ? 'Google Calendar' : 'Outlook'}
+            </span>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
 
 function SettingsPageSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-4 py-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="h-8 bg-gray-200 rounded w-32 mb-2 animate-pulse" />
-          <div className="h-4 bg-gray-200 rounded w-64 animate-pulse" />
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      {/* Skeleton header matching sticky variant */}
+      <div className="bg-white border-b border-gray-200 -mx-4 px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="h-8 bg-gray-200 rounded w-32 mb-2 animate-pulse" />
+        <div className="h-4 bg-gray-200 rounded w-64 animate-pulse" />
+      </div>
+
+      {/* Calendar slots skeleton */}
+      <div className="bg-white rounded-lg shadow p-6 animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-40 mb-4" />
+        <div className="h-4 bg-gray-200 rounded w-80 mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="w-8 h-8 rounded-full bg-gray-200" />
+              <div className="flex-1 h-10 bg-gray-100 rounded-lg" />
+            </div>
+          ))}
         </div>
       </div>
-      <div className="max-w-3xl mx-auto px-4 py-8 animate-pulse">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="h-6 bg-gray-200 rounded w-40 mb-4" />
-          <div className="h-4 bg-gray-200 rounded w-80 mb-4" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="w-8 h-8 rounded-full bg-gray-200" />
-                <div className="flex-1 h-10 bg-gray-100 rounded-lg" />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="h-6 bg-gray-200 rounded w-48 mb-4" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-8 bg-gray-100 rounded" />
-            ))}
-          </div>
+
+      {/* Account info skeleton */}
+      <div className="bg-white rounded-lg shadow p-6 animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-48 mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 bg-gray-100 rounded" />
+          ))}
         </div>
       </div>
     </div>
