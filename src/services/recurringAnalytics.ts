@@ -43,6 +43,28 @@ const isWithinRange = (date: Date, start: Date, end: Date) => date >= start && d
 
 const roundTwo = (value: number) => Math.round(value * 100) / 100;
 
+/**
+ * Extract the BASE iCalUID by stripping provider-specific suffixes.
+ *
+ * Google Calendar appends `_R{timestamp}` suffix to iCalUID for rescheduled/modified instances:
+ * - Original: `abc123@google.com`
+ * - Rescheduled: `abc123_R20251110T151500@google.com`
+ *
+ * By extracting the base, all instances of the same recurring series will group together.
+ */
+const extractBaseICalUID = (iCalUID: string | undefined): string | null => {
+  if (!iCalUID) return null;
+
+  // Remove @google.com suffix (or other domain suffixes)
+  let base = iCalUID.replace(/@[^@]+$/, '');
+
+  // Remove _R{timestamp} suffix for rescheduled instances
+  // Pattern: _R followed by date (YYYYMMDD) and optional time (THHMMSS)
+  base = base.replace(/_R\d{8}(T\d{6})?$/, '');
+
+  return base || null;
+};
+
 const getFrequencyLabelFromAverage = (avgGapDays: number | null) => {
   if (!avgGapDays || avgGapDays <= 0) {
     return 'Irregular';
@@ -532,8 +554,43 @@ export const computeRecurringAnalytics = (
 
   const grouped = new Map<string, CalendarEvent[]>();
 
+  // Helper to create a fallback grouping key when recurringEventId is missing
+  const createFallbackKey = (event: CalendarEvent): string => {
+    const title = (event.summary || 'untitled').toLowerCase().trim();
+    const organizer = (event.organizer?.email || 'unknown').toLowerCase();
+    // Include approximate duration to distinguish same-title meetings
+    const duration = calculateDuration(
+      event.start?.dateTime || event.start?.date,
+      event.end?.dateTime || event.end?.date
+    ) || 0;
+    const durationBucket = Math.round(duration / 15) * 15; // Round to nearest 15 min
+    return `fallback:${title}:${organizer}:${durationBucket}`;
+  };
+
   recurringEvents.forEach(event => {
-    const key = event.recurringEventId || event.id;
+    // Primary grouping: use BASE iCalUID (strips _R{timestamp} suffix for modified instances)
+    // Secondary: use recurringEventId (instances of a recurring series)
+    // Tertiary: use event id for master events with recurrence rules
+    // Fallback: group by title + organizer + duration for edge cases
+    let key: string;
+
+    // Extract base iCalUID (strips _R{timestamp}@google.com suffix for modified/rescheduled instances)
+    const baseICalUID = extractBaseICalUID(event.iCalUID);
+
+    if (baseICalUID) {
+      // Best option: BASE iCalUID groups all instances including rescheduled ones
+      key = `ical:${baseICalUID}`;
+    } else if (event.recurringEventId) {
+      // This is an instance of a recurring event - use the master event ID
+      key = `recurring:${event.recurringEventId}`;
+    } else if (event.recurrence && event.recurrence.length > 0) {
+      // This is a master recurring event (shouldn't happen with singleEvents=true, but handle it)
+      key = `master:${event.id}`;
+    } else {
+      // Fallback for events that should be grouped but lack proper recurring IDs
+      key = createFallbackKey(event);
+    }
+
     if (!key) {
       return;
     }

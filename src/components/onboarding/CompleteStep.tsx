@@ -48,7 +48,7 @@ export default function CompleteStep({ onComplete }: CompleteStepProps) {
           </li>
           <li className="flex items-start gap-2">
             <span className="font-bold">2.</span>
-            Review the Recurring page to audit recurring meetings
+            Review the Audit page to analyze recurring meetings
           </li>
           <li className="flex items-start gap-2">
             <span className="font-bold">3.</span>

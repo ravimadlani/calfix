@@ -121,6 +121,7 @@ export interface CalendarEvent {
   };
   recurrence?: string[];
   recurringEventId?: string;
+  iCalUID?: string;  // All instances of a recurring event share the same iCalUID
   created?: string;
   updated?: string;
   meetingUrl?: string; // normalized entry point when available

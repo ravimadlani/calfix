@@ -4,7 +4,6 @@ import React, {
   useMemo,
   useState
 } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@clerk/clerk-react';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
@@ -18,8 +17,10 @@ import type {
   RelationshipSnapshot
 } from '../types/recurring';
 import { computeRecurringAnalytics, summarizeRecurringSeries } from '../services/recurringAnalytics';
+import { pdf } from '@react-pdf/renderer';
+import { AuditPdfDocument } from './audit/AuditPdfDocument';
 
-type TabKey = 'health' | 'relationships' | 'audit';
+type TabKey = 'health' | 'relationships';
 type AudienceFilter = 'all' | 'internal' | 'external' | 'mixed';
 type FrequencyFilter = 'all' | 'Daily' | 'Weekly' | 'Bi-Weekly' | 'Monthly' | 'Irregular';
 type SortKey = 'time-cost' | 'alphabetical' | 'acceptance' | 'attendance';
@@ -27,8 +28,7 @@ type SortKey = 'time-cost' | 'alphabetical' | 'acceptance' | 'attendance';
 const ANALYSIS_WINDOW_DAYS = 60;
 const TABS: { key: TabKey; label: string; description: string }[] = [
   { key: 'health', label: 'Health Check', description: 'See recurring series with load, flags, and opportunities.' },
-  { key: 'relationships', label: '1:1s', description: 'Track relationship cadence and catch overdue connections.' },
-  { key: 'audit', label: 'Audit Report', description: 'Summarise the estate and export a shareable report.' }
+  { key: 'relationships', label: '1:1s', description: 'Track relationship cadence and catch overdue connections.' }
 ];
 
 const statusTheme: Record<string, string> = {
@@ -245,16 +245,6 @@ const RelationshipsSection: React.FC<{
   );
 };
 
-const AuditFlagRow: React.FC<{ label: string; count: number; helper: string }> = ({ label, count, helper }) => (
-  <div className="flex items-start justify-between gap-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-    <div>
-      <p className="text-sm font-semibold text-slate-800">{label}</p>
-      <p className="text-xs text-slate-500">{helper}</p>
-    </div>
-    <span className="text-lg font-semibold text-slate-900">{count}</span>
-  </div>
-);
-
 const audienceFilterMatches = (item: RecurringSeriesMetrics, filter: AudienceFilter) => {
   if (item.isPlaceholder) {
     return filter === 'all';
@@ -290,8 +280,7 @@ const applySort = (series: RecurringSeriesMetrics[], sortKey: SortKey) => {
   }
 };
 
-const RecurringPage: React.FC = () => {
-  const navigate = useNavigate();
+const AuditPage: React.FC = () => {
   const { user } = useUser();
   const {
     activeProvider,
@@ -318,6 +307,7 @@ const RecurringPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<RecurringAnalyticsResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fallbackEmail =
     user?.primaryEmailAddress?.emailAddress ||
@@ -484,6 +474,39 @@ const RecurringPage: React.FC = () => {
     return summarizeRecurringSeries(baseline, 40);
   }, [analytics, includePlaceholders]);
 
+  // PDF Export handler
+  const handleExportPdf = useCallback(async () => {
+    if (!summaryForDisplay || !analytics) return;
+
+    setExporting(true);
+    try {
+      const blob = await pdf(
+        <AuditPdfDocument
+          summary={summaryForDisplay}
+          series={analytics.series}
+          relationships={analytics.relationships}
+          generatedAt={new Date()}
+          calendarName={managedCalendarId || 'Primary Calendar'}
+          rangeMode={rangeMode}
+          windowDays={ANALYSIS_WINDOW_DAYS}
+        />
+      ).toBlob();
+
+      // Download the PDF
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `calendar-audit-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      setError('Failed to generate PDF. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  }, [summaryForDisplay, analytics, managedCalendarId, rangeMode]);
+
   if (!isCalendarConnected) {
     console.info('[Recurring] Rendering CalendarConnectPrompt - provider not connected');
     return <CalendarConnectPrompt />;
@@ -493,9 +516,40 @@ const RecurringPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Page Header - sticky variant for consistency */}
       <PageHeader
-        title="Recurring Meetings"
+        title="Calendar Audit"
         description="Audit recurring series, protect focus time, and keep relationships healthy. Filters cover the selected calendar and time window."
         variant="sticky"
+        actions={
+          <button
+            onClick={handleExportPdf}
+            disabled={exporting || loading || !summaryForDisplay}
+            className={`
+              inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+              ${exporting || loading || !summaryForDisplay
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow'
+              }
+            `}
+            title={!summaryForDisplay ? 'Load data first' : 'Export audit report as PDF'}
+          >
+            {exporting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Generating...
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export PDF
+              </>
+            )}
+          </button>
+        }
       />
 
       {/* Calendar Management Section - Self-contained component that handles its own data fetching */}
@@ -781,62 +835,6 @@ const RecurringPage: React.FC = () => {
                 onDaysFilterChange={setRelationshipDaysFilter}
               />
             )}
-
-            {activeTab === 'audit' && (
-              <div className="space-y-5">
-                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-                  <h2 className="text-lg font-semibold text-slate-900">Audit Summary</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <AuditFlagRow
-                      label="Total recurring series"
-                      helper="Series in scope for this audit."
-                      count={summaryForDisplay.totalSeries}
-                    />
-                    <AuditFlagRow
-                      label="Weekly hours committed"
-                      helper="Time blocked by recurring commitments."
-                      count={Math.round(summaryForDisplay.weeklyHours)}
-                    />
-                    <AuditFlagRow
-                      label="People-hours invested monthly"
-                      helper="Aggregate attendee load."
-                      count={Math.round(summaryForDisplay.peopleHours)}
-                    />
-                    <AuditFlagRow
-                      label="Flagged series"
-                      helper="Series worth review based on warning signals."
-                      count={summaryForDisplay.flaggedSeries}
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-                  <h3 className="text-md font-semibold text-slate-900">Flag breakdown</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {Object.keys(statusTheme).map(flag => (
-                      <div
-                        key={flag}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700"
-                      >
-                        <span className="font-medium capitalize">{flag.replace('-', ' ')}</span>
-                        <span className="font-semibold">
-                          {summaryForDisplay.flagCounts[flag] || 0}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-3">
-                  <h3 className="text-md font-semibold text-slate-900">Recommended next steps</h3>
-                  <ul className="list-disc pl-5 text-sm text-slate-600 space-y-2">
-                    <li>Review flagged series for cancellation or cadence changes, focusing on high-impact meetings.</li>
-                    <li>Share the CSV report with stakeholders to align on adjustments.</li>
-                    <li>Check overdue 1:1 relationships and schedule catch-ups where needed.</li>
-                  </ul>
-                </div>
-              </div>
-            )}
         </div>
       )}
 
@@ -849,4 +847,4 @@ const RecurringPage: React.FC = () => {
   );
 };
 
-export default RecurringPage;
+export default AuditPage;

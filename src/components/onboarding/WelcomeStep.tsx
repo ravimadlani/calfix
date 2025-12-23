@@ -67,7 +67,7 @@ export default function WelcomeStep({ providerName, onNext }: WelcomeStepProps) 
         <div className="flex items-start gap-3">
           <span className="text-xl">🔄</span>
           <div>
-            <p className="font-medium text-gray-900">Recurring Audit</p>
+            <p className="font-medium text-gray-900">Calendar Audit</p>
             <p className="text-sm text-gray-600">
               Analyze and optimize your recurring meetings
             </p>
