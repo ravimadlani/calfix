@@ -781,12 +781,13 @@ const AuditPage: React.FC = () => {
                                 {item.organizerEmail || 'Unknown organiser'}
                               </p>
                             </td>
-                            <td className="px-4 py-3 align-top bg-yellow-50">
-                              <div className="text-xs font-mono space-y-1">
-                                <p><span className="text-yellow-700">key:</span> {debugInfo.groupKey.substring(0, 20)}...</p>
-                                <p><span className="text-yellow-700">iCal:</span> {debugInfo.iCalUID.substring(0, 15)}...</p>
-                                <p><span className="text-yellow-700">recur:</span> {debugInfo.recurringEventId.substring(0, 15)}...</p>
-                                <p><span className="text-yellow-700">inst:</span> {debugInfo.instances}</p>
+                            <td className="px-4 py-3 align-top bg-yellow-50 min-w-[300px]">
+                              <div className="text-xs font-mono space-y-1 break-all">
+                                <p><span className="font-bold text-yellow-700">key:</span> {debugInfo.groupKey}</p>
+                                <p><span className="font-bold text-yellow-700">iCal:</span> {debugInfo.iCalUID}</p>
+                                <p><span className="font-bold text-yellow-700">recur:</span> {debugInfo.recurringEventId}</p>
+                                <p><span className="font-bold text-yellow-700">evtId:</span> {debugInfo.eventId}</p>
+                                <p><span className="font-bold text-yellow-700">inst:</span> {debugInfo.instances}</p>
                               </div>
                             </td>
                             <td className="px-4 py-3 align-top">
