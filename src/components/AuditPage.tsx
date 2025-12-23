@@ -744,6 +744,7 @@ const AuditPage: React.FC = () => {
                       <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
                         <tr>
                           <th className="px-4 py-3">Series</th>
+                          <th className="px-4 py-3 bg-yellow-100 text-yellow-800">DEBUG IDs</th>
                           <th className="px-4 py-3">Cadence</th>
                           <th className="px-4 py-3">Monthly Load</th>
                           <th className="px-4 py-3">Attendees</th>
@@ -757,18 +758,36 @@ const AuditPage: React.FC = () => {
                       <tbody className="divide-y divide-slate-100">
                         {filteredSeries.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                            <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                               No recurring series match the filters. Try widening the search or time window.
                             </td>
                           </tr>
                         )}
-                        {filteredSeries.map(item => (
+                        {filteredSeries.map(item => {
+                          // Debug: extract IDs from first sample event
+                          const sampleEvent = item.sampleEvents[0];
+                          const debugInfo = {
+                            groupKey: item.id,
+                            iCalUID: sampleEvent?.iCalUID || 'none',
+                            recurringEventId: sampleEvent?.recurringEventId || 'none',
+                            eventId: sampleEvent?.id || 'none',
+                            instances: item.totalInstances
+                          };
+                          return (
                           <tr key={item.id} className="hover:bg-slate-50">
                             <td className="px-4 py-3 align-top">
                               <p className="font-semibold text-slate-900">{item.title}</p>
                               <p className="text-xs text-slate-500">
                                 {item.organizerEmail || 'Unknown organiser'}
                               </p>
+                            </td>
+                            <td className="px-4 py-3 align-top bg-yellow-50">
+                              <div className="text-xs font-mono space-y-1">
+                                <p><span className="text-yellow-700">key:</span> {debugInfo.groupKey.substring(0, 20)}...</p>
+                                <p><span className="text-yellow-700">iCal:</span> {debugInfo.iCalUID.substring(0, 15)}...</p>
+                                <p><span className="text-yellow-700">recur:</span> {debugInfo.recurringEventId.substring(0, 15)}...</p>
+                                <p><span className="text-yellow-700">inst:</span> {debugInfo.instances}</p>
+                              </div>
                             </td>
                             <td className="px-4 py-3 align-top">
                               <div className="flex flex-col gap-1">
@@ -818,7 +837,8 @@ const AuditPage: React.FC = () => {
                                   : 'No upcoming instances'}
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
