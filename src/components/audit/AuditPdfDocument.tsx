@@ -325,8 +325,10 @@ export function AuditPdfDocument({
   const criticalCounts = relationships.filter(r => r.status === 'critical').length;
   const recurringCount = relationships.filter(r => r.isRecurring).length;
 
-  // Sort series by monthly load (highest first)
-  const sortedSeries = [...series].sort((a, b) => b.monthlyMinutes - a.monthlyMinutes);
+  // Filter out placeholder series and sort by monthly load (highest first)
+  const sortedSeries = [...series]
+    .filter(item => !item.isPlaceholder)
+    .sort((a, b) => b.monthlyMinutes - a.monthlyMinutes);
 
   // Sort relationships - critical first, then overdue, then healthy
   const sortedRelationships = [...relationships].sort((a, b) => {
@@ -454,7 +456,7 @@ export function AuditPdfDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recurring Meeting Series - Full Detail</Text>
           <Text style={{ fontSize: 8, color: '#6B7280', marginBottom: 10 }}>
-            Sorted by monthly time commitment (highest first). Showing all {sortedSeries.length} series.
+            Sorted by monthly time commitment (highest first). Showing {sortedSeries.length} series (excluding placeholders).
           </Text>
 
           {sortedSeries.length === 0 ? (

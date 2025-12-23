@@ -532,8 +532,36 @@ export const computeRecurringAnalytics = (
 
   const grouped = new Map<string, CalendarEvent[]>();
 
+  // Helper to create a fallback grouping key when recurringEventId is missing
+  const createFallbackKey = (event: CalendarEvent): string => {
+    const title = (event.summary || 'untitled').toLowerCase().trim();
+    const organizer = (event.organizer?.email || 'unknown').toLowerCase();
+    // Include approximate duration to distinguish same-title meetings
+    const duration = calculateDuration(
+      event.start?.dateTime || event.start?.date,
+      event.end?.dateTime || event.end?.date
+    ) || 0;
+    const durationBucket = Math.round(duration / 15) * 15; // Round to nearest 15 min
+    return `fallback:${title}:${organizer}:${durationBucket}`;
+  };
+
   recurringEvents.forEach(event => {
-    const key = event.recurringEventId || event.id;
+    // Primary grouping: use recurringEventId (instances of a recurring series)
+    // Secondary: use event id for master events with recurrence rules
+    // Fallback: group by title + organizer + duration for edge cases
+    let key: string;
+
+    if (event.recurringEventId) {
+      // This is an instance of a recurring event - use the master event ID
+      key = event.recurringEventId;
+    } else if (event.recurrence && event.recurrence.length > 0) {
+      // This is a master recurring event (shouldn't happen with singleEvents=true, but handle it)
+      key = event.id;
+    } else {
+      // Fallback for events that should be grouped but lack proper recurring IDs
+      key = createFallbackKey(event);
+    }
+
     if (!key) {
       return;
     }
