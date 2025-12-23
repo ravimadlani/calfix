@@ -483,6 +483,7 @@ const AuditPage: React.FC = () => {
       const blob = await pdf(
         <AuditPdfDocument
           summary={summaryForDisplay}
+          series={analytics.series}
           relationships={analytics.relationships}
           generatedAt={new Date()}
           calendarName={managedCalendarId || 'Primary Calendar'}
