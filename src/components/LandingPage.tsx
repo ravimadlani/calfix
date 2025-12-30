@@ -455,8 +455,8 @@ const LandingPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            {/* Clerk Waitlist component - it has its own internal padding */}
-            <div className="pt-8">
+            {/* Clerk Waitlist component wrapper with padding */}
+            <div className="pt-10 pb-6 px-6">
               <Waitlist />
             </div>
           </div>
