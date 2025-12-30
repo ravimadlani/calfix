@@ -446,15 +446,19 @@ const LandingPage: React.FC = () => {
           />
           {/* Modal */}
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            {/* Close button in top right corner */}
             <button
               onClick={() => setShowWaitlist(false)}
-              className="absolute top-4 right-4 z-10 text-gray-400 hover:text-gray-600"
+              className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <Waitlist />
+            {/* Clerk Waitlist component - it has its own internal padding */}
+            <div className="pt-8">
+              <Waitlist />
+            </div>
           </div>
         </div>
       )}
