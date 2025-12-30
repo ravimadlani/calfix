@@ -3,13 +3,14 @@
  * Homepage with hero, features, and pricing
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, Waitlist } from '@clerk/clerk-react';
 import outlookLogo from '../assets/outlook-calendar.jpg';
 
 const LandingPage: React.FC = () => {
   const { isSignedIn } = useUser();
+  const [showWaitlist, setShowWaitlist] = useState(false);
 
   return (
     <div className="bg-white">
@@ -20,41 +21,40 @@ const LandingPage: React.FC = () => {
             {/* Left side - Content */}
             <div className="text-center lg:text-left">
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-blue-600 mb-4">
-                Zero Calendar Conflicts. Zero Scheduling Stress.
+                Stop Firefighting.<br />Start Managing.
               </h1>
               <p className="text-sm sm:text-base text-blue-600 font-light mb-4 leading-relaxed">
-                Just like Inbox Zero transformed email management, Calendar Zero brings that same clarity to your schedule.
-                A clean, conflict-free calendar where every meeting has purpose, every executive has adequate buffer time,
-                and nothing slips through the cracks.
+                AI-powered calendar management for Executive Assistants who manage the impossible.
+                Spot conflicts. Fix them automatically. Finally breathe.
               </p>
 
               {/* Key Features */}
               <div className="mb-5">
-                <h3 className="text-base font-medium text-blue-600 mb-3 text-center lg:text-left">Smart Calendar Intelligence</h3>
+                <h3 className="text-base font-medium text-blue-600 mb-3 text-center lg:text-left">Built for EAs Managing 1-15 Calendars</h3>
                 <ul className="space-y-1.5 max-w-xl">
                   <li className="flex items-start gap-2">
                     <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-sm text-blue-600 font-light">Automatic conflict detection and resolution</span>
+                    <span className="text-sm text-blue-600 font-light">Catch double-bookings before your exec does</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-sm text-blue-600 font-light">Intelligent travel time management</span>
+                    <span className="text-sm text-blue-600 font-light">Auto-add travel time between meetings</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-sm text-blue-600 font-light">Multi-timezone coordination</span>
+                    <span className="text-sm text-blue-600 font-light">Flag out-of-hours meetings instantly</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-sm text-blue-600 font-light">One-click schedule optimization</span>
+                    <span className="text-sm text-blue-600 font-light">Fix a chaotic week in one click</span>
                   </li>
                 </ul>
               </div>
@@ -79,7 +79,19 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-xs text-blue-400 font-light mt-3">7-day free trial • No credit card required</p>
+              {/* Waitlist CTA */}
+              <div className="mt-6 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                <button
+                  onClick={() => setShowWaitlist(true)}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white text-lg font-medium rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                >
+                  Join the Waitlist
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-xs text-blue-400 font-light mt-3">Limited early access • Be first in line</p>
             </div>
 
             {/* Right side - Demo Video */}
@@ -214,12 +226,12 @@ const LandingPage: React.FC = () => {
                   <span className="text-sm text-blue-500 font-light">Email support</span>
                 </li>
               </ul>
-              <Link
-                to="/sign-up"
+              <button
+                onClick={() => setShowWaitlist(true)}
                 className="block w-full py-3 text-center font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-colors"
               >
-                Try the App
-              </Link>
+                Join Waitlist
+              </button>
             </div>
 
             {/* EA Plan - Most Popular */}
@@ -258,12 +270,12 @@ const LandingPage: React.FC = () => {
                   <span className="text-sm text-white font-light">Priority support</span>
                 </li>
               </ul>
-              <Link
-                to="/sign-up"
+              <button
+                onClick={() => setShowWaitlist(true)}
                 className="block w-full py-3 text-center font-light text-blue-600 bg-white hover:bg-gray-50 rounded-lg transition-colors"
               >
-                Try the App
-              </Link>
+                Join Waitlist
+              </button>
             </div>
 
             {/* EA Pro Plan */}
@@ -297,12 +309,12 @@ const LandingPage: React.FC = () => {
                   <span className="text-sm text-blue-500 font-light">Onboarding assistance</span>
                 </li>
               </ul>
-              <Link
-                to="/sign-up"
+              <button
+                onClick={() => setShowWaitlist(true)}
                 className="block w-full py-3 text-center font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-colors"
               >
-                Try the App
-              </Link>
+                Join Waitlist
+              </button>
             </div>
           </div>
         </div>
@@ -326,19 +338,46 @@ const LandingPage: React.FC = () => {
       <section className="py-20 bg-gradient-to-r from-blue-500 to-blue-600">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-light text-white mb-4">
-            Ready to fix your calendars?
+            Be First in Line
           </h2>
           <p className="text-xl text-blue-100 font-light mb-8">
-            Join executive assistants who save hours every week with CalendarZero.
+            Join the waitlist for early access. Limited spots available.
           </p>
-          <Link
-            to="/sign-up"
-            className="inline-block px-8 py-4 text-lg font-light text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all transform hover:scale-105 shadow-lg"
+          <button
+            onClick={() => setShowWaitlist(true)}
+            className="inline-block px-8 py-4 text-lg font-light text-blue-600 bg-white hover:bg-gray-50 rounded-xl transition-all transform hover:scale-105 shadow-lg"
           >
-            Try the App - No Credit Card Required
-          </Link>
+            Join the Waitlist
+          </button>
         </div>
       </section>
+
+      {/* Waitlist Modal */}
+      {showWaitlist && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowWaitlist(false)}
+          />
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <button
+              onClick={() => setShowWaitlist(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-light text-blue-600 mb-2">Join the Waitlist</h3>
+              <p className="text-sm text-gray-500">Be first to know when CalendarZero launches.</p>
+            </div>
+            <Waitlist />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
