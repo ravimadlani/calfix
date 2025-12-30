@@ -456,7 +456,7 @@ const LandingPage: React.FC = () => {
               </svg>
             </button>
             {/* Clerk Waitlist component wrapper with padding */}
-            <div className="pt-10 pb-6 px-6">
+            <div className="p-8 pt-12">
               <Waitlist />
             </div>
           </div>
