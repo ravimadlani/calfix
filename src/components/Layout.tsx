@@ -248,7 +248,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     Sign In
                   </Link>
                   <Link
-                    to="/sign-up"
+                    to="/?waitlist=true"
                     className="px-4 py-2 text-sm font-light text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg transition-all transform hover:scale-105"
                   >
                     Join Waitlist

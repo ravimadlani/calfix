@@ -3,14 +3,24 @@
  * Homepage with hero, features, and pricing
  */
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useUser, Waitlist } from '@clerk/clerk-react';
 import outlookLogo from '../assets/outlook-calendar.jpg';
 
 const LandingPage: React.FC = () => {
   const { isSignedIn } = useUser();
   const [showWaitlist, setShowWaitlist] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Check for ?waitlist=true query param (from header link)
+  useEffect(() => {
+    if (searchParams.get('waitlist') === 'true') {
+      setShowWaitlist(true);
+      // Clear the query param
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   return (
     <div className="bg-white">
@@ -80,10 +90,11 @@ const LandingPage: React.FC = () => {
               </div>
 
               {/* Waitlist CTA */}
-              <div className="mt-6 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+              <div className="mt-6 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start relative z-10">
                 <button
+                  type="button"
                   onClick={() => setShowWaitlist(true)}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white text-lg font-medium rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white text-lg font-medium rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105 cursor-pointer"
                 >
                   Join the Waitlist
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,19 +445,15 @@ const LandingPage: React.FC = () => {
             onClick={() => setShowWaitlist(false)}
           />
           {/* Modal */}
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <button
               onClick={() => setShowWaitlist(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 right-4 z-10 text-gray-400 hover:text-gray-600"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-light text-blue-600 mb-2">Join the Waitlist</h3>
-              <p className="text-sm text-gray-500">Be first to know when CalendarZero launches.</p>
-            </div>
             <Waitlist />
           </div>
         </div>
