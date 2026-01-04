@@ -19,6 +19,13 @@ interface TestDataResult {
   regularMeetings: number;
 }
 
+interface RecurringTestDataResult {
+  totalEvents: number;
+  weeklyMeetings: number;
+  biWeeklyMeetings: number;
+  monthlyMeetings: number;
+}
+
 const SAMPLE_MEETING_TITLES = [
   'Team Standup',
   'Product Review',
@@ -373,4 +380,146 @@ const generateDeclinedMeeting = async (date: Date, result: TestDataResult, provi
 
   result.totalEvents++;
   result.declinedMeetings++;
+};
+
+/**
+ * Generate recurring meetings for testing Audit page
+ * @param provider The active calendar provider to use for creating events
+ */
+export const generateRecurringMeetings = async (provider: CalendarProvider): Promise<RecurringTestDataResult> => {
+  const result: RecurringTestDataResult = {
+    totalEvents: 0,
+    weeklyMeetings: 0,
+    biWeeklyMeetings: 0,
+    monthlyMeetings: 0,
+  };
+
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+
+  // Weekly recurring meetings
+  const weeklyMeetings = [
+    { day: 1, hour: 10, duration: 30, title: 'Weekly Team Standup' }, // Monday 10am
+    { day: 3, hour: 14, duration: 60, title: 'Weekly Product Sync' }, // Wednesday 2pm
+    { day: 5, hour: 9, duration: 60, title: 'Weekly Review Meeting' }, // Friday 9am
+  ];
+
+  for (const meeting of weeklyMeetings) {
+    // Find next occurrence of the day
+    const nextDate = new Date(startDate);
+    const daysUntilNext = (meeting.day - nextDate.getDay() + 7) % 7;
+    nextDate.setDate(nextDate.getDate() + daysUntilNext);
+    nextDate.setHours(meeting.hour, 0, 0, 0);
+
+    // Create 8 occurrences (2 months worth)
+    for (let i = 0; i < 8; i++) {
+      const eventDate = new Date(nextDate);
+      eventDate.setDate(nextDate.getDate() + (i * 7));
+
+      const endTime = new Date(eventDate);
+      endTime.setMinutes(eventDate.getMinutes() + meeting.duration);
+
+      await provider.calendar.createEvent({
+        summary: meeting.title,
+        start: { dateTime: eventDate.toISOString(), timeZone: 'Europe/London' },
+        end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },
+        attendees: [
+          { email: SAMPLE_ATTENDEES[0] },
+          { email: SAMPLE_ATTENDEES[1] },
+        ],
+        conferenceData: {
+          createRequest: { requestId: `recurring-weekly-${Date.now()}-${i}` },
+        },
+        recurrence: ['RRULE:FREQ=WEEKLY;COUNT=8'],
+      });
+
+      result.totalEvents++;
+      result.weeklyMeetings++;
+    }
+  }
+
+  // Bi-weekly recurring meetings
+  const biWeeklyMeetings = [
+    { day: 2, hour: 11, duration: 60, title: 'Bi-weekly Strategy Review' }, // Tuesday 11am
+    { day: 4, hour: 15, duration: 90, title: 'Bi-weekly Planning Session' }, // Thursday 3pm
+  ];
+
+  for (const meeting of biWeeklyMeetings) {
+    const nextDate = new Date(startDate);
+    const daysUntilNext = (meeting.day - nextDate.getDay() + 7) % 7;
+    nextDate.setDate(nextDate.getDate() + daysUntilNext);
+    nextDate.setHours(meeting.hour, 0, 0, 0);
+
+    // Create 4 occurrences (2 months worth)
+    for (let i = 0; i < 4; i++) {
+      const eventDate = new Date(nextDate);
+      eventDate.setDate(nextDate.getDate() + (i * 14));
+
+      const endTime = new Date(eventDate);
+      endTime.setMinutes(eventDate.getMinutes() + meeting.duration);
+
+      await provider.calendar.createEvent({
+        summary: meeting.title,
+        start: { dateTime: eventDate.toISOString(), timeZone: 'Europe/London' },
+        end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },
+        attendees: [
+          { email: SAMPLE_ATTENDEES[2] },
+          { email: SAMPLE_ATTENDEES[3] },
+        ],
+        conferenceData: {
+          createRequest: { requestId: `recurring-biweekly-${Date.now()}-${i}` },
+        },
+        recurrence: ['RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=4'],
+      });
+
+      result.totalEvents++;
+      result.biWeeklyMeetings++;
+    }
+  }
+
+  // Monthly recurring meetings
+  const monthlyMeetings = [
+    { dayOfMonth: 1, hour: 10, duration: 120, title: 'Monthly All-Hands Meeting' },
+    { dayOfMonth: 15, hour: 14, duration: 60, title: 'Monthly Budget Review' },
+  ];
+
+  for (const meeting of monthlyMeetings) {
+    const nextDate = new Date(startDate);
+
+    // Set to the specified day of current or next month
+    if (nextDate.getDate() > meeting.dayOfMonth) {
+      nextDate.setMonth(nextDate.getMonth() + 1);
+    }
+    nextDate.setDate(meeting.dayOfMonth);
+    nextDate.setHours(meeting.hour, 0, 0, 0);
+
+    // Create 2 occurrences (2 months worth)
+    for (let i = 0; i < 2; i++) {
+      const eventDate = new Date(nextDate);
+      eventDate.setMonth(nextDate.getMonth() + i);
+
+      const endTime = new Date(eventDate);
+      endTime.setMinutes(eventDate.getMinutes() + meeting.duration);
+
+      await provider.calendar.createEvent({
+        summary: meeting.title,
+        start: { dateTime: eventDate.toISOString(), timeZone: 'Europe/London' },
+        end: { dateTime: endTime.toISOString(), timeZone: 'Europe/London' },
+        attendees: [
+          { email: SAMPLE_ATTENDEES[0] },
+          { email: SAMPLE_ATTENDEES[2] },
+          { email: SAMPLE_ATTENDEES[4] },
+        ],
+        conferenceData: {
+          createRequest: { requestId: `recurring-monthly-${Date.now()}-${i}` },
+        },
+        recurrence: ['RRULE:FREQ=MONTHLY;COUNT=2'],
+      });
+
+      result.totalEvents++;
+      result.monthlyMeetings++;
+    }
+  }
+
+  return result;
 };

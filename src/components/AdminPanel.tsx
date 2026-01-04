@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { generateTestCalendarData } from '../services/testDataGenerator';
+import { generateTestCalendarData, generateRecurringMeetings } from '../services/testDataGenerator';
 import { useCalendarProvider } from '../context/CalendarProviderContext';
 import AnalyticsOverviewTab from './admin/AnalyticsOverviewTab';
 import HealthFactorConfigTab from './admin/HealthFactorConfigTab';
@@ -32,6 +32,7 @@ const AdminPanel = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [generatingRecurring, setGeneratingRecurring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
@@ -118,6 +119,48 @@ const AdminPanel = () => {
       }
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleGenerateRecurringMeetings = async () => {
+    // First check if provider calendar is connected
+    if (!isCalendarConnected) {
+      setError(`Please connect your ${providerLabel} calendar first to generate recurring meetings.`);
+      return;
+    }
+
+    if (!window.confirm('This will create recurring meetings (weekly, bi-weekly, and monthly) for the next 2 months. Continue?')) {
+      return;
+    }
+
+    setGeneratingRecurring(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await generateRecurringMeetings(activeProvider);
+      setSuccessMessage(`Successfully created ${result.totalEvents} recurring meeting events!`);
+
+      // Show breakdown
+      alert(`Recurring Meetings Created:\n\n` +
+        `• ${result.weeklyMeetings} weekly meeting occurrences\n` +
+        `• ${result.biWeeklyMeetings} bi-weekly meeting occurrences\n` +
+        `• ${result.monthlyMeetings} monthly meeting occurrences\n\n` +
+        `These recurring meetings will now appear in the Audit page.`);
+    } catch (err: unknown) {
+      console.error('Recurring meetings generation error:', err);
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('401') || message.includes('unauthenticated') || message.includes('unauthorized')) {
+        setError(`${providerLabel} authentication expired. Please reconnect your calendar.`);
+        setIsCalendarConnected(false);
+      } else if (message.includes('403') || message.includes('Permission denied')) {
+        setError(`Permission denied: Your ${providerLabel} connection doesn't have write permissions. Please reconnect with proper permissions.`);
+      } else {
+        setError(`Failed to generate recurring meetings: ${message}`);
+      }
+    } finally {
+      setGeneratingRecurring(false);
     }
   };
 
@@ -255,13 +298,22 @@ const AdminPanel = () => {
               <li>• Focus time blocks (good examples)</li>
               <li>• Regular meetings with proper spacing</li>
             </ul>
-            <button
-              onClick={handleGenerateTestData}
-              disabled={generating || !isCalendarConnected}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {generating ? 'Generating Test Data...' : 'Generate Test Calendar Data'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleGenerateTestData}
+                disabled={generating || !isCalendarConnected}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generating ? 'Generating Test Data...' : 'Generate Test Calendar Data'}
+              </button>
+              <button
+                onClick={handleGenerateRecurringMeetings}
+                disabled={generatingRecurring || !isCalendarConnected}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingRecurring ? 'Generating Recurring...' : 'Generate Recurring Meetings'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
